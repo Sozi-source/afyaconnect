@@ -11,6 +11,7 @@ import {
   ChartBarIcon,
   UserCircleIcon,
   PlusCircleIcon,
+  BellIcon,
 } from '@heroicons/react/24/outline'
 import {
   HomeIcon as HomeIconSolid,
@@ -47,12 +48,6 @@ const navItems: NavItem[] = [
     activeIcon: CalendarIconSolid,
   },
   {
-    name: 'Metrics',
-    href: '/dashboard/metrics',
-    icon: ChartBarIcon,
-    activeIcon: ChartBarIconSolid,
-  },
-  {
     name: 'Profile',
     href: '/dashboard/profile',
     icon: UserCircleIcon,
@@ -63,17 +58,27 @@ const navItems: NavItem[] = [
 export const MobileNav = () => {
   const [isVisible, setIsVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
+  const [showFAB, setShowFAB] = useState(false)
   const pathname = usePathname()
 
   useEffect(() => {
     const controlNavbar = () => {
       if (typeof window !== 'undefined') {
-        if (window.scrollY > lastScrollY && window.scrollY > 100) {
+        const currentScrollY = window.scrollY
+        
+        // Hide/show bottom nav
+        if (currentScrollY > lastScrollY && currentScrollY > 100) {
           setIsVisible(false)
+          setShowFAB(false)
         } else {
           setIsVisible(true)
+          if (currentScrollY > 300) {
+            setShowFAB(true)
+          } else {
+            setShowFAB(false)
+          }
         }
-        setLastScrollY(window.scrollY)
+        setLastScrollY(currentScrollY)
       }
     }
 
@@ -92,19 +97,24 @@ export const MobileNav = () => {
   return (
     <>
       {/* Floating Action Button */}
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.5 }}
-        className="lg:hidden fixed bottom-20 right-4 z-50"
-      >
-        <Link
-          href="/dashboard/consultations/create"
-          className="flex items-center justify-center w-14 h-14 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full text-white shadow-lg hover:shadow-xl transition-shadow"
-        >
-          <PlusCircleIcon className="h-6 w-6" />
-        </Link>
-      </motion.div>
+      <AnimatePresence>
+        {showFAB && (
+          <motion.div
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            className="lg:hidden fixed bottom-20 right-4 z-50"
+          >
+            <Link
+              href="/dashboard/consultations/create"
+              className="flex items-center justify-center w-14 h-14 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full text-white shadow-lg hover:shadow-xl transition-shadow active:scale-95 transform"
+            >
+              <PlusCircleIcon className="h-6 w-6" />
+            </Link>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Bottom Navigation Bar */}
       <AnimatePresence>
@@ -114,7 +124,7 @@ export const MobileNav = () => {
             animate={{ y: 0 }}
             exit={{ y: 100 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 z-40 px-2 pb-2 pt-1"
+            className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 z-40 px-2 pb-2 pt-1 shadow-lg"
           >
             <div className="flex items-center justify-around">
               {navItems.map((item) => {
@@ -124,18 +134,18 @@ export const MobileNav = () => {
                 return (
                   <Link
                     key={item.name}
-                    href={item.href as any}
+                    href={item.href}
                     className={`
-                      relative flex flex-col items-center pt-2 px-3 pb-1 rounded-lg
-                      transition-colors
+                      relative flex flex-col items-center pt-2 px-2 pb-1 rounded-xl
+                      transition-all duration-200
                       ${isActive 
-                        ? 'text-primary-600 dark:text-primary-400' 
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                        ? 'text-blue-600 dark:text-blue-400 scale-110' 
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                       }
                     `}
                   >
                     <Icon className="h-6 w-6" />
-                    <span className="text-xs mt-1 font-medium">
+                    <span className="text-[10px] mt-1 font-medium">
                       {item.name}
                     </span>
                     
@@ -143,7 +153,7 @@ export const MobileNav = () => {
                     {isActive && (
                       <motion.div
                         layoutId="activeTab"
-                        className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-primary-600 dark:bg-primary-400 rounded-full"
+                        className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-600 dark:bg-blue-400 rounded-full"
                         transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                       />
                     )}

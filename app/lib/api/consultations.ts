@@ -3,7 +3,8 @@ import { Consultation, PaginatedResponse } from '@/app/types'
 
 // Define a type for creating a consultation (matches your backend)
 export interface CreateConsultationRequest {
-  practitioner: number  // Just the ID
+  client?: number  // Add this - will be handled by auth in backend
+  practitioner: number
   date: string
   time: string
   duration_minutes?: number
@@ -23,8 +24,12 @@ export const consultationsApi = {
     return response.data
   },
 
-  // Create consultation - FIXED: Use CreateConsultationRequest, not Partial<Consultation>
+  // CREATE consultation - FIXED: Use the correct endpoint '/consultations/create/'
   create: async (data: CreateConsultationRequest) => {
+    // Log the data being sent for debugging
+    console.log('📤 Sending to /consultations/create/:', data)
+    
+    // Use the correct endpoint as per your Django URLs
     const response = await api.post<Consultation>('/consultations/create/', data)
     return response.data
   },

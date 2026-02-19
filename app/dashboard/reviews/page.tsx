@@ -6,7 +6,9 @@ import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import Link from 'next/link'
 import { StarIcon } from '@heroicons/react/24/solid'
-import { Review, PaginatedResponse } from '@/app/types'  // Import from types
+import { PlusIcon } from '@heroicons/react/24/outline'
+import { Review, PaginatedResponse } from '@/app/types'
+import { motion } from 'framer-motion'
 
 export default function ReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([])
@@ -17,7 +19,6 @@ export default function ReviewsPage() {
       try {
         const data = await reviewsApi.getAll() as PaginatedResponse<Review> | Review[]
         
-        // Handle both paginated and non-paginated responses
         if (Array.isArray(data)) {
           setReviews(data)
         } else if (data && 'results' in data) {
@@ -35,56 +36,104 @@ export default function ReviewsPage() {
     fetchReviews()
   }, [])
 
-  if (loading) return <div className="flex justify-center p-8">Loading...</div>
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+        <div className="grid gap-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Reviews</h1>
-        <Link href="/dashboard/reviews/create">
-          <Button>Write a Review</Button>
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+            Reviews
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
+            Share your experience with practitioners
+          </p>
+        </div>
+        <Link href="/dashboard/reviews/create" className="w-full sm:w-auto">
+          <Button fullWidth className="sm:w-auto">
+            <PlusIcon className="h-5 w-5 mr-2" />
+            Write a Review
+          </Button>
         </Link>
       </div>
 
-      <div className="grid gap-4">
+      {/* Reviews Grid */}
+      <div className="grid gap-3 sm:gap-4">
         {reviews.length > 0 ? (
-          reviews.map((review) => (
-            <Link href={`/dashboard/reviews/${review.id}`} key={review.id}>
-              <Card hoverable>
-                <CardBody>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <div className="flex text-yellow-400">
+          reviews.map((review, index) => (
+            <motion.div
+              key={review.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(index * 0.05, 0.5) }}
+            >
+              <Link href={`/dashboard/reviews/${review.id}`}>
+                <Card hoverable className="cursor-pointer">
+                  <CardBody className="p-4 sm:p-5">
+                    <div className="space-y-2 sm:space-y-3">
+                      {/* Rating and Date */}
+                      <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-2">
+                        <div className="flex items-center gap-1">
                           {[...Array(5)].map((_, i) => (
-                            <StarIcon key={i} className={`h-5 w-5 ${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}`} />
+                            <StarIcon 
+                              key={i} 
+                              className={`h-4 w-4 sm:h-5 sm:w-5 ${
+                                i < review.rating ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-600'
+                              }`} 
+                            />
                           ))}
                         </div>
-                        <span className="text-sm text-gray-500">
+                        <span className="text-xs sm:text-sm text-gray-500">
                           {new Date(review.created_at).toLocaleDateString()}
                         </span>
                       </div>
-                      <p className="text-gray-700 dark:text-gray-300 line-clamp-2">
+                      
+                      {/* Comment */}
+                      <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
                         {review.comment || 'No comment provided'}
                       </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                      
+                      {/* Consultation Link */}
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         Consultation #{review.consultation}
                       </p>
                     </div>
-                  </div>
-                </CardBody>
-              </Card>
-            </Link>
+                  </CardBody>
+                </Card>
+              </Link>
+            </motion.div>
           ))
         ) : (
-          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg">
-            <p className="text-gray-500 dark:text-gray-400">No reviews yet</p>
-            <Link href="/dashboard/reviews/create">
-              <Button variant="outline" className="mt-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-12 sm:py-16 bg-white dark:bg-gray-800 rounded-xl shadow-sm"
+          >
+            <div className="text-4xl sm:text-5xl mb-4">⭐</div>
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              No reviews yet
+            </h3>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-sm mx-auto px-4">
+              Share your experience with practitioners you've consulted with.
+            </p>
+            <Link href="/dashboard/reviews/create" className="inline-block mt-6">
+              <Button>
                 Write Your First Review
               </Button>
             </Link>
-          </div>
+          </motion.div>
         )}
       </div>
     </div>

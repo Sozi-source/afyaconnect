@@ -13,56 +13,70 @@ interface PractitionerCardProps {
 }
 
 export const PractitionerCard: React.FC<PractitionerCardProps> = ({ practitioner }) => {
-  // Access first_name/last_name directly from practitioner (not nested under user)
   const fullName = `${practitioner.first_name || ''} ${practitioner.last_name || ''}`.trim() || 'Practitioner'
-  
-  // Get specialties names safely
   const specialties = practitioner.specialties?.map(s => s.name).join(', ') || ''
+  const displayName = fullName.length > 20 ? fullName.substring(0, 20) + '...' : fullName
+  const displaySpecialties = specialties.length > 30 ? specialties.substring(0, 30) + '...' : specialties
 
   return (
-    <Link href={`/dashboard/practitioners/${practitioner.id}`}>
-      <Card hoverable className="cursor-pointer h-full">
-        <div className="relative h-40 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-t-xl">
-          <div className="absolute inset-0 bg-black bg-opacity-20 rounded-t-xl" />
-          <div className="absolute bottom-3 left-4 right-4">
-            <h3 className="text-lg font-bold text-white truncate">{fullName}</h3>
-            <p className="text-sm text-white text-opacity-90 truncate">{specialties}</p>
+    <Link href={`/dashboard/practitioners/${practitioner.id}`} className="block h-full">
+      <Card hoverable className="cursor-pointer h-full overflow-hidden">
+        {/* Header with gradient */}
+        <div className="relative h-32 sm:h-36 md:h-40 bg-gradient-to-br from-blue-500 to-indigo-500">
+          <div className="absolute inset-0 bg-black/20" />
+          <div className="absolute bottom-2 sm:bottom-3 left-3 sm:left-4 right-3 sm:right-4">
+            <h3 className="text-base sm:text-lg font-bold text-white truncate">
+              {displayName}
+            </h3>
+            <p className="text-xs sm:text-sm text-white/90 truncate">
+              {displaySpecialties || 'Practitioner'}
+            </p>
           </div>
           {practitioner.is_verified && (
-            <Badge variant="success" className="absolute top-3 right-3">
+            <Badge variant="success" className="absolute top-2 sm:top-3 right-2 sm:right-3 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5">
               ✓ Verified
             </Badge>
           )}
         </div>
         
-        <CardBody>
-          <div className="space-y-3">
-            <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 min-h-[40px]">
+        <CardBody className="p-3 sm:p-4">
+          <div className="space-y-2 sm:space-y-3">
+            {/* Bio */}
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 line-clamp-2 min-h-[32px] sm:min-h-[40px]">
               {practitioner.bio || 'No bio provided'}
             </p>
             
-            <div className="flex items-center justify-between text-sm">
+            {/* Location & Rate */}
+            <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1 xs:gap-0 text-xs sm:text-sm">
               <div className="flex items-center space-x-1 text-gray-500 dark:text-gray-400">
-                <MapPinIcon className="h-4 w-4" />
-                <span>{practitioner.city || 'Location N/A'}</span>
+                <MapPinIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="truncate max-w-[100px] sm:max-w-[120px]">
+                  {practitioner.city || 'Location N/A'}
+                </span>
               </div>
               
               <div className="flex items-center space-x-1 text-gray-500 dark:text-gray-400">
-                <CurrencyDollarIcon className="h-4 w-4" />
-                <span>{practitioner.currency} {practitioner.hourly_rate}/hr</span>
+                <CurrencyDollarIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="whitespace-nowrap">
+                  {practitioner.currency} {practitioner.hourly_rate}/hr
+                </span>
               </div>
             </div>
             
+            {/* Footer */}
             <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {practitioner.years_of_experience || 0}+ years exp.
+              <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+                {practitioner.years_of_experience || 0}+ yrs
               </span>
               
               <motion.span
-                whileHover={{ x: 5 }}
-                className="text-primary-600 hover:text-primary-700 font-medium text-sm dark:text-primary-400 flex items-center"
+                whileHover={{ x: 3 }}
+                className="text-blue-600 hover:text-blue-700 font-medium text-xs sm:text-sm dark:text-blue-400 flex items-center"
               >
-                View Profile →
+                View Profile
+                <svg className="h-3 w-3 sm:h-4 sm:w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </motion.span>
             </div>
           </div>

@@ -16,6 +16,7 @@ export interface Specialty {
 }
 
 export interface Practitioner {
+  phone: any
   id: number
   user: number
   first_name: string

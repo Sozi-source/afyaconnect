@@ -15,6 +15,7 @@ import {
   Cog6ToothIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  HomeIcon,
 } from '@heroicons/react/24/outline'
 
 interface SidebarItem {
@@ -25,7 +26,7 @@ interface SidebarItem {
 }
 
 const navigation: SidebarItem[] = [
-  { name: 'Dashboard', href: '/dashboard', icon: ChartBarIcon },
+  { name: 'Home', href: '/dashboard', icon: HomeIcon },
   { name: 'Practitioners', href: '/dashboard/practitioners', icon: UserGroupIcon },
   { name: 'Consultations', href: '/dashboard/consultations', icon: CalendarIcon },
   { name: 'Reviews', href: '/dashboard/reviews', icon: StarIcon },
@@ -65,25 +66,36 @@ export const Sidebar = () => {
 
   return (
     <motion.aside
-      initial={{ width: collapsed ? 80 : 256 }}
-      animate={{ width: collapsed ? 80 : 256 }}
+      initial={{ width: collapsed ? 80 : 280 }}
+      animate={{ width: collapsed ? 80 : 280 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className="fixed left-0 top-0 bottom-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 hidden lg:block overflow-hidden z-30"
+      className="fixed left-0 top-0 bottom-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 hidden lg:block overflow-hidden z-30"
     >
       <div className="relative h-full flex flex-col">
         {/* Logo */}
-        <div className="h-16 flex items-center px-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="h-20 flex items-center px-4 border-b border-gray-200 dark:border-gray-800">
           {!collapsed ? (
-            <h1 className="text-xl font-bold text-primary-600 dark:text-primary-400">NutriConnect</h1>
+            <Link href="/" className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold">NC</span>
+              </div>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                Nutri<span className="text-blue-600">Connect</span>
+              </h1>
+            </Link>
           ) : (
-            <h1 className="text-xl font-bold text-primary-600 dark:text-primary-400 mx-auto">NC</h1>
+            <Link href="/" className="mx-auto">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">NC</span>
+              </div>
+            </Link>
           )}
         </div>
 
         {/* Toggle button */}
         <button
           onClick={toggleSidebar}
-          className="absolute -right-3 top-20 w-6 h-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors z-10"
+          className="absolute -right-3 top-24 w-6 h-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors z-10 shadow-md"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {collapsed ? (
@@ -99,11 +111,11 @@ export const Sidebar = () => {
             {navigation.map((item) => (
               <Link
                 key={item.name}
-                href={item.href as any}
+                href={item.href}
                 className={`
-                  flex items-center px-3 py-2 rounded-lg transition-all duration-200 group
+                  relative flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 group
                   ${isActive(item.href)
-                    ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400'
+                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                   }
                 `}
@@ -124,13 +136,14 @@ export const Sidebar = () => {
                 )}
                 
                 {collapsed && item.badge && (
-                  <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
                 )}
 
                 {/* Tooltip for collapsed mode */}
                 {collapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
+                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
                     {item.name}
+                    {item.badge && ` (${item.badge})`}
                   </div>
                 )}
               </Link>
@@ -138,18 +151,18 @@ export const Sidebar = () => {
           </div>
 
           {!collapsed && (
-            <div className="my-4 border-t border-gray-200 dark:border-gray-700" />
+            <div className="my-4 border-t border-gray-200 dark:border-gray-800" />
           )}
 
           <div className="space-y-1">
             {secondaryNavigation.map((item) => (
               <Link
                 key={item.name}
-                href={item.href as any}
+                href={item.href}
                 className={`
-                  flex items-center px-3 py-2 rounded-lg transition-all duration-200 group
+                  relative flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 group
                   ${isActive(item.href)
-                    ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400'
+                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                   }
                 `}
@@ -162,7 +175,7 @@ export const Sidebar = () => {
                 )}
                 {/* Tooltip for collapsed mode */}
                 {collapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
+                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
                     {item.name}
                   </div>
                 )}
@@ -173,8 +186,8 @@ export const Sidebar = () => {
 
         {/* User info when collapsed */}
         {collapsed && (
-          <div className="p-3 border-t border-gray-200 dark:border-gray-700">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-full mx-auto flex items-center justify-center text-white font-medium">
+          <div className="p-3 border-t border-gray-200 dark:border-gray-800">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl mx-auto flex items-center justify-center text-white font-medium">
               U
             </div>
           </div>
