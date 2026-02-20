@@ -96,11 +96,11 @@ export default function CreateConsultationPage() {
     try {
       // Prepare submission data with client field
       const submissionData = {
-        practitioner: parseInt(formData.practitioner, 10),
-        date: formData.date,
-        time: formData.time,
-        duration_minutes: parseInt(formData.duration_minutes, 10),
-        ...(formData.client_notes?.trim() && { client_notes: formData.client_notes.trim() }),
+      practitioner: parseInt(formData.practitioner, 10),
+      date: formData.date,
+      time: formData.time,
+      duration_minutes: parseInt(formData.duration_minutes, 10), 
+      client_notes: formData.client_notes?.trim() || '',
       }
 
       console.log('📤 Submitting consultation:', submissionData)

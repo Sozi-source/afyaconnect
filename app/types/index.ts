@@ -16,12 +16,11 @@ export interface Specialty {
 }
 
 export interface Practitioner {
-  phone: any
   id: number
-  user: number
-  first_name: string
-  last_name: string
-  email: string
+  user: number                    // User ID
+  first_name: string              // Direct from API response
+  last_name: string               // Direct from API response
+  email: string                   // Direct from API response
   bio: string | null
   currency: 'KES' | 'USD'
   hourly_rate: string
@@ -29,6 +28,7 @@ export interface Practitioner {
   city?: string
   years_of_experience?: number
   is_verified?: boolean
+  phone?: any                     // Keep this if needed
 }
 
 // Consultation Types

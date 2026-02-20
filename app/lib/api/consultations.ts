@@ -3,11 +3,10 @@ import { Consultation, PaginatedResponse } from '@/app/types'
 
 // Define a type for creating a consultation (matches your backend)
 export interface CreateConsultationRequest {
-  client?: number  // Add this - will be handled by auth in backend
   practitioner: number
   date: string
   time: string
-  duration_minutes?: number
+  duration_minutes: number
   client_notes?: string
 }
 
