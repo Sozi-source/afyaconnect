@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { profilesApi } from '@/app/lib/api'
+import { apiClient } from '@/app/lib/api'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import Link from 'next/link'
@@ -21,7 +21,7 @@ export default function ProfilePage() {
         setLoading(true)
         setError(null)
         
-        const profileData = await profilesApi.getMyProfile()
+        const profileData = await apiClient.auth.getMyProfile()
         setProfile(profileData)
         
       } catch (error: any) {

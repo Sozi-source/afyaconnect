@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { reviewsApi } from '@/app/lib/api'
+import { apiClient } from '@/app/lib/api'
 import { Button } from '@/app/components/ui/Buttons'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { StarIcon } from '@heroicons/react/24/solid'
@@ -29,7 +29,7 @@ export default function ReviewDetailPage() {
   useEffect(() => {
     const fetchReview = async () => {
       try {
-        const data = await reviewsApi.getOne(id)
+        const data = await apiClient.reviews.getOne(id)
         setReview(data)
       } catch (error) {
         console.error('Failed to fetch review:', error)

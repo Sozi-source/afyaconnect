@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { consultationsApi, practitionersApi } from '@/app/lib/api'
+import { apiClient } from '@/app/lib/api' // Changed import
 import { Button } from '@/app/components/ui/Buttons'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import Link from 'next/link'
@@ -41,15 +41,9 @@ export default function CreateConsultationPage() {
     const fetchPractitioners = async () => {
       try {
         setFetchingPractitioners(true)
-        const response = await practitionersApi.getAll()
+        const response = await apiClient.practitioners.getAll()
         
-        if (Array.isArray(response)) {
-          setPractitioners(response)
-        } else if (response?.results) {
-          setPractitioners(response.results)
-        } else {
-          setPractitioners([])
-        }
+        setPractitioners(Array.isArray(response) ? response : [])
       } catch (error) {
         console.error('Failed to fetch practitioners:', error)
         setError('Failed to load practitioners. Please refresh the page.')
@@ -96,20 +90,17 @@ export default function CreateConsultationPage() {
     try {
       // Prepare submission data with client field
       const submissionData = {
-      practitioner: parseInt(formData.practitioner, 10),
-      date: formData.date,
-      time: formData.time,
-      duration_minutes: parseInt(formData.duration_minutes, 10), 
-      client_notes: formData.client_notes?.trim() || '',
+        practitioner: parseInt(formData.practitioner, 10),
+        date: formData.date,
+        time: formData.time,
+        duration_minutes: parseInt(formData.duration_minutes, 10), 
+        client_notes: formData.client_notes?.trim() || '',
       }
 
       console.log('📤 Submitting consultation:', submissionData)
       
-      const response = await consultationsApi.create(submissionData)
+      const response = await apiClient.consultations.create(submissionData)
       console.log('✅ Consultation created:', response)
-      
-      // Show success message (optional)
-      // You could add a toast notification here
       
       router.push('/dashboard/consultations')
     } catch (err: any) {

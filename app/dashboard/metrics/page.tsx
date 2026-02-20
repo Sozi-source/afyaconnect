@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { metricsApi, consultationsApi } from '@/app/lib/api'
+import { apiClient } from '@/app/lib/api' // Changed import
 import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import Link from 'next/link'
@@ -54,15 +54,17 @@ export default function MetricsPage() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [metricsData, recentData] = await Promise.all([
-        metricsApi.getDashboard({
-          start_date: dateRange.start_date,
-          end_date: dateRange.end_date
-        }),
-        consultationsApi.getAll({ ordering: '-created_at', limit: 5 })
-      ])
+      
+      // Get metrics
+      const metricsData = await apiClient.consultations.getMetrics()
       setMetrics(metricsData)
-      setRecentActivity(Array.isArray(recentData) ? recentData : recentData.results || [])
+      
+      // Get recent activity
+      const recentData = await apiClient.consultations.getAll({ 
+        ordering: '-created_at' 
+      })
+      setRecentActivity(Array.isArray(recentData) ? recentData.slice(0, 5) : [])
+      
     } catch (error) {
       console.error('Failed to fetch metrics:', error)
     } finally {
@@ -82,7 +84,7 @@ export default function MetricsPage() {
 
   type ColorKey = 'blue' | 'green' | 'yellow' | 'red' | 'purple'
   
-  const StatCard = ({ title, value, icon: Icon, color, trend }: { title: string; value: any; icon: any; color: ColorKey; trend?: any }) => {
+  const StatCard = ({ title, value, icon: Icon, color }: { title: string; value: any; icon: any; color: ColorKey }) => {
     const colors: Record<ColorKey, string> = {
       blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
       green: 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400',
@@ -103,14 +105,6 @@ export default function MetricsPage() {
               <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
           </div>
-          {trend !== undefined && (
-            <div className="mt-2 flex items-center text-xs">
-              <span className={`font-medium ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {trend > 0 ? '+' : ''}{trend}%
-              </span>
-              <span className="text-gray-500 ml-1">vs last period</span>
-            </div>
-          )}
         </CardBody>
       </Card>
     )
@@ -286,7 +280,7 @@ export default function MetricsPage() {
                         <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
                           KES {view === 'client' 
                             ? (currentMetrics as any).total_spent?.toLocaleString() 
-                                              : (currentMetrics as any).total_earned?.toLocaleString()}
+                            : (currentMetrics as any).total_earned?.toLocaleString()}
                         </p>
                       </div>
                     </div>

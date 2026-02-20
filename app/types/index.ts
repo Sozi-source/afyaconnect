@@ -126,6 +126,7 @@ export interface ConsultationFilters {
   start_date?: string
   end_date?: string
   ordering?: string
+   practitioner?: number 
 }
 
 export interface CreateConsultationData {

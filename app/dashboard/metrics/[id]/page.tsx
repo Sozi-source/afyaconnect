@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { consultationsApi } from '@/app/lib/api'
+import { apiClient } from '@/app/lib/api' // Changed import
 import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import Link from 'next/link'
@@ -32,12 +32,11 @@ export default function MetricsDetailsPage() {
   const fetchDetails = async () => {
     try {
       setLoading(true)
-      const data = await consultationsApi.getAll({
+      const data = await apiClient.consultations.getAll({
         start_date: dateRange.start_date,
-        end_date: dateRange.end_date,
-        ordering: '-date'
+        end_date: dateRange.end_date
       })
-      setConsultations(Array.isArray(data) ? data : data.results || [])
+      setConsultations(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Failed to fetch details:', error)
     } finally {

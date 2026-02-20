@@ -18,7 +18,7 @@ export default function PractitionersPage() {
     specialties,
     totalCount,
     error,
-    refresh // Add this to your hook if available
+    refresh
   } = usePractitioners()
   
   const [showMobileFilters, setShowMobileFilters] = useState(false)

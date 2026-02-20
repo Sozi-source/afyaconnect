@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { reviewsApi } from '@/app/lib/api'
+import { apiClient } from '@/app/lib/api'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import Link from 'next/link'
 import { StarIcon } from '@heroicons/react/24/solid'
 import { PlusIcon } from '@heroicons/react/24/outline'
-import { Review, PaginatedResponse } from '@/app/types'
+import { Review } from '@/app/types'
 import { motion } from 'framer-motion'
 
 export default function ReviewsPage() {
@@ -17,15 +17,8 @@ export default function ReviewsPage() {
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        const data = await reviewsApi.getAll() as PaginatedResponse<Review> | Review[]
-        
-        if (Array.isArray(data)) {
-          setReviews(data)
-        } else if (data && 'results' in data) {
-          setReviews(data.results)
-        } else {
-          setReviews([])
-        }
+        const data = await apiClient.reviews.getAll()
+        setReviews(Array.isArray(data) ? data : [])
       } catch (error) {
         console.error('Failed to fetch reviews:', error)
         setReviews([])

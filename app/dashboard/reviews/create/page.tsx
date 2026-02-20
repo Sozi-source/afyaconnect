@@ -2,19 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { reviewsApi } from '@/app/lib/api'
+import { apiClient } from '@/app/lib/api'
 import { Button } from '@/app/components/ui/Buttons'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { StarIcon } from '@heroicons/react/24/solid'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-
-interface CreateReviewData {
-  consultation: string
-  rating: number
-  comment: string
-}
 
 export default function CreateReviewPage() {
   const router = useRouter()
@@ -43,12 +37,10 @@ export default function CreateReviewPage() {
     setError('')
 
     try {
-      const reviewData: CreateReviewData = {
-        consultation: consultationId,
+      await apiClient.reviews.createForConsultation(parseInt(consultationId), {
         rating,
-        comment
-      }
-      await reviewsApi.create(reviewData)
+        comment: comment || undefined
+      })
       router.push('/dashboard/reviews')
     } catch (err: any) {
       console.error('Failed to submit review:', err)

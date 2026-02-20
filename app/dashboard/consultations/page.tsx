@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { consultationsApi } from '@/app/lib/api'
+import { apiClient } from '@/app/lib/api' 
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import Link from 'next/link'
@@ -17,8 +17,8 @@ export default function ConsultationsPage() {
   useEffect(() => {
     const fetchConsultations = async () => {
       try {
-        const data = await consultationsApi.getAll()
-        setConsultations(Array.isArray(data) ? data : data.results || [])
+        const data = await apiClient.consultations.getAll()
+        setConsultations(Array.isArray(data) ? data : [])
       } catch (error) {
         console.error('Failed to fetch consultations:', error)
       } finally {

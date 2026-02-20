@@ -1,7 +1,6 @@
-// hooks/usePractitioners.ts
-import { useState, useEffect } from 'react'
-import { practitionersApi } from '@/app/lib/api/practitioners'
-import { Practitioner, PractitionerFilters, Specialty } from '@/app/types'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { apiClient } from '@/app/lib/api'
+import type { Practitioner, PractitionerFilters, Specialty } from '@/app/types'
 
 export function usePractitioners() {
   const [practitioners, setPractitioners] = useState<Practitioner[]>([])
@@ -9,83 +8,77 @@ export function usePractitioners() {
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<PractitionerFilters>({})
   const [specialties, setSpecialties] = useState<Specialty[]>([])
-  const [totalCount, setTotalCount] = useState(0)
 
-  // Load specialties
+  // Load specialties once on mount
   useEffect(() => {
-    const loadSpecialties = async () => {
-      try {
-        const data = await practitionersApi.getSpecialties()
-        setSpecialties(data)
-      } catch (err) {
-        console.error('Failed to load specialties:', err)
-      }
-    }
-    loadSpecialties()
+    apiClient.specialties.getAll()
+      .then(data => {
+        setSpecialties(Array.isArray(data) ? data : [])
+      })
+      .catch(err => console.error('Failed to load specialties:', err))
   }, [])
 
-  // Load practitioners with filters
-  useEffect(() => {
-    const loadPractitioners = async () => {
-      setIsLoading(true)
-      setError(null)
-      
-      try {
-        // Check for token
-        const token = localStorage.getItem('authToken')
-        if (!token) {
-          setError('Please login to view practitioners')
-          setPractitioners([])
-          return
-        }
-
-        // Fetch practitioners with filters
-        const data = await practitionersApi.getAll(filters)
-        
-        // Ensure data is an array
-        const practitionersArray = Array.isArray(data) ? data : 
-                                   data?.results ? data.results : []
-        
-        setPractitioners(practitionersArray)
-        setTotalCount(practitionersArray.length)
-        
-      } catch (err: any) {
-        console.error('Error loading practitioners:', err)
-        setError(err.response?.data?.detail || 'Failed to load practitioners')
-        setPractitioners([])
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    loadPractitioners()
-  }, [filters])
-
-  // Refresh function
-  const refresh = async () => {
+  // Memoized fetch function
+  const fetchPractitioners = useCallback(async () => {
     setIsLoading(true)
+    setError(null)
+    
     try {
-      const data = await practitionersApi.getAll(filters)
-      const practitionersArray = Array.isArray(data) ? data : 
-                                 data?.results ? data.results : []
-      setPractitioners(practitionersArray)
-      setTotalCount(practitionersArray.length)
-      setError(null)
+      // Check for token
+      const token = localStorage.getItem('authToken')
+      if (!token) {
+        setError('Please login to view practitioners')
+        setPractitioners([])
+        setIsLoading(false)
+        return
+      }
+
+      const data = await apiClient.practitioners.getAll(filters)
+      setPractitioners(Array.isArray(data) ? data : [])
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to refresh')
+      console.error('Error loading practitioners:', err)
+      
+      if (err.response?.status === 401) {
+        setError('Your session has expired. Please login again.')
+        localStorage.removeItem('authToken')
+        localStorage.removeItem('user')
+      } else {
+        setError(err.message || 'Failed to load practitioners')
+      }
+      
+      setPractitioners([])
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [filters])
+
+  // Load practitioners when filters change
+  useEffect(() => {
+    fetchPractitioners()
+  }, [fetchPractitioners])
+
+  // Memoized filter update
+  const updateFilters = useCallback((newFilters: Partial<PractitionerFilters>) => {
+    setFilters(prev => ({ ...prev, ...newFilters }))
+  }, [])
+
+  // Memoized clear filters
+  const clearFilters = useCallback(() => {
+    setFilters({})
+  }, [])
+
+  // Memoized values
+  const totalCount = useMemo(() => practitioners.length, [practitioners])
 
   return {
     practitioners,
     isLoading,
     error,
     filters,
-    setFilters,
+    setFilters: updateFilters,
+    clearFilters,
     specialties,
     totalCount,
-    refresh
+    refresh: fetchPractitioners
   }
 }

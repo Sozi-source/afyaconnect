@@ -1,8 +1,8 @@
 'use client'
 
-import { useParams } from 'next/navigation'
-import useSWR from 'swr'
-import { practitionersApi } from '@/app/lib/api'
+import { useState, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { apiClient } from '@/app/lib/api'
 import { PractitionerProfile } from '@/app/components/practitioners/PractitionerProfile'
 import { AvailabilityCalendar } from '@/app/components/practitioners/AvailabilityCalendar'
 import { Button } from '@/app/components/ui/Buttons'
@@ -10,32 +10,34 @@ import { Card, CardBody } from '@/app/components/ui/Card'
 import { motion } from 'framer-motion'
 import { CalendarIcon, ChatBubbleLeftIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
-import { useEffect } from 'react'
 
 export default function PractitionerDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const id = parseInt(params.id as string)
+  
+  const [practitioner, setPractitioner] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const { data: practitioner, error, isLoading } = useSWR(
-    `practitioner-${id}`,
-    () => practitionersApi.getOne(id),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-    }
-  )
-
-  // Debug: log practitioner data
   useEffect(() => {
-    if (practitioner) {
-      console.log('📊 Practitioner data:', practitioner)
+    const fetchPractitioner = async () => {
+      try {
+        setLoading(true)
+        const data = await apiClient.practitioners.getOne(id)
+        setPractitioner(data)
+      } catch (err: any) {
+        console.error('❌ Error fetching practitioner:', err)
+        setError(err.message || 'Failed to load practitioner')
+      } finally {
+        setLoading(false)
+      }
     }
-    if (error) {
-      console.error('❌ Error fetching practitioner:', error)
-    }
-  }, [practitioner, error])
 
-  if (isLoading) {
+    fetchPractitioner()
+  }, [id])
+
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
@@ -49,9 +51,7 @@ export default function PractitionerDetailPage() {
         <h2 className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400 mb-4">
           Error Loading Practitioner
         </h2>
-        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-6">
-          {error.message || 'Failed to load practitioner details'}
-        </p>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-6">{error}</p>
         <Link href="/dashboard/practitioners">
           <Button variant="outline">
             Back to Practitioners

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { practitionersApi, consultationsApi } from '@/app/lib/api'
+import { apiClient } from '@/app/lib/api' // Changed import
 import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import Link from 'next/link'
@@ -9,8 +9,6 @@ import {
   ArrowLeftIcon,
   StarIcon,
   CurrencyDollarIcon,
-  CalendarIcon,
-  ChartBarIcon,
   ChevronRightIcon
 } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
@@ -27,20 +25,30 @@ export default function PractitionerMetricsPage() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const practitionersData = await practitionersApi.getAll()
-      const practitionersList = Array.isArray(practitionersData) ? practitionersData : practitionersData.results || []
+      const practitionersData = await apiClient.practitioners.getAll()
+      const practitionersList = Array.isArray(practitionersData) ? practitionersData : []
       
       // Fetch stats for each practitioner
       const practitionersWithStats = await Promise.all(
         practitionersList.map(async (p: any) => {
           try {
-            const consultations = await consultationsApi.getAll({ practitioner: p.id })
-            const consults = Array.isArray(consultations) ? consultations : consultations.results || []
+            const consultations = await apiClient.consultations.getAll({ practitioner: p.id })
+            const consults = Array.isArray(consultations) ? consultations : []
             
             const completed = consults.filter((c: any) => c.status === 'completed').length
             const totalRevenue = consults
               .filter((c: any) => c.status === 'completed')
               .reduce((sum, c) => sum + (parseFloat(c.practitioner?.hourly_rate) || 0), 0)
+            
+            // Get reviews
+            const reviews = await apiClient.reviews.getAll()
+            const practitionerReviews = Array.isArray(reviews) 
+              ? reviews.filter((r: any) => r.consultation && consults.some((c: any) => c.id === r.consultation))
+              : []
+            
+            const avgRating = practitionerReviews.length 
+              ? practitionerReviews.reduce((sum: number, r: any) => sum + r.rating, 0) / practitionerReviews.length 
+              : 0
             
             return {
               ...p,
@@ -50,13 +58,21 @@ export default function PractitionerMetricsPage() {
                 pending: consults.filter((c: any) => c.status === 'booked').length,
                 cancelled: consults.filter((c: any) => c.status === 'cancelled').length,
                 totalRevenue,
-                avgRating: p.reviews?.length 
-                  ? p.reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / p.reviews.length 
-                  : 0
+                avgRating
               }
             }
           } catch (error) {
-            return p
+            return {
+              ...p,
+              stats: {
+                totalConsultations: 0,
+                completed: 0,
+                pending: 0,
+                cancelled: 0,
+                totalRevenue: 0,
+                avgRating: 0
+              }
+            }
           }
         })
       )

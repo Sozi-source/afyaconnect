@@ -2,33 +2,21 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { reviewsApi } from '@/app/lib/api'
+import { apiClient } from '@/app/lib/api'
 import { Button } from '@/app/components/ui/Buttons'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { StarIcon } from '@heroicons/react/24/solid'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-
-interface Review {
-  id: number
-  consultation: number
-  rating: number
-  comment: string | null
-  created_at: string
-}
-
-interface UpdateReviewData {
-  rating?: number
-  comment?: string
-}
+import { Review } from '@/app/types' // Import Review type
 
 export default function EditReviewPage() {
   const params = useParams()
   const router = useRouter()
   const id = parseInt(params.id as string)
   
-  const [rating, setRating] = useState(0)
+  const [rating, setRating] = useState<1 | 2 | 3 | 4 | 5>(5) // Type as valid rating
   const [hover, setHover] = useState(0)
   const [comment, setComment] = useState('')
   const [loading, setLoading] = useState(false)
@@ -38,8 +26,8 @@ export default function EditReviewPage() {
   useEffect(() => {
     const fetchReview = async () => {
       try {
-        const data = await reviewsApi.getOne(id)
-        setRating(data.rating)
+        const data = await apiClient.reviews.getOne(id)
+        setRating(data.rating as 1 | 2 | 3 | 4 | 5)
         setComment(data.comment || '')
       } catch (error) {
         console.error('Failed to fetch review:', error)
@@ -57,11 +45,13 @@ export default function EditReviewPage() {
     setError('')
 
     try {
-      const updateData: UpdateReviewData = { 
-        rating, 
+      // Create a Partial<Review> object directly
+      const updateData: Partial<Review> = { 
+        rating, // Now rating is the correct type
         comment: comment || undefined
       }
-      await reviewsApi.update(id, updateData)
+      
+      await apiClient.reviews.update(id, updateData)
       router.push(`/dashboard/reviews/${id}`)
     } catch (err: any) {
       console.error('Failed to update review:', err)
@@ -69,6 +59,10 @@ export default function EditReviewPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleRatingClick = (star: number) => {
+    setRating(star as 1 | 2 | 3 | 4 | 5)
   }
 
   if (fetchLoading) {
@@ -123,7 +117,7 @@ export default function EditReviewPage() {
                       key={star}
                       type="button"
                       className="focus:outline-none p-1"
-                      onClick={() => setRating(star)}
+                      onClick={() => handleRatingClick(star)}
                       onMouseEnter={() => setHover(star)}
                       onMouseLeave={() => setHover(0)}
                     >

@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://osozi.pythonanywhere.com'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -10,27 +10,43 @@ const api = axios.create({
   timeout: 10000,
 })
 
-// Request interceptor
+// Request interceptor - adds token to every request
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken')
+    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
     if (token) {
-      config.headers.Authorization = `Token ${token}`  // Note: 'Token' not 'Bearer'
+      config.headers.Authorization = `Token ${token}`
     }
     return config
   },
   (error) => Promise.reject(error)
 )
 
-// Response interceptor - DON'T logout on 401, just log
+// Response interceptor - handles errors globally
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      console.warn('🔴 401 Unauthorized:', error.config?.url)
-      // Don't auto logout - let components handle this
+    if (typeof window === 'undefined') return Promise.reject(error)
+    
+    const originalRequest = error.config
+    
+    // Handle 401 Unauthorized
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true
+      
+      // Clear invalid token
+      localStorage.removeItem('authToken')
+      localStorage.removeItem('user')
+      
+      // Redirect to login if not already there
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login'
+      }
     }
-    return Promise.reject(error)
+    
+    // Return meaningful error message
+    const message = error.response?.data?.detail || error.response?.data?.error || error.message
+    return Promise.reject(new Error(message))
   }
 )
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { consultationsApi } from '@/app/lib/api'
+import { apiClient } from '@/app/lib/api' // Changed import
 import { Button } from '@/app/components/ui/Buttons'
 import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
 import { CalendarIcon, ClockIcon, UserIcon, ChevronLeftIcon } from '@heroicons/react/24/outline'
@@ -18,12 +18,11 @@ export default function ConsultationDetailPage() {
   const [consultation, setConsultation] = useState<Consultation | null>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
-  const [showActions, setShowActions] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const consultationData = await consultationsApi.getOne(id)
+        const consultationData = await apiClient.consultations.getOne(id)
         setConsultation(consultationData)
       } catch (error) {
         console.error('Failed to fetch consultation:', error)
@@ -38,13 +37,12 @@ export default function ConsultationDetailPage() {
     if (!consultation) return
     setUpdating(true)
     try {
-      const updated = await consultationsApi.updateStatus(id, status)
+      const updated = await apiClient.consultations.updateStatus(id, status)
       setConsultation(updated)
     } catch (error) {
       console.error('Failed to update status:', error)
     } finally {
       setUpdating(false)
-      setShowActions(false)
     }
   }
 
