@@ -10,44 +10,69 @@ const api = axios.create({
   timeout: 10000,
 })
 
-// Request interceptor - adds token to every request
+// Request interceptor - adds token to EVERY request
 api.interceptors.request.use(
   (config) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
-    if (token) {
-      config.headers.Authorization = `Token ${token}`
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('authToken')
+      if (token) {
+        config.headers.Authorization = `Token ${token}`
+      }
     }
     return config
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error)
+  }
 )
 
 // Response interceptor - handles errors globally
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log(`✅ Response ${response.config.url}:`, response.status)
+    return response
+  },
   (error) => {
-    if (typeof window === 'undefined') return Promise.reject(error)
+    const errorResponse = {
+      url: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      headers: error.response?.headers,
+      message: error.message
+    }
     
-    const originalRequest = error.config
+    console.error('❌ Response error DETAILS:', errorResponse)
     
-    // Handle 401 Unauthorized
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true
-      
-      // Clear invalid token
+    if (error.response?.data) {
+      console.log('🔴 SERVER ERROR RESPONSE:', JSON.stringify(error.response.data, null, 2))
+    }
+    
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      console.log('🔒 401 Unauthorized - clearing token')
       localStorage.removeItem('authToken')
       localStorage.removeItem('user')
       
-      // Redirect to login if not already there
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login'
       }
     }
     
-    // Return meaningful error message
-    const message = error.response?.data?.detail || error.response?.data?.error || error.message
+    const message = error.response?.data?.detail || 
+                    error.response?.data?.error || 
+                    error.response?.data?.message ||
+                    error.message
     return Promise.reject(new Error(message))
   }
 )
+
+if (typeof window !== 'undefined') {
+  const token = localStorage.getItem('authToken')
+  if (token) {
+    api.defaults.headers.common['Authorization'] = `Token ${token}`
+    console.log('✅ Default Authorization header set on init')
+  }
+}
 
 export default api

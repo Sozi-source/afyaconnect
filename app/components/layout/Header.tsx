@@ -19,10 +19,29 @@ import {
   HomeIcon,
   CalendarIcon,
   UserGroupIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  ClockIcon,
+  CurrencyDollarIcon,
+  StarIcon
 } from '@heroicons/react/24/outline'
 
-export const Header = () => {
+// Extended user type
+interface ExtendedUser {
+  id: number
+  email: string
+  first_name?: string
+  last_name?: string
+  username?: string
+  role?: string
+  is_verified?: boolean
+  is_staff?: boolean
+}
+
+interface HeaderProps {
+  onMenuClick: () => void
+}
+
+export const Header = ({ onMenuClick }: HeaderProps) => {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
@@ -31,6 +50,7 @@ export const Header = () => {
   
   const pathname = usePathname()
   const { user, logout } = useAuth()
+  const extendedUser = user as ExtendedUser | null
   const { theme, setTheme } = useTheme()
 
   useEffect(() => {
@@ -63,12 +83,30 @@ export const Header = () => {
 
   if (!mounted) return null
 
-  const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-    { name: 'Practitioners', href: '/dashboard/practitioners', icon: UserGroupIcon },
-    { name: 'Consultations', href: '/dashboard/consultations', icon: CalendarIcon },
-    { name: 'Metrics', href: '/dashboard/metrics', icon: ChartBarIcon },
-  ]
+  const userRole = extendedUser?.role || 'client'
+  const isPractitioner = userRole === 'practitioner' && extendedUser?.is_verified
+
+  // Navigation based on role
+  const getNavigation = () => {
+    if (isPractitioner) {
+      return [
+        { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+        { name: 'Practice', href: '/dashboard/practitioner', icon: ChartBarIcon },
+        { name: 'Consultations', href: '/dashboard/consultations', icon: CalendarIcon },
+        { name: 'Availability', href: '/dashboard/practitioner/availability', icon: ClockIcon },
+        { name: 'Earnings', href: '/dashboard/practitioner/earnings', icon: CurrencyDollarIcon },
+      ]
+    } else {
+      return [
+        { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+        { name: 'Find Experts', href: '/dashboard/practitioners', icon: UserGroupIcon },
+        { name: 'Consultations', href: '/dashboard/consultations', icon: CalendarIcon },
+        { name: 'Favorites', href: '/dashboard/favorites', icon: StarIcon },
+      ]
+    }
+  }
+
+  const navigation = getNavigation()
 
   const notifications = [
     { id: 1, title: 'New consultation request', time: '5 min ago', read: false },
@@ -77,6 +115,10 @@ export const Header = () => {
   ]
 
   const unreadCount = notifications.filter(n => !n.read).length
+
+  const displayName = extendedUser?.first_name 
+    ? `${extendedUser.first_name} ${extendedUser.last_name || ''}`.trim()
+    : extendedUser?.username || 'User'
 
   return (
     <>
@@ -90,14 +132,22 @@ export const Header = () => {
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 lg:h-20">
             {/* Logo */}
-            <Link href="/" className="flex items-center space-x-2 flex-shrink-0">
-              <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-lg lg:text-xl">NC</span>
-              </div>
-              <span className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white hidden sm:block">
-                Nutri<span className="text-blue-600">Connect</span>
-              </span>
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onMenuClick}
+                className="lg:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <Bars3Icon className="h-5 w-5" />
+              </button>
+              <Link href="/" className="flex items-center space-x-2 flex-shrink-0">
+                <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
+                  <span className="text-white font-bold text-lg lg:text-xl">MC</span>
+                </div>
+                <span className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white hidden sm:block">
+                  Medi<span className="text-emerald-600">Connect</span>
+                </span>
+              </Link>
+            </div>
 
             {/* Desktop Navigation - Hidden on mobile */}
             <nav className="hidden lg:flex items-center space-x-1">
@@ -107,7 +157,7 @@ export const Header = () => {
                   href={item.href}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center space-x-2 ${
                     pathname === item.href
-                      ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                      ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
                       : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
                 >
@@ -166,7 +216,7 @@ export const Header = () => {
                           <div
                             key={notification.id}
                             className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer border-b last:border-0 border-gray-100 dark:border-gray-700 ${
-                              !notification.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
+                              !notification.read ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : ''
                             }`}
                           >
                             <p className="text-sm font-medium text-gray-900 dark:text-white">
@@ -194,17 +244,15 @@ export const Header = () => {
                   className="flex items-center space-x-2 p-1.5 pr-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   aria-label="Profile menu"
                 >
-                  <div className="w-8 h-8 lg:w-9 lg:h-9 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center text-white font-medium text-sm lg:text-base">
-                    {user?.first_name?.[0] || user?.username?.[0]?.toUpperCase() || 'U'}
+                  <div className="w-8 h-8 lg:w-9 lg:h-9 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center text-white font-medium text-sm lg:text-base">
+                    {extendedUser?.first_name?.[0] || extendedUser?.username?.[0]?.toUpperCase() || 'U'}
                   </div>
                   <div className="hidden md:block text-left">
                     <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {user?.first_name 
-                        ? `${user.first_name} ${user.last_name || ''}`.trim()
-                        : user?.username || 'User'}
+                      {displayName}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">
-                      {user?.email}
+                      {extendedUser?.email}
                     </p>
                   </div>
                   <ChevronDownIcon className="h-4 w-4 text-gray-400 hidden md:block" />
@@ -221,12 +269,10 @@ export const Header = () => {
                     >
                       <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 md:hidden">
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {user?.first_name 
-                            ? `${user.first_name} ${user.last_name || ''}`.trim()
-                            : user?.username || 'User'}
+                          {displayName}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {user?.email}
+                          {extendedUser?.email}
                         </p>
                       </div>
                       
@@ -264,19 +310,6 @@ export const Header = () => {
                   )}
                 </AnimatePresence>
               </div>
-
-              {/* Mobile menu button */}
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                aria-label="Toggle menu"
-              >
-                {isMobileMenuOpen ? (
-                  <XMarkIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
-                ) : (
-                  <Bars3Icon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
-                )}
-              </button>
             </div>
           </div>
         </div>
@@ -322,7 +355,7 @@ export const Header = () => {
                         href={item.href}
                         className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${
                           pathname === item.href
-                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+                            ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
                             : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                         }`}
                         onClick={() => setIsMobileMenuOpen(false)}

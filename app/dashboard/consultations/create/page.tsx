@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { apiClient } from '@/app/lib/api' // Changed import
+import { apiClient } from '@/app/lib/api'
+import { availabilityApi } from '@/app/lib/api/availability' // Add this import
 import { Button } from '@/app/components/ui/Buttons'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import Link from 'next/link'
@@ -29,6 +30,7 @@ export default function CreateConsultationPage() {
   const [fetchingPractitioners, setFetchingPractitioners] = useState(true)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [availabilityMessage, setAvailabilityMessage] = useState<{text: string, type: 'success' | 'error' | 'info'} | null>(null)
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -42,7 +44,6 @@ export default function CreateConsultationPage() {
       try {
         setFetchingPractitioners(true)
         const response = await apiClient.practitioners.getAll()
-        
         setPractitioners(Array.isArray(response) ? response : [])
       } catch (error) {
         console.error('Failed to fetch practitioners:', error)
@@ -54,6 +55,49 @@ export default function CreateConsultationPage() {
     
     fetchPractitioners()
   }, [])
+
+  // Check availability when date/time/practitioner changes
+  useEffect(() => {
+    const checkAvailability = async () => {
+      if (formData.practitioner && formData.date && formData.time) {
+        try {
+          // Format time to include seconds for API
+          let formattedTime = formData.time
+          if (formattedTime.split(':').length === 2) {
+            formattedTime = `${formattedTime}:00`
+          }
+
+          const result = await availabilityApi.checkSlot(
+            parseInt(formData.practitioner),
+            formData.date,
+            formattedTime
+          )
+          
+          if (result.available) {
+            setAvailabilityMessage({
+              text: 'This time slot is available! ✅',
+              type: 'success'
+            })
+          } else {
+            setAvailabilityMessage({
+              text: result.reason || 'This time slot is not available',
+              type: 'error'
+            })
+          }
+        } catch (err: any) {
+          console.error('Error checking availability:', err)
+          setAvailabilityMessage({
+            text: err.message || 'Could not verify availability',
+            type: 'error'
+          })
+        }
+      } else {
+        setAvailabilityMessage(null)
+      }
+    }
+
+    checkAvailability()
+  }, [formData.practitioner, formData.date, formData.time])
 
   const validateForm = () => {
     const errors: Record<string, string> = {}
@@ -72,12 +116,11 @@ export default function CreateConsultationPage() {
     return Object.keys(errors).length === 0
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     
     if (!validateForm()) return
 
-    // Check if user is authenticated and has an ID
     if (!user?.id) {
       setError('You must be logged in to book a consultation')
       return
@@ -88,12 +131,17 @@ export default function CreateConsultationPage() {
     setFieldErrors({})
 
     try {
-      // Prepare submission data with client field
+      // Format time to include seconds
+      let formattedTime = formData.time
+      if (formattedTime.split(':').length === 2) {
+        formattedTime = `${formattedTime}:00`
+      }
+
       const submissionData = {
-        practitioner: parseInt(formData.practitioner, 10),
+        practitioner: parseInt(formData.practitioner, 10), // Send as number, NOT object
         date: formData.date,
-        time: formData.time,
-        duration_minutes: parseInt(formData.duration_minutes, 10), 
+        time: formattedTime,
+        duration_minutes: parseInt(formData.duration_minutes, 10),
         client_notes: formData.client_notes?.trim() || '',
       }
 
@@ -102,16 +150,15 @@ export default function CreateConsultationPage() {
       const response = await apiClient.consultations.create(submissionData)
       console.log('✅ Consultation created:', response)
       
-      router.push('/dashboard/consultations')
+      router.push('/dashboard/consultations?success=booking-created')
     } catch (err: any) {
       console.error('❌ Booking error:', err)
       
-      // Enhanced error handling
       if (err.response?.data) {
         const errorData = err.response.data
+        console.log('Error details:', errorData)
         
         if (typeof errorData === 'object') {
-          // Handle field-specific errors
           Object.keys(errorData).forEach(key => {
             if (key !== 'non_field_errors' && key !== 'detail') {
               setFieldErrors(prev => ({
@@ -121,7 +168,6 @@ export default function CreateConsultationPage() {
             }
           })
           
-          // Handle general errors
           if (errorData.non_field_errors) {
             setError(Array.isArray(errorData.non_field_errors) 
               ? errorData.non_field_errors[0] 
@@ -132,7 +178,7 @@ export default function CreateConsultationPage() {
             setError(errorData.message)
           }
         } else {
-          setError(errorData.message || 'Failed to book consultation')
+          setError(errorData || 'Failed to book consultation')
         }
       } else if (err.message) {
         setError(err.message)
@@ -149,7 +195,6 @@ export default function CreateConsultationPage() {
   tomorrow.setDate(tomorrow.getDate() + 1)
   const minDate = tomorrow.toISOString().split('T')[0]
 
-  // Show loading if not authenticated
   if (!isAuthenticated) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -160,7 +205,6 @@ export default function CreateConsultationPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6">
-      {/* Header with back button */}
       <div className="flex items-center gap-4 mb-6">
         <Link href="/dashboard/consultations">
           <Button variant="outline" size="sm" className="!p-2 sm:!px-4">
@@ -181,7 +225,7 @@ export default function CreateConsultationPage() {
         <Card>
           <CardBody className="p-4 sm:p-6">
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-              {/* General Error */}
+              {/* Error Message */}
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
@@ -189,6 +233,23 @@ export default function CreateConsultationPage() {
                   className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 sm:p-4 rounded-xl border border-red-200 dark:border-red-800"
                 >
                   <p className="text-xs sm:text-sm">{error}</p>
+                </motion.div>
+              )}
+
+              {/* Availability Message */}
+              {availabilityMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`p-3 sm:p-4 rounded-xl border ${
+                    availabilityMessage.type === 'success' 
+                      ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                      : availabilityMessage.type === 'error'
+                      ? 'bg-red-50 border-red-200 text-red-600 dark:bg-red-900/20 dark:text-red-400'
+                      : 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+                  }`}
+                >
+                  <p className="text-xs sm:text-sm">{availabilityMessage.text}</p>
                 </motion.div>
               )}
 
@@ -329,7 +390,7 @@ export default function CreateConsultationPage() {
                 </Link>
                 <Button 
                   type="submit" 
-                  disabled={loading || fetchingPractitioners}
+                  disabled={loading || fetchingPractitioners || (availabilityMessage?.type === 'error')}
                   fullWidth
                   className="flex-1"
                 >

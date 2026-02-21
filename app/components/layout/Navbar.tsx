@@ -59,7 +59,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
   }
 
   const getPageTitle = () => {
-    const path = pathname.split('/')[2] || 'dashboard'
+    const path = pathname?.split('/')[2] || 'dashboard'
     return path.charAt(0).toUpperCase() + path.slice(1)
   }
 

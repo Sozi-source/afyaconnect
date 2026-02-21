@@ -11,6 +11,7 @@ import {
   CheckBadgeIcon
 } from '@heroicons/react/24/solid'
 import { motion } from 'framer-motion'
+import Router, { useRouter } from 'next/navigation'
 
 interface PractitionerProfileProps {
   practitioner: Practitioner
@@ -20,6 +21,7 @@ export const PractitionerProfile = ({ practitioner }: PractitionerProfileProps) 
   const fullName = `${practitioner.first_name || ''} ${practitioner.last_name || ''}`.trim() || 'Practitioner'
   const specialties = practitioner.specialties?.map(s => s.name).join(', ') || 'No specialties listed'
 
+  const router = useRouter()
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header Card */}
@@ -63,8 +65,9 @@ export const PractitionerProfile = ({ practitioner }: PractitionerProfileProps) 
             </div>
             
             <div className="flex flex-col xs:flex-row gap-2">
-              <button className="px-4 sm:px-6 py-2.5 sm:py-2 bg-blue-600 text-white text-sm sm:text-base rounded-xl hover:bg-blue-700 transition active:scale-95">
-                Book Consultation
+              <button className="px-4 sm:px-6 py-2.5 sm:py-2 bg-blue-600 text-white text-sm sm:text-base rounded-xl hover:bg-blue-700 transition active:scale-95"
+              onClick={()=>router.push('/dashboard/consultations')}>
+                View Consultation
               </button>
               <button className="px-4 sm:px-6 py-2.5 sm:py-2 border border-gray-300 dark:border-gray-600 text-sm sm:text-base rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition active:scale-95">
                 Contact

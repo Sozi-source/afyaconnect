@@ -1,214 +1,261 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { apiClient } from '@/app/lib/api'
+import { useAuth } from '@/app/contexts/AuthContext'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { motion } from 'framer-motion'
+import { 
+  UserIcon,
+  EnvelopeIcon,
+  PhoneIcon,
+  MapPinIcon,
+  CalendarIcon,
+  PencilIcon,
+  ShieldCheckIcon,
+  IdentificationIcon,
+  BriefcaseIcon,
+  ClockIcon
+} from '@heroicons/react/24/outline'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
-import Link from 'next/link'
-import { UserIcon, PhoneIcon, EnvelopeIcon, CalendarIcon, MapPinIcon, PencilIcon } from '@heroicons/react/24/outline'
-import { useAuth } from '@/app/contexts/AuthContext'
+
+interface ExtendedUser {
+  id: number
+  email: string
+  first_name?: string
+  last_name?: string
+  role?: string
+  is_verified?: boolean
+  is_staff?: boolean
+}
+
+interface UserProfile {
+  id: number
+  phone: string
+  city: string
+  bio: string
+  role: string
+  created_at: string
+  specialties?: { id: number; name: string }[]
+  hourly_rate?: number
+  years_of_experience?: number
+  currency?: string
+}
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<any>(null)
+  const { user, isAuthenticated } = useAuth()
+  const router = useRouter()
+  const extendedUser = user as ExtendedUser | null
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  
-  const { user: authUser } = useAuth()
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        const profileData = await apiClient.auth.getMyProfile()
-        setProfile(profileData)
-        
-      } catch (error: any) {
-        console.error('Failed to fetch profile:', error)
-        setError(error.response?.data?.message || 'Failed to load profile')
-      } finally {
-        setLoading(false)
-      }
+    if (!isAuthenticated) {
+      router.push('/login')
+      return
     }
-    
     fetchProfile()
-  }, [])
+  }, [isAuthenticated, router])
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true)
+      // Mock data - replace with API call
+      const mockProfile: UserProfile = {
+        id: 1,
+        phone: '+254 712 345 678',
+        city: 'Nairobi',
+        bio: 'Passionate about helping others achieve their health goals through personalized nutrition plans.',
+        role: extendedUser?.role || 'client',
+        created_at: '2024-01-15',
+        ...(extendedUser?.role === 'practitioner' && {
+          specialties: [
+            { id: 1, name: 'Clinical Nutrition' },
+            { id: 2, name: 'Weight Management' }
+          ],
+          hourly_rate: 3500,
+          years_of_experience: 5,
+          currency: 'KES'
+        })
+      }
+      setProfile(mockProfile)
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
       </div>
     )
   }
 
-  if (error) {
-    return (
-      <div className="max-w-4xl mx-auto text-center py-12 px-4">
-        <h2 className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400 mb-4">
-          Error Loading Profile
-        </h2>
-        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-6">{error}</p>
-        <Button onClick={() => window.location.reload()} variant="outline">
-          Try Again
-        </Button>
-      </div>
-    )
-  }
-
-  // Combine auth user and profile data
-  const displayUser = {
-    first_name: authUser?.first_name || profile?.user?.first_name || '',
-    last_name: authUser?.last_name || profile?.user?.last_name || '',
-    email: authUser?.email || profile?.user?.email || '',
-  }
-
-  const fullName = `${displayUser.first_name} ${displayUser.last_name}`.trim() || 'User'
+  const isPractitioner = extendedUser?.role === 'practitioner'
+  const fullName = `${extendedUser?.first_name || ''} ${extendedUser?.last_name || ''}`.trim() || 'User'
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">My Profile</h1>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">My Profile</h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Manage your personal information
+          </p>
+        </div>
+        <Link href="/dashboard/profile/edit">
+          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            <PencilIcon className="h-4 w-4 mr-2" />
+            Edit Profile
+          </Button>
+        </Link>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Profile Card */}
+      {/* Profile Card */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Avatar & Basic Info */}
         <div className="lg:col-span-1">
           <Card>
-            <CardBody className="p-4 sm:p-6">
-              {/* Avatar */}
+            <CardBody className="p-6">
               <div className="text-center">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full mx-auto mb-4 flex items-center justify-center text-white text-xl sm:text-2xl font-bold">
-                  {displayUser.first_name?.[0]}{displayUser.last_name?.[0]}
-                </div>
-                <h2 className="text-lg sm:text-xl font-semibold truncate">{fullName}</h2>
-                <p className="text-sm text-gray-500 capitalize">{profile?.role || 'User'}</p>
-              </div>
-
-              {/* Contact Info */}
-              <div className="mt-6 space-y-3">
-                <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                  <EnvelopeIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-3 text-gray-400 flex-shrink-0" />
-                  <span className="truncate">{displayUser.email}</span>
+                {/* Avatar */}
+                <div className="w-24 h-24 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full mx-auto mb-4 flex items-center justify-center text-white text-2xl font-bold">
+                  {extendedUser?.first_name?.[0]}{extendedUser?.last_name?.[0]}
                 </div>
                 
-                <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                  <PhoneIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-3 text-gray-400 flex-shrink-0" />
-                  <span className="truncate">{profile?.phone || 'Not provided'}</span>
-                </div>
-
-                {profile?.city && (
-                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                    <MapPinIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-3 text-gray-400 flex-shrink-0" />
-                    <span className="truncate">{profile.city}</span>
+                <h2 className="text-xl font-bold mb-1">{fullName}</h2>
+                <p className="text-sm text-gray-500 capitalize mb-3">{profile?.role}</p>
+                
+                {isPractitioner && extendedUser?.is_verified && (
+                  <div className="inline-flex items-center bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs">
+                    <ShieldCheckIcon className="h-3 w-3 mr-1" />
+                    Verified Practitioner
                   </div>
                 )}
 
-                {profile?.created_at && (
-                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                    <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-3 text-gray-400 flex-shrink-0" />
-                    <span className="text-sm">
-                      Joined {new Date(profile.created_at).toLocaleDateString()}
-                    </span>
+                {/* Quick Stats for Practitioners */}
+                {isPractitioner && (
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex justify-around">
+                      <div className="text-center">
+                        <p className="text-lg font-bold">5</p>
+                        <p className="text-xs text-gray-500">Years Exp</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-bold">KES 3.5k</p>
+                        <p className="text-xs text-gray-500">Hourly Rate</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-bold">45</p>
+                        <p className="text-xs text-gray-500">Clients</p>
+                      </div>
+                    </div>
                   </div>
                 )}
-              </div>
-
-              {/* Edit Button */}
-              <div className="mt-6">
-                <Link href="/dashboard/profile/edit">
-                  <Button fullWidth className="text-sm sm:text-base">
-                    <PencilIcon className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </Button>
-                </Link>
               </div>
             </CardBody>
           </Card>
         </div>
 
-        {/* Details Card */}
-        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+        {/* Right Column - Details */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Contact Information */}
           <Card>
-            <CardBody className="p-4 sm:p-6">
-              <h3 className="text-base sm:text-lg font-semibold mb-4">Account Information</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <dt className="text-xs text-gray-500">First Name</dt>
-                  <dd className="text-sm sm:text-base font-medium">{displayUser.first_name || '-'}</dd>
+            <CardBody className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                    <EnvelopeIcon className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Email</p>
+                    <p className="text-sm font-medium">{extendedUser?.email}</p>
+                  </div>
                 </div>
-                <div>
-                  <dt className="text-xs text-gray-500">Last Name</dt>
-                  <dd className="text-sm sm:text-base font-medium">{displayUser.last_name || '-'}</dd>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                    <PhoneIcon className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Phone</p>
+                    <p className="text-sm font-medium">{profile?.phone || 'Not provided'}</p>
+                  </div>
                 </div>
-                <div className="sm:col-span-2">
-                  <dt className="text-xs text-gray-500">Email</dt>
-                  <dd className="text-sm sm:text-base font-medium break-all">{displayUser.email || '-'}</dd>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                    <MapPinIcon className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Location</p>
+                    <p className="text-sm font-medium">{profile?.city || 'Not provided'}</p>
+                  </div>
                 </div>
-                <div>
-                  <dt className="text-xs text-gray-500">Role</dt>
-                  <dd className="text-sm sm:text-base font-medium capitalize">{profile?.role || 'User'}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-gray-500">Phone</dt>
-                  <dd className="text-sm sm:text-base font-medium">{profile?.phone || '-'}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-gray-500">City</dt>
-                  <dd className="text-sm sm:text-base font-medium">{profile?.city || '-'}</dd>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                    <CalendarIcon className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Member Since</p>
+                    <p className="text-sm font-medium">
+                      {new Date(profile?.created_at || '').toLocaleDateString('en-US', {
+                        month: 'long',
+                        year: 'numeric'
+                      })}
+                    </p>
+                  </div>
                 </div>
               </div>
             </CardBody>
           </Card>
 
-          {profile?.bio && (
+          {/* Bio */}
+          <Card>
+            <CardBody className="p-6">
+              <h3 className="text-lg font-semibold mb-4">About Me</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                {profile?.bio || 'No bio added yet.'}
+              </p>
+            </CardBody>
+          </Card>
+
+          {/* Practitioner Details (if applicable) */}
+          {isPractitioner && (
             <Card>
-              <CardBody className="p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-semibold mb-4">About</h3>
-                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 whitespace-pre-line">
-                  {profile.bio}
-                </p>
-              </CardBody>
-            </Card>
-          )}
-
-          {profile?.role === 'practitioner' && (
-            <Card>
-              <CardBody className="p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-semibold mb-4">Practitioner Profile</h3>
-                <div className="space-y-4">
-                  {profile?.specialties && profile.specialties.length > 0 && (
-                    <div>
-                      <p className="text-xs sm:text-sm text-gray-500 mb-2">Specialties</p>
-                      <div className="flex flex-wrap gap-2">
-                        {profile.specialties.map((spec: any) => (
-                          <span key={spec.id} className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs sm:text-sm">
-                            {spec.name}
-                          </span>
-                        ))}
-                      </div>
+              <CardBody className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Professional Information</h3>
+                
+                {/* Specialties */}
+                {profile?.specialties && profile.specialties.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-500 mb-2">Specialties</p>
+                    <div className="flex flex-wrap gap-2">
+                      {profile.specialties.map(spec => (
+                        <span key={spec.id} className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs">
+                          {spec.name}
+                        </span>
+                      ))}
                     </div>
-                  )}
-                  
-                  {profile?.hourly_rate && (
-                    <div>
-                      <p className="text-xs sm:text-sm text-gray-500">Hourly Rate</p>
-                      <p className="text-sm sm:text-base font-medium">{profile.currency} {profile.hourly_rate}/hour</p>
-                    </div>
-                  )}
+                  </div>
+                )}
 
-                  {profile?.years_of_experience !== undefined && (
-                    <div>
-                      <p className="text-xs sm:text-sm text-gray-500">Experience</p>
-                      <p className="text-sm sm:text-base font-medium">{profile.years_of_experience} years</p>
-                    </div>
-                  )}
-
-                  <div className="pt-4">
-                    <Link href="/dashboard/practitioners/my-profile">
-                      <Button variant="outline" size="sm" className="w-full sm:w-auto">
-                        Manage Practitioner Profile
-                      </Button>
-                    </Link>
+                {/* Rate & Experience */}
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div>
+                    <p className="text-xs text-gray-500">Hourly Rate</p>
+                    <p className="text-sm font-medium">{profile?.currency} {profile?.hourly_rate}/hr</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Experience</p>
+                    <p className="text-sm font-medium">{profile?.years_of_experience} years</p>
                   </div>
                 </div>
               </CardBody>

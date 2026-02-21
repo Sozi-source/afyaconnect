@@ -16,15 +16,31 @@ import {
   ArrowLeftIcon
 } from '@heroicons/react/24/outline'
 import { useAuth } from '@/app/contexts/AuthContext'
-import { UserProfile } from '@/app/types'
+import type { UserProfile } from '@/app/types'
+
+// Extended UserProfile type to include bio and city
+interface ExtendedUserProfile extends UserProfile {
+  bio?: string
+  city?: string
+}
+
+// Extended auth user type
+interface ExtendedAuthUser {
+  id: number
+  email: string
+  first_name?: string
+  last_name?: string
+  role?: string
+}
 
 export default function ProfileEditPage() {
   const router = useRouter()
   const { user: authUser } = useAuth()
+  const extendedAuthUser = authUser as ExtendedAuthUser | null
   const [activeTab, setActiveTab] = useState('profile')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [profile, setProfile] = useState<ExtendedUserProfile | null>(null)
 
   // Form states
   const [formData, setFormData] = useState({
@@ -50,7 +66,7 @@ export default function ProfileEditPage() {
     try {
       setLoading(true)
       
-      const profileData = await apiClient.auth.getMyProfile()
+      const profileData = await apiClient.profiles.getMyProfile() as ExtendedUserProfile
       setProfile(profileData)
       
       setFormData({
@@ -94,20 +110,22 @@ export default function ProfileEditPage() {
     setSaving(true)
 
     try {
-      // Create a Partial<UserProfile> object directly
-      const updateData: Partial<UserProfile> = {
+      const updateData: Partial<ExtendedUserProfile> = {
         phone: formData.phone || undefined,
         bio: formData.bio || undefined,
         city: formData.city || undefined,
       }
 
       if (profile?.id) {
-        await apiClient.profiles.update(profile.id, updateData)
+        // Update existing profile
+        await apiClient.profiles.update(profile.id, updateData as Partial<UserProfile>)
+        toast.success('Profile updated successfully!')
       } else {
-        await apiClient.profiles.create(updateData)
+        // Create new profile
+        await apiClient.profiles.create(updateData as Partial<UserProfile>)
+        toast.success('Profile created successfully!')
       }
-
-      toast.success('Profile updated successfully!')
+      
       router.push('/dashboard/profile')
     } catch (error: any) {
       console.error('Failed to update profile:', error)
@@ -132,10 +150,8 @@ export default function ProfileEditPage() {
 
     setSaving(true)
     try {
-      // Use the auth change password endpoint if available
-      // This assumes you have an auth.changePassword method
-      // If not, you may need to adjust based on your API
-      
+      // You'll need to implement this endpoint in your API
+      // For now, just show success message
       toast.success('Password changed successfully!')
       setPasswordData({
         current_password: '',
@@ -223,17 +239,17 @@ export default function ProfileEditPage() {
                 </div>
 
                 {/* User Info Summary */}
-                {authUser && (
+                {extendedAuthUser && (
                   <div className="bg-gray-50 dark:bg-gray-800 p-3 sm:p-4 rounded-lg">
                     <h3 className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Account Information</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <p className="text-xs text-gray-500">Name</p>
-                        <p className="text-xs sm:text-sm font-medium">{authUser.first_name} {authUser.last_name}</p>
+                        <p className="text-xs sm:text-sm font-medium">{extendedAuthUser.first_name} {extendedAuthUser.last_name}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Email</p>
-                        <p className="text-xs sm:text-sm font-medium break-all">{authUser.email}</p>
+                        <p className="text-xs sm:text-sm font-medium break-all">{extendedAuthUser.email}</p>
                       </div>
                     </div>
                   </div>

@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { api } from '@/app/lib/api'
+import { apiClient } from '@/app/lib/api'
+import api from '@/app/lib/api/client' // Import axios instance to set default header
 
 interface User {
   id: number
@@ -23,6 +24,8 @@ interface RegisterData {
   password: string
   first_name?: string
   last_name?: string
+  role?: 'client' | 'practitioner'
+  phone?: string
 }
 
 interface AuthContextType {
@@ -30,7 +33,7 @@ interface AuthContextType {
   isLoading: boolean
   isAuthenticated: boolean
   login: (credentials: LoginCredentials) => Promise<void>
-  register: (data: RegisterData) => Promise<void>  // Add this
+  register: (data: RegisterData) => Promise<void>
   logout: () => void
 }
 
@@ -46,25 +49,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const checkAuth = async () => {
       try {
         const token = localStorage.getItem('authToken')
-        console.log('🔍 Check auth - token:', token ? 'Present' : 'Missing')
+        console.log('🔍 Check auth - token:', token ? 'Present' : 'Missing', new Date().toISOString())
 
         if (token) {
+          // Set default header for all future requests
+          api.defaults.headers.common['Authorization'] = `Token ${token}`
+          console.log('✅ Default Authorization header set from stored token')
+
           try {
             // Try to fetch profile
-            const response = await api.get('/profile/')
-            console.log('✅ Profile fetched:', response.data)
+            const response = await apiClient.auth.getProfile()
+            console.log('✅ Profile fetched:', response)
             
             setUser({
-              id: response.data.id || response.data.user_id,
-              email: response.data.email,
-              username: response.data.username,
-              first_name: response.data.first_name || '',
-              last_name: response.data.last_name || '',
+              id: response.id,
+              email: response.email,
+              username: response.email,
+              first_name: response.first_name || '',
+              last_name: response.last_name || '',
             })
           } catch (error) {
-            console.log('❌ Profile fetch failed, clearing token')
+            console.log('❌ Profile fetch failed, clearing token at:', new Date().toISOString())
             localStorage.removeItem('authToken')
             localStorage.removeItem('user')
+            delete api.defaults.headers.common['Authorization'] // Clear default header
           }
         }
       } catch (error) {
@@ -75,32 +83,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     checkAuth()
-  }, []) // No router dependency here to prevent redirect loops
+  }, [])
 
   const login = async (credentials: LoginCredentials) => {
     try {
       console.log('🔐 Login attempt with:', credentials.username)
       
-      const response = await api.post('/login/', credentials)
-      const data = response.data
+      const response = await apiClient.auth.login({
+        email: credentials.username,
+        password: credentials.password
+      })
       
-      console.log('✅ Login response:', data)
+      console.log('✅ Login response:', response)
       
-      if (!data.token) {
+      if (!response.token) {
         throw new Error('No token received')
       }
 
       // Save to localStorage
-      localStorage.setItem('authToken', data.token)
-      console.log('💾 Token saved')
+      localStorage.setItem('authToken', response.token)
+      console.log('💾 Token saved to localStorage:', response.token.substring(0, 10) + '...')
+
+      // CRITICAL: Set default header for ALL future axios requests
+      api.defaults.headers.common['Authorization'] = `Token ${response.token}`
+      console.log('✅ Default Authorization header set globally:', api.defaults.headers.common['Authorization'])
+
+      // Verify token was saved
+      const savedToken = localStorage.getItem('authToken')
+      console.log('✅ Verification - token in localStorage:', savedToken ? 'Present' : 'Missing')
 
       // Set user
       const userData = {
-        id: data.user_id,
-        email: data.email,
-        username: data.username || credentials.username,
-        first_name: data.first_name || '',
-        last_name: data.last_name || '',
+        id: response.user_id,
+        email: response.email,
+        username: response.email || credentials.username,
+        first_name: '',
+        last_name: '',
       }
       
       setUser(userData)
@@ -118,33 +136,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
-  // Add register function
   const register = async (data: RegisterData) => {
     try {
       console.log('📝 Register attempt for:', data.username)
       
-      const response = await api.post('/register/', data)
-      const responseData = response.data
+      // Prepare data - only send defined fields
+      const registerData = {
+        username: data.username,
+        email: data.email,
+        password: data.password,
+        ...(data.first_name && { first_name: data.first_name }),
+        ...(data.last_name && { last_name: data.last_name }),
+        ...(data.role && { role: data.role }),
+        ...(data.phone && { phone: data.phone })
+      }
       
-      console.log('✅ Register response:', responseData)
+      const response = await apiClient.auth.register(registerData)
+      console.log('✅ Register response:', response)
       
-      // If registration returns token (auto-login)
-      if (responseData.token) {
-        localStorage.setItem('authToken', responseData.token)
+      if (response.token) {
+        localStorage.setItem('authToken', response.token)
         
-        if (responseData.user) {
-          setUser({
-            id: responseData.user.id,
-            email: responseData.user.email,
-            username: responseData.user.username || data.username,
-            first_name: responseData.user.first_name || '',
-            last_name: responseData.user.last_name || '',
-          })
-        }
+        // Set default header for all future requests
+        api.defaults.headers.common['Authorization'] = `Token ${response.token}`
+        console.log('✅ Default Authorization header set from registration')
+        
+        setUser({
+          id: response.user_id,
+          email: response.email,
+          username: response.email || data.username,
+          first_name: data.first_name || '',
+          last_name: data.last_name || '',
+        })
         
         router.push('/dashboard')
       }
-      // If no token, just return success - the page will redirect to login
       
     } catch (error) {
       console.error('❌ Registration failed:', error)
@@ -156,6 +182,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     console.log('👋 Logging out')
     localStorage.removeItem('authToken')
     localStorage.removeItem('user')
+    delete api.defaults.headers.common['Authorization'] // Clear default header
     setUser(null)
     router.push('/login')
   }
@@ -167,7 +194,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isLoading,
         isAuthenticated: !!user,
         login,
-        register,  // Add register to provider
+        register,
         logout,
       }}
     >
