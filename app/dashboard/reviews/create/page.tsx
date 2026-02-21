@@ -1,149 +1,240 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { apiClient } from '@/app/lib/api'
+import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
-import { Card, CardBody } from '@/app/components/ui/Card'
-import { StarIcon } from '@heroicons/react/24/solid'
-import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { 
+  StarIcon, 
+  ArrowLeftIcon,
+  CheckCircleIcon
+} from '@heroicons/react/24/outline'
+import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
+import { useAuth } from '@/app/contexts/AuthContext'
+import type { Consultation } from '@/app/types'
 
 export default function CreateReviewPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user } = useAuth()
+  
   const consultationId = searchParams.get('consultation')
   
-  const [rating, setRating] = useState(0)
-  const [hover, setHover] = useState(0)
+  const [consultation, setConsultation] = useState<Consultation | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  
+  const [rating, setRating] = useState<number>(0)
+  const [hoverRating, setHoverRating] = useState<number | null>(null)
   const [comment, setComment] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (rating === 0) {
-      setError('Please select a rating')
-      return
-    }
-
+  useEffect(() => {
     if (!consultationId) {
-      setError('No consultation specified')
+      router.push('/dashboard/consultations')
       return
     }
 
-    setLoading(true)
-    setError('')
+    fetchConsultation()
+  }, [consultationId, router])
 
+  const fetchConsultation = async () => {
     try {
-      await apiClient.reviews.createForConsultation(parseInt(consultationId), {
-        rating,
-        comment: comment || undefined
-      })
-      router.push('/dashboard/reviews')
-    } catch (err: any) {
-      console.error('Failed to submit review:', err)
-      setError(err.response?.data?.message || err.message || 'Failed to submit review')
+      setLoading(true)
+      const data = await apiClient.consultations.getOne(parseInt(consultationId!))
+      
+      // Check if user is authorized to review this consultation
+      if (data.client !== user?.id) {
+        setError('You are not authorized to review this consultation')
+        return
+      }
+      
+      setConsultation(data)
+    } catch (err) {
+      console.error('Failed to fetch consultation:', err)
+      setError('Failed to load consultation details')
     } finally {
       setLoading(false)
     }
   }
 
-  return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6">
-      {/* Header with back button */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link href="/dashboard/reviews">
-          <Button variant="outline" size="sm" className="!p-2 sm:!px-4">
-            <ArrowLeftIcon className="h-5 w-5 sm:mr-2" />
-            <span className="hidden sm:inline">Back</span>
-          </Button>
-        </Link>
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-          Write a Review
-        </h1>
-      </div>
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (rating === 0) {
+      setError('Please select a rating')
+      return
+    }
+
+    try {
+      setSubmitting(true)
+      setError(null)
+
+      // Use the create method instead of createForConsultation
+      await apiClient.reviews.create({
+        consultation: parseInt(consultationId!),
+        rating,
+        comment: comment.trim() || undefined
+      })
+
+      // Redirect to the consultation page or reviews list
+      router.push(`/dashboard/consultations/${consultationId}?review=success`)
       
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <Card>
-          <CardBody className="p-4 sm:p-6">
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-              {/* Error Message */}
-              {error && (
-                <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 sm:p-4 rounded-xl border border-red-200 dark:border-red-800">
-                  <p className="text-xs sm:text-sm">{error}</p>
-                </div>
+    } catch (err: any) {
+      console.error('Failed to create review:', err)
+      setError(err.response?.data?.message || 'Failed to create review')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  if (error && !consultation) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-500 mb-4">{error}</p>
+        <Link href="/dashboard/consultations">
+          <Button variant="outline">Back to Consultations</Button>
+        </Link>
+      </div>
+    )
+  }
+
+  // Add null check for consultation
+  if (!consultation) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500 mb-4">Consultation not found</p>
+        <Link href="/dashboard/consultations">
+          <Button variant="outline">Back to Consultations</Button>
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center space-x-4">
+        <Link
+          href={`/dashboard/consultations/${consultationId}`}
+          className="p-2 hover:bg-gray-100 rounded-lg transition"
+        >
+          <ArrowLeftIcon className="h-5 w-5 text-gray-600" />
+        </Link>
+        <h1 className="text-2xl font-bold text-gray-900">Write a Review</h1>
+      </div>
+
+      {/* Review Form */}
+      <Card>
+        <CardHeader>
+          <h2 className="text-lg font-semibold">Rate Your Experience</h2>
+        </CardHeader>
+        <CardBody className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Consultation Info */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm text-gray-600 mb-1">Consultation with</p>
+              <p className="font-medium">
+                Dr. {consultation.practitioner_name || 'Unknown'}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                {new Date(consultation.date).toLocaleDateString()} at {consultation.time}
+              </p>
+              {consultation.client === user?.id && (
+                <p className="text-sm text-green-600 flex items-center mt-2">
+                  <CheckCircleIcon className="h-4 w-4 mr-1" />
+                  You are reviewing this consultation
+                </p>
               )}
+            </div>
 
-              {/* Rating */}
-              <div>
-                <label className="block text-xs sm:text-sm font-medium mb-2">
-                  Rating <span className="text-red-500">*</span>
-                </label>
-                <div className="flex gap-1 sm:gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      className="focus:outline-none p-1"
-                      onClick={() => setRating(star)}
-                      onMouseEnter={() => setHover(star)}
-                      onMouseLeave={() => setHover(0)}
-                    >
-                      <StarIcon 
-                        className={`h-7 w-7 sm:h-8 sm:w-8 transition-all ${
-                          star <= (hover || rating) 
-                            ? 'text-yellow-400 scale-110' 
-                            : 'text-gray-300 dark:text-gray-600'
-                        }`} 
-                      />
-                    </button>
-                  ))}
-                </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  {rating === 0 ? 'Click to rate' : `You selected ${rating} star${rating > 1 ? 's' : ''}`}
-                </p>
+            {/* Rating Stars */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Rating <span className="text-red-500">*</span>
+              </label>
+              <div className="flex items-center space-x-1">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setRating(value)}
+                    onMouseEnter={() => setHoverRating(value)}
+                    onMouseLeave={() => setHoverRating(null)}
+                    className="p-1 focus:outline-none"
+                  >
+                    {value <= (hoverRating ?? rating) ? (
+                      <StarIconSolid className="h-8 w-8 text-yellow-400" />
+                    ) : (
+                      <StarIcon className="h-8 w-8 text-gray-300" />
+                    )}
+                  </button>
+                ))}
+                <span className="ml-2 text-sm text-gray-500">
+                  {rating > 0 ? `${rating} out of 5` : 'Select a rating'}
+                </span>
               </div>
+            </div>
 
-              {/* Comment */}
-              <div>
-                <label htmlFor="comment" className="block text-xs sm:text-sm font-medium mb-2">
-                  Your Review
-                </label>
-                <textarea
-                  id="comment"
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  className="w-full p-3 sm:p-4 text-sm border rounded-xl dark:bg-gray-800 dark:border-gray-700 focus:ring-2 focus:ring-blue-500"
-                  rows={5}
-                  placeholder="Share your experience with the practitioner... What went well? What could be improved?"
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1 text-right">
-                  {comment.length}/500
-                </p>
+            {/* Comment */}
+            <div>
+              <label htmlFor="comment" className="block text-sm font-medium text-gray-700 mb-2">
+                Comment (Optional)
+              </label>
+              <textarea
+                id="comment"
+                rows={5}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Share your experience with this practitioner..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Maximum 500 characters
+              </p>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+                {error}
               </div>
+            )}
 
-              {/* Buttons */}
-              <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
-                <Link href="/dashboard/reviews" className="flex-1">
-                  <Button variant="outline" fullWidth>
-                    Cancel
-                  </Button>
-                </Link>
-                <Button type="submit" disabled={loading} fullWidth className="flex-1">
-                  {loading ? 'Submitting...' : 'Submit Review'}
+            {/* Form Actions */}
+            <div className="flex items-center justify-end space-x-3 pt-4 border-t">
+              <Link href={`/dashboard/consultations/${consultationId}`}>
+                <Button variant="outline" type="button">
+                  Cancel
                 </Button>
-              </div>
-            </form>
-          </CardBody>
-        </Card>
-      </motion.div>
+              </Link>
+              <Button 
+                type="submit" 
+                disabled={submitting || rating === 0}
+              >
+                {submitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit Review'
+                )}
+              </Button>
+            </div>
+          </form>
+        </CardBody>
+      </Card>
     </div>
   )
 }

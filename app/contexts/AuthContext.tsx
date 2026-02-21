@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/app/lib/api'
-import api from '@/app/lib/api/client' // Import axios instance to set default header
+import api from '@/app/lib/api/client'
 
 interface User {
   id: number
@@ -26,6 +26,17 @@ interface RegisterData {
   last_name?: string
   role?: 'client' | 'practitioner'
   phone?: string
+}
+
+// Define the expected API register data type (with ALL fields required)
+interface ApiRegisterData {
+  username: string
+  email: string
+  password: string
+  first_name: string  // Required by API
+  last_name: string   // Required by API
+  role: 'client' | 'practitioner'  // Required by API
+  phone?: string      // Optional
 }
 
 interface AuthContextType {
@@ -52,12 +63,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('🔍 Check auth - token:', token ? 'Present' : 'Missing', new Date().toISOString())
 
         if (token) {
-          // Set default header for all future requests
           api.defaults.headers.common['Authorization'] = `Token ${token}`
           console.log('✅ Default Authorization header set from stored token')
 
           try {
-            // Try to fetch profile
             const response = await apiClient.auth.getProfile()
             console.log('✅ Profile fetched:', response)
             
@@ -72,7 +81,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             console.log('❌ Profile fetch failed, clearing token at:', new Date().toISOString())
             localStorage.removeItem('authToken')
             localStorage.removeItem('user')
-            delete api.defaults.headers.common['Authorization'] // Clear default header
+            delete api.defaults.headers.common['Authorization']
           }
         }
       } catch (error) {
@@ -100,19 +109,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw new Error('No token received')
       }
 
-      // Save to localStorage
       localStorage.setItem('authToken', response.token)
       console.log('💾 Token saved to localStorage:', response.token.substring(0, 10) + '...')
 
-      // CRITICAL: Set default header for ALL future axios requests
       api.defaults.headers.common['Authorization'] = `Token ${response.token}`
       console.log('✅ Default Authorization header set globally:', api.defaults.headers.common['Authorization'])
 
-      // Verify token was saved
       const savedToken = localStorage.getItem('authToken')
       console.log('✅ Verification - token in localStorage:', savedToken ? 'Present' : 'Missing')
 
-      // Set user
       const userData = {
         id: response.user_id,
         email: response.email,
@@ -124,7 +129,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(userData)
       localStorage.setItem('user', JSON.stringify(userData))
 
-      // Small delay to ensure state updates before redirect
       setTimeout(() => {
         console.log('🚀 Redirecting to dashboard')
         router.push('/dashboard')
@@ -140,24 +144,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       console.log('📝 Register attempt for:', data.username)
       
-      // Prepare data - only send defined fields
-      const registerData = {
+      // FIX: Ensure ALL required fields have default values
+      const apiRegisterData: ApiRegisterData = {
         username: data.username,
         email: data.email,
         password: data.password,
-        ...(data.first_name && { first_name: data.first_name }),
-        ...(data.last_name && { last_name: data.last_name }),
-        ...(data.role && { role: data.role }),
-        ...(data.phone && { phone: data.phone })
+        first_name: data.first_name || '',           // Default to empty string if undefined
+        last_name: data.last_name || '',             // Default to empty string if undefined
+        role: data.role || 'client',                  // Default to 'client' if undefined
+        ...(data.phone && { phone: data.phone })      // Only include phone if provided
       }
       
-      const response = await apiClient.auth.register(registerData)
+      const response = await apiClient.auth.register(apiRegisterData)
       console.log('✅ Register response:', response)
       
       if (response.token) {
         localStorage.setItem('authToken', response.token)
         
-        // Set default header for all future requests
         api.defaults.headers.common['Authorization'] = `Token ${response.token}`
         console.log('✅ Default Authorization header set from registration')
         
@@ -182,7 +185,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     console.log('👋 Logging out')
     localStorage.removeItem('authToken')
     localStorage.removeItem('user')
-    delete api.defaults.headers.common['Authorization'] // Clear default header
+    delete api.defaults.headers.common['Authorization']
     setUser(null)
     router.push('/login')
   }

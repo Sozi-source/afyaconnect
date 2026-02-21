@@ -8,6 +8,7 @@ export interface User {
   is_staff?: boolean
   is_active?: boolean
   role?: 'client' | 'practitioner'
+  is_verified?: boolean
   profile?: UserProfile
 }
 
@@ -16,8 +17,8 @@ export interface UserProfile {
   user: number
   role: 'client' | 'practitioner'
   phone: string | null
-  city?: string  // Add this if it exists in your data
-  bio?: string   // Add this if it exists in your data
+  city?: string
+  bio?: string
   created_at?: string
   updated_at?: string
 }
@@ -117,6 +118,7 @@ export interface Consultation {
   created_at: string
   updated_at: string
   version?: number
+  price?: number
 }
 
 // ==================== REVIEW TYPES ====================
@@ -157,6 +159,9 @@ export interface ConsultationFilters {
   end_date?: string
   practitioner?: number
   client?: number
+  ordering?: string
+  page?: number
+  page_size?: number
 }
 
 // ==================== API RESPONSE TYPES ====================
@@ -181,6 +186,7 @@ export interface ClientMetrics {
   pending: number
   cancelled: number
   total_spent: number
+  upcoming?: number
 }
 
 export interface PractitionerMetrics {
@@ -189,6 +195,7 @@ export interface PractitionerMetrics {
   pending: number
   cancelled: number
   total_earned: number
+  upcoming?: number
 }
 
 export interface MetricsResponse {
@@ -259,58 +266,72 @@ export interface ApplicationStatusResponse {
   application: PractitionerApplication | null
 }
 
-// ==================== USER TYPES ====================
-export interface User {
+// ==================== DASHBOARD TYPES ====================
+export interface DashboardStats {
+  total_consultations: number
+  upcoming_consultations: number
+  total_practitioners: number
+  total_reviews: number
+  recent_activity: Consultation[]
+}
+
+// ==================== PRACTITIONER METRIC TYPES ====================
+export interface PractitionerMetric {
   id: number
+  name: string
   email: string
-  first_name?: string
-  last_name?: string
-  username?: string
-  is_staff?: boolean
-  is_active?: boolean
-  role?: 'client' | 'practitioner'  // ← Add this
-  is_verified?: boolean  // ← Add this
-  profile?: UserProfile
+  specialties: string[]
+  total_consultations: number
+  completed_consultations: number
+  revenue: number
+  average_rating: number
+  hourly_rate?: number
 }
 
-export interface UserProfile {
+
+export interface Availability {
   id: number
-  user: number
-  role: 'client' | 'practitioner'
-  phone: string | null
-  city?: string
-  bio?: string
-  created_at?: string
-  updated_at?: string
+  practitioner: number
+  practitioner_name?: string
+  recurrence_type: RecurrenceType
+  day_of_week: DayOfWeek | null
+  specific_date: string | null
+  start_time: string
+  end_time: string
+  is_available: boolean
+  notes: string | null
+  created_at: string
+  updated_at: string
 }
 
-// ==================== METRICS TYPES ====================
-export interface ClientMetrics {
-  total_consultations: number
-  upcoming: number
-  completed: number
-  cancelled: number
-  total_spent: number
+// Add this new interface
+export interface CheckSlotResponse {
+  available: boolean
+  reason?: string 
+  message?: string
+  conflicting_consultation?: {
+    id: number
+    date: string
+    time: string
+  }
+  practitioner_name?: string
+  available_slots?: TimeSlot[]
 }
 
-export interface PractitionerMetrics {
-  total_consultations: number
-  upcoming: number
-  completed: number
-  cancelled: number
-  total_earned: number
+export interface TimeSlot {
+  date: string
+  start_time: string
+  end_time: string
+  practitioner_id: number
+  practitioner_name: string
+  formatted_time?: string
 }
 
-export interface MetricsResponse {
-  as_client: ClientMetrics
-  as_practitioner: PractitionerMetrics
-}
-
-// Add to ConsultationFilters
-export interface ConsultationFilters {
-  status?: 'booked' | 'completed' | 'cancelled' | 'no_show'
-  start_date?: string
-  end_date?: string
-  practitioner?: number
-  client?: number
+export interface BulkAvailabilityData {
+  practitioner_id: number
+  days: DayOfWeek[]
+  start_time: string
+  end_time: string
+  is_available?: boolean
+  notes?: string
 }

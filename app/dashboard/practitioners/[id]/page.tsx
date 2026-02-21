@@ -18,7 +18,15 @@ import {
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { useAuth } from '@/app/contexts/AuthContext'
-import type { Practitioner, Consultation } from '@/app/types'
+import type { Practitioner, Consultation, PaginatedResponse } from '@/app/types'
+
+// Helper function to extract results from paginated response
+const extractConsultations = (response: Consultation[] | PaginatedResponse<Consultation> | undefined): Consultation[] => {
+  if (!response) return []
+  if (Array.isArray(response)) return response
+  if ('results' in response) return response.results
+  return []
+}
 
 // Extend the User type locally
 interface ExtendedUser {
@@ -71,11 +79,14 @@ export default function PractitionerDetailPage() {
     
     setConsultationsLoading(true)
     try {
-      const data = await apiClient.consultations.getAll({
+      const response = await apiClient.consultations.getAll({
         practitioner: practitioner.id,
         status: 'booked'
       })
-      setConsultations(data)
+      
+      // Handle both array and paginated responses
+      const consultationsList = extractConsultations(response)
+      setConsultations(consultationsList)
     } catch (err: any) {
       console.error('❌ Error fetching consultations:', err)
     } finally {
