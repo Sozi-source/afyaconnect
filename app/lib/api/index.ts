@@ -1,4 +1,4 @@
-import api, { publicApi } from './client'  // Updated import
+import api, { publicApi } from './client'
 import type { 
   Practitioner, 
   Specialty, 
@@ -13,7 +13,7 @@ import type {
   Review,
   PaginatedResponse,
   Availability
-} from '@/app/types'
+} from '@/app/types/index'
 
 // Helper to build query strings
 const buildQueryString = (params?: Record<string, any>): string => {
@@ -33,16 +33,16 @@ export const apiClient = {
   // ==================== AUTH ====================
   auth: {
     login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-      // Use publicApi for login (no auth token needed)
+      // Use publicApi (no auth headers) and map email to username for Django
       const response = await publicApi.post<AuthResponse>('/login/', {
-        username: credentials.email,
+        username: credentials.email,  // Django expects 'username' field
         password: credentials.password
       })
       return response.data
     },
 
     register: async (data: RegisterData): Promise<AuthResponse> => {
-      // Use publicApi for registration (no auth token needed)
+      // Use publicApi for registration (no auth headers)
       const response = await publicApi.post<AuthResponse>('/register/', data)
       return response.data
     },

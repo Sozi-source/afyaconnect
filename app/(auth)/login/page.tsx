@@ -59,16 +59,21 @@ export default function LoginPage() {
     setFieldErrors({})
 
     try {
+      // Call login with username (email) and password
       await login({ username: email, password })
+      // Redirect happens in AuthContext based on role
     } catch (err: any) {
-      if (err.response?.status === 401) {
+      console.error('Login error:', err)
+      
+      // Handle specific error messages
+      if (err.message?.includes('Invalid') || err.message?.includes('credentials')) {
         setError('Invalid email or password')
-      } else if (err.response?.status === 404) {
-        setError('Account not found. Please register first.')
-      } else if (err.code === 'ERR_NETWORK') {
+      } else if (err.message?.includes('active')) {
+        setError('Account is not active. Please check your email.')
+      } else if (err.message?.includes('network') || err.code === 'ERR_NETWORK') {
         setError('Cannot connect to server. Please check your connection.')
       } else {
-        setError('Login failed. Please try again.')
+        setError(err.message || 'Login failed. Please try again.')
       }
     } finally {
       setIsLoading(false)

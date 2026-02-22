@@ -8,35 +8,29 @@ import api from '@/app/lib/api/client'
 interface User {
   id: number
   email: string
-  username?: string
   first_name?: string
   last_name?: string
+  role?: string
+  is_verified?: boolean
+  is_staff?: boolean
 }
 
 interface LoginCredentials {
-  username: string
+  username: string  // This will be the email
   password: string
 }
 
 interface RegisterData {
-  username: string
   email: string
   password: string
-  first_name?: string
-  last_name?: string
-  role?: 'client' | 'practitioner'
+  first_name: string
+  last_name: string
+  role: 'client' | 'practitioner'
   phone?: string
-}
-
-// Define the expected API register data type (with ALL fields required)
-interface ApiRegisterData {
-  username: string
-  email: string
-  password: string
-  first_name: string  // Required by API
-  last_name: string   // Required by API
-  role: 'client' | 'practitioner'  // Required by API
-  phone?: string      // Optional
+  bio?: string
+  city?: string
+  hourly_rate?: number
+  years_of_experience?: number
 }
 
 interface AuthContextType {
@@ -73,9 +67,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setUser({
               id: response.id,
               email: response.email,
-              username: response.email,
               first_name: response.first_name || '',
               last_name: response.last_name || '',
+              role: response.role,
+              is_verified: response.is_verified,
+              is_staff: response.is_staff
             })
           } catch (error) {
             console.log('❌ Profile fetch failed, clearing token at:', new Date().toISOString())
@@ -99,7 +95,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('🔐 Login attempt with:', credentials.username)
       
       const response = await apiClient.auth.login({
-        email: credentials.username,
+        email: credentials.username,  // Map username to email
         password: credentials.password
       })
       
@@ -113,7 +109,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('💾 Token saved to localStorage:', response.token.substring(0, 10) + '...')
 
       api.defaults.headers.common['Authorization'] = `Token ${response.token}`
-      console.log('✅ Default Authorization header set globally:', api.defaults.headers.common['Authorization'])
+      console.log('✅ Default Authorization header set globally')
 
       const savedToken = localStorage.getItem('authToken')
       console.log('✅ Verification - token in localStorage:', savedToken ? 'Present' : 'Missing')
@@ -121,17 +117,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const userData = {
         id: response.user_id,
         email: response.email,
-        username: response.email || credentials.username,
-        first_name: '',
-        last_name: '',
+        first_name: response.first_name,
+        last_name: response.last_name,
+        role: response.role,
+        is_verified: response.is_verified,
+        is_staff: response.is_staff
       }
       
       setUser(userData)
       localStorage.setItem('user', JSON.stringify(userData))
 
+      // Redirect based on role
       setTimeout(() => {
-        console.log('🚀 Redirecting to dashboard')
-        router.push('/dashboard')
+        console.log('🚀 Redirecting based on role:', response.role)
+        if (response.role === 'practitioner') {
+          router.push('/practitioner/dashboard')
+        } else {
+          router.push('/client/dashboard')
+        }
       }, 100)
       
     } catch (error) {
@@ -142,20 +145,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const register = async (data: RegisterData) => {
     try {
-      console.log('📝 Register attempt for:', data.username)
+      console.log('📝 Register attempt for:', data.email)
       
-      // FIX: Ensure ALL required fields have default values
-      const apiRegisterData: ApiRegisterData = {
-        username: data.username,
+      // FIX: Send data directly - no username field needed
+      const response = await apiClient.auth.register({
         email: data.email,
         password: data.password,
-        first_name: data.first_name || '',           // Default to empty string if undefined
-        last_name: data.last_name || '',             // Default to empty string if undefined
-        role: data.role || 'client',                  // Default to 'client' if undefined
-        ...(data.phone && { phone: data.phone })      // Only include phone if provided
-      }
+        first_name: data.first_name,
+        last_name: data.last_name,
+        role: data.role,
+        phone: data.phone,
+        ...(data.role === 'practitioner' && {
+          bio: data.bio,
+          city: data.city,
+          hourly_rate: data.hourly_rate,
+          years_of_experience: data.years_of_experience
+        })
+      })
       
-      const response = await apiClient.auth.register(apiRegisterData)
       console.log('✅ Register response:', response)
       
       if (response.token) {
@@ -164,15 +171,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         api.defaults.headers.common['Authorization'] = `Token ${response.token}`
         console.log('✅ Default Authorization header set from registration')
         
-        setUser({
+        const userData = {
           id: response.user_id,
           email: response.email,
-          username: response.email || data.username,
-          first_name: data.first_name || '',
-          last_name: data.last_name || '',
-        })
+          first_name: response.first_name,
+          last_name: response.last_name,
+          role: response.role,
+          is_verified: response.is_verified,
+          is_staff: response.is_staff
+        }
         
-        router.push('/dashboard')
+        setUser(userData)
+        localStorage.setItem('user', JSON.stringify(userData))
+        
+        // Redirect based on role
+        if (response.role === 'practitioner') {
+          router.push('/practitioner/dashboard')
+        } else {
+          router.push('/client/dashboard')
+        }
       }
       
     } catch (error) {
