@@ -1,4 +1,4 @@
-import api from './client'
+import api, { publicApi } from './client'  // Updated import
 import type { 
   Practitioner, 
   Specialty, 
@@ -33,7 +33,8 @@ export const apiClient = {
   // ==================== AUTH ====================
   auth: {
     login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-      const response = await api.post<AuthResponse>('/login/', {
+      // Use publicApi for login (no auth token needed)
+      const response = await publicApi.post<AuthResponse>('/login/', {
         username: credentials.email,
         password: credentials.password
       })
@@ -41,17 +42,20 @@ export const apiClient = {
     },
 
     register: async (data: RegisterData): Promise<AuthResponse> => {
-      const response = await api.post<AuthResponse>('/register/', data)
+      // Use publicApi for registration (no auth token needed)
+      const response = await publicApi.post<AuthResponse>('/register/', data)
       return response.data
     },
 
     logout: async (): Promise<void> => {
+      // Logout still needs auth token
       await api.post('/logout/')
       localStorage.removeItem('authToken')
       localStorage.removeItem('user')
     },
 
     getProfile: async (): Promise<User> => {
+      // Profile needs auth token
       const response = await api.get<User>('/profile/')
       return response.data
     }
