@@ -56,10 +56,25 @@ export const availabilityApi = {
     await api.delete(`/availability/${id}/`)
   },
 
-  // Bulk create weekly availability
+  // Bulk create weekly availability - Using standard endpoint
   bulkCreate: async (data: BulkAvailabilityData): Promise<Availability[]> => {
-    const response = await api.post<{ slots: Availability[] }>('/availability/bulk-create/', data)
-    return response.data.slots
+    // Since there's no bulk endpoint, create slots one by one
+    const { practitioner_id, days, start_time, end_time, is_available, notes } = data
+    
+    const promises = days.map(day => 
+      api.post<Availability>('/availability/', {
+        practitioner: practitioner_id,
+        recurrence_type: 'weekly',
+        day_of_week: day,
+        start_time,
+        end_time,
+        is_available,
+        notes: notes || ''
+      })
+    )
+    
+    const responses = await Promise.all(promises)
+    return responses.map(r => r.data)
   },
 
   // Get available slots for a practitioner (public)
@@ -68,11 +83,9 @@ export const availabilityApi = {
     startDate: string, 
     endDate: string
   ): Promise<TimeSlot[]> => {
-    const response = await api.get<TimeSlot[]>(
-      `/practitioners/${practitionerId}/available-slots/`,
-      { params: { start_date: startDate, end_date: endDate } }
-    )
-    return response.data
+    // This would need a custom endpoint, but for now return empty array
+    console.warn('getPractitionerSlots needs backend implementation')
+    return []
   },
 
   // Check if a specific time slot is available
@@ -81,17 +94,14 @@ export const availabilityApi = {
     date: string, 
     time: string
   ): Promise<CheckSlotResponse> => {
-    const response = await api.post<CheckSlotResponse>('/availability/check-slot/', {
-      practitioner: practitionerId,
-      date: date,
-      time: time
-    })
-    return response.data
+    // This would need a custom endpoint
+    console.warn('checkSlot needs backend implementation')
+    return { available: false, reason: 'Not implemented' }
   },
 
   // Get practitioner availability (public view)
   getPractitionerAvailability: async (practitionerId: number): Promise<Availability[]> => {
-    const response = await api.get<Availability[]>(`/practitioners/${practitionerId}/availability/`)
+    const response = await api.get<Availability[]>(`/availability/?practitioner=${practitionerId}`)
     return response.data
   }
 }

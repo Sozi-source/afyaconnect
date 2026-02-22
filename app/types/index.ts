@@ -16,7 +16,7 @@ export interface UserProfile {
   id: number
   user: number
   role: 'client' | 'practitioner'
-  phone: string | null
+  phone?: string | null
   city?: string
   bio?: string
   created_at?: string
@@ -107,8 +107,10 @@ export interface Consultation {
   id: number
   client: number
   client_name?: string
+  client_email?: string
   practitioner: number
   practitioner_name?: string
+  practitioner_email?: string
   date: string
   time: string
   status: ConsultationStatus
@@ -119,6 +121,8 @@ export interface Consultation {
   updated_at: string
   version?: number
   price?: number
+  has_review?: boolean
+  can_review?: boolean
 }
 
 // ==================== REVIEW TYPES ====================
@@ -127,9 +131,18 @@ export interface Review {
   consultation: number
   reviewer: number
   reviewer_name?: string
+  reviewer_email?: string
+  practitioner?: number
+  practitioner_name?: string
+  practitioner_email?: string
+  client_name?: string
+  client_email?: string
   rating: 1 | 2 | 3 | 4 | 5
   comment: string | null
   created_at: string
+  updated_at?: string
+  consultation_date?: string
+  consultation_time?: string
 }
 
 // ==================== TIME SLOT TYPES ====================
@@ -187,20 +200,28 @@ export interface ClientMetrics {
   cancelled: number
   total_spent: number
   upcoming?: number
+  pending_reviews?: number
 }
 
 export interface PractitionerMetrics {
   total_consultations: number
-  completed: number
-  pending: number
-  cancelled: number
-  total_earned: number
-  upcoming?: number
+  completed_consultations: number
+  cancelled_consultations: number
+  upcoming_consultations: number
+  total_earnings: number
+  average_rating: number
+  total_reviews: number
+  completion_rate: number
 }
 
 export interface MetricsResponse {
-  as_client: ClientMetrics
-  as_practitioner: PractitionerMetrics
+  as_client?: ClientMetrics
+  as_practitioner?: PractitionerMetrics
+  totalEarnings?: number
+  completedCount?: number
+  upcomingCount?: number
+  averageRating?: number
+  totalReviews?: number
 }
 
 // ==================== CREATE/UPDATE TYPES ====================
@@ -288,23 +309,7 @@ export interface PractitionerMetric {
   hourly_rate?: number
 }
 
-
-export interface Availability {
-  id: number
-  practitioner: number
-  practitioner_name?: string
-  recurrence_type: RecurrenceType
-  day_of_week: DayOfWeek | null
-  specific_date: string | null
-  start_time: string
-  end_time: string
-  is_available: boolean
-  notes: string | null
-  created_at: string
-  updated_at: string
-}
-
-// Add this new interface
+// ==================== SLOT CHECK TYPES ====================
 export interface CheckSlotResponse {
   available: boolean
   reason?: string 
@@ -316,22 +321,4 @@ export interface CheckSlotResponse {
   }
   practitioner_name?: string
   available_slots?: TimeSlot[]
-}
-
-export interface TimeSlot {
-  date: string
-  start_time: string
-  end_time: string
-  practitioner_id: number
-  practitioner_name: string
-  formatted_time?: string
-}
-
-export interface BulkAvailabilityData {
-  practitioner_id: number
-  days: DayOfWeek[]
-  start_time: string
-  end_time: string
-  is_available?: boolean
-  notes?: string
 }

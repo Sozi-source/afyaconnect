@@ -1,0 +1,183 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { apiClient } from '@/app/lib/api'
+import { Card, CardBody } from '@/app/components/ui/Card'
+import { Button } from '@/app/components/ui/Buttons'
+import Link from 'next/link'
+import { StarIcon } from '@heroicons/react/24/solid'
+import { PlusIcon, PencilIcon } from '@heroicons/react/24/outline'
+import { Review, Consultation } from '@/app/types'
+import { motion } from 'framer-motion'
+import { useAuth } from '@/app/contexts/AuthContext'
+import { useRouter } from 'next/navigation'
+
+export default function ClientReviewsPage() {
+  const { user, isAuthenticated } = useAuth()
+  const router = useRouter()
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [loading, setLoading] = useState(true)
+  const [pendingConsultations, setPendingConsultations] = useState<Consultation[]>([])
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/login')
+      return
+    }
+    Promise.all([fetchReviews(), fetchPendingReviews()])
+  }, [isAuthenticated, router])
+
+  const fetchReviews = async () => {
+    try {
+      const data = await apiClient.reviews.getAll()
+      // Filter to only show reviews by current user
+      const userReviews = Array.isArray(data) 
+        ? data.filter(r => r.reviewer === user?.id)
+        : []
+      setReviews(userReviews)
+    } catch (error) {
+      console.error('Failed to fetch reviews:', error)
+      setReviews([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchPendingReviews = async () => {
+    try {
+      const consultations = await apiClient.consultations.getAll({ status: 'completed' })
+      const completedConsultations = Array.isArray(consultations) ? consultations : []
+      
+      // Filter to consultations without reviews
+      const pending = completedConsultations.filter(c => !c.has_review)
+      setPendingConsultations(pending)
+    } catch (error) {
+      console.error('Failed to fetch pending reviews:', error)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+        <div className="grid gap-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+            My Reviews
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
+            Share your experience with practitioners
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {pendingConsultations.length > 0 && (
+            <Link href="/client/dashboard/reviews/create" className="w-full sm:w-auto">
+              <Button fullWidth className="sm:w-auto relative">
+                <PlusIcon className="h-5 w-5 mr-2" />
+                Write a Review
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {pendingConsultations.length}
+                </span>
+              </Button>
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* Reviews Grid */}
+      <div className="grid gap-3 sm:gap-4">
+        {reviews.length > 0 ? (
+          reviews.map((review, index) => (
+            <motion.div
+              key={review.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(index * 0.05, 0.5) }}
+            >
+              <Link href={`/client/dashboard/reviews/${review.id}`}>
+                <Card hoverable className="cursor-pointer">
+                  <CardBody className="p-4 sm:p-5">
+                    <div className="space-y-2 sm:space-y-3">
+                      {/* Header with Practitioner and Edit */}
+                      <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-2">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            Dr. {review.practitioner_name || 'Practitioner'}
+                          </p>
+                          <div className="flex items-center gap-1 mt-1">
+                            {[...Array(5)].map((_, i) => (
+                              <StarIcon 
+                                key={i} 
+                                className={`h-4 w-4 sm:h-5 sm:w-5 ${
+                                  i < review.rating ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-600'
+                                }`} 
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">
+                            {new Date(review.created_at).toLocaleDateString()}
+                          </span>
+                          <PencilIcon className="h-4 w-4 text-gray-400" />
+                        </div>
+                      </div>
+                      
+                      {/* Comment */}
+                      {review.comment && (
+                        <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                          {review.comment}
+                        </p>
+                      )}
+                    </div>
+                  </CardBody>
+                </Card>
+              </Link>
+            </motion.div>
+          ))
+        ) : (
+          <EmptyState pendingCount={pendingConsultations.length} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function EmptyState({ pendingCount }: { pendingCount: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="text-center py-12 sm:py-16 bg-white dark:bg-gray-800 rounded-xl shadow-sm"
+    >
+      <div className="text-4xl sm:text-5xl mb-4">⭐</div>
+      <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">
+        No reviews yet
+      </h3>
+      <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-sm mx-auto px-4">
+        {pendingCount > 0 
+          ? "You have completed consultations waiting for your feedback!"
+          : "Complete a consultation to share your experience."}
+      </p>
+      {pendingCount > 0 && (
+        <Link href="/client/dashboard/reviews/create" className="inline-block mt-6">
+          <Button>
+            Write Your First Review
+          </Button>
+        </Link>
+      )}
+    </motion.div>
+  )
+}

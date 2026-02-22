@@ -12,7 +12,8 @@ import type {
   MetricsResponse,
   Review,
   PaginatedResponse,
-  Availability
+  Availability,
+  PractitionerMetrics
 } from '@/app/types/index'
 
 // Helper to build query strings
@@ -33,29 +34,25 @@ export const apiClient = {
   // ==================== AUTH ====================
   auth: {
     login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-      // Use publicApi (no auth headers) and map email to username for Django
       const response = await publicApi.post<AuthResponse>('/login/', {
-        username: credentials.email,  // Django expects 'username' field
+        username: credentials.email,
         password: credentials.password
       })
       return response.data
     },
 
     register: async (data: RegisterData): Promise<AuthResponse> => {
-      // Use publicApi for registration (no auth headers)
       const response = await publicApi.post<AuthResponse>('/register/', data)
       return response.data
     },
 
     logout: async (): Promise<void> => {
-      // Logout still needs auth token
       await api.post('/logout/')
       localStorage.removeItem('authToken')
       localStorage.removeItem('user')
     },
 
     getProfile: async (): Promise<User> => {
-      // Profile needs auth token
       const response = await api.get<User>('/profile/')
       return response.data
     }
@@ -152,8 +149,8 @@ export const apiClient = {
       return response.data
     },
 
-    getMetrics: async (): Promise<MetricsResponse> => {
-      const response = await api.get<MetricsResponse>('/metrics/')
+    getMetrics: async (): Promise<PractitionerMetrics> => {
+      const response = await api.get<PractitionerMetrics>('/consultations/metrics/')
       return response.data
     },
 
@@ -166,6 +163,24 @@ export const apiClient = {
     getByClient: async (clientId: number, filters?: ConsultationFilters): Promise<Consultation[]> => {
       const query = buildQueryString({ ...filters, client: clientId })
       const response = await api.get<Consultation[]>(`/consultations/by-client/${clientId}/${query}`)
+      return response.data
+    },
+
+    // New methods for current user
+    getMyClientConsultations: async (filters?: ConsultationFilters): Promise<Consultation[]> => {
+      const query = buildQueryString(filters)
+      const response = await api.get<Consultation[]>(`/consultations/my-client/${query}`)
+      return response.data
+    },
+
+    getMyPractitionerConsultations: async (filters?: ConsultationFilters): Promise<Consultation[]> => {
+      const query = buildQueryString(filters)
+      const response = await api.get<Consultation[]>(`/consultations/my-practitioner/${query}`)
+      return response.data
+    },
+
+    getCompletedWithoutReview: async (): Promise<Consultation[]> => {
+      const response = await api.get<Consultation[]>('/consultations/completed/no-review/')
       return response.data
     }
   },
@@ -208,6 +223,17 @@ export const apiClient = {
 
     getByPractitioner: async (practitionerId: number): Promise<Review[]> => {
       const response = await api.get<Review[]>(`/reviews/by-practitioner/${practitionerId}/`)
+      return response.data
+    },
+
+    // New methods for current user
+    getMyReviews: async (): Promise<Review[]> => {
+      const response = await api.get<Review[]>('/reviews/my-reviews/')
+      return response.data
+    },
+
+    getReviewsForMe: async (): Promise<Review[]> => {
+      const response = await api.get<Review[]>('/reviews/for-me/')
       return response.data
     }
   },

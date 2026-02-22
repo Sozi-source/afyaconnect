@@ -16,9 +16,13 @@ export function useAvailability(practitionerId?: number) {
     try {
       const data = await availabilityApi.getMyAvailability(params)
       setAvailability(data)
+      return data
     } catch (err: any) {
-      setError(err.message || 'Failed to load availability')
+      const errorMessage = err.message || 'Failed to load availability'
+      setError(errorMessage)
       console.error('Error loading availability:', err)
+      toast.error(errorMessage)
+      return []
     } finally {
       setLoading(false)
     }
@@ -31,9 +35,13 @@ export function useAvailability(practitionerId?: number) {
     try {
       const data = await availabilityApi.getPractitionerAvailability(id)
       setAvailability(data)
+      return data
     } catch (err: any) {
-      setError(err.message || 'Failed to load availability')
+      const errorMessage = err.message || 'Failed to load availability'
+      setError(errorMessage)
       console.error('Error loading availability:', err)
+      toast.error(errorMessage)
+      return []
     } finally {
       setLoading(false)
     }
@@ -52,8 +60,10 @@ export function useAvailability(practitionerId?: number) {
       setTimeSlots(data)
       return data
     } catch (err: any) {
-      setError(err.message || 'Failed to load time slots')
+      const errorMessage = err.message || 'Failed to load time slots'
+      setError(errorMessage)
       console.error('Error loading time slots:', err)
+      toast.error(errorMessage)
       return []
     } finally {
       setLoading(false)
@@ -76,7 +86,7 @@ export function useAvailability(practitionerId?: number) {
     }
   }, [])
 
-  // Bulk create slots
+  // Bulk create slots - using multiple API calls
   const bulkCreateSlots = useCallback(async (data: BulkAvailabilityData) => {
     setLoading(true)
     try {
@@ -123,26 +133,12 @@ export function useAvailability(practitionerId?: number) {
     }
   }, [])
 
-  // Check if a specific time is available
-  const checkSlotAvailability = useCallback(async (
-    pId: number,
-    date: string,
-    time: string
-  ) => {
-    try {
-      return await availabilityApi.checkSlot(pId, date, time)
-    } catch (err: any) {
-      console.error('Error checking slot:', err)
-      return { available: false, reason: err.message }
-    }
-  }, [])
-
   // Load data on mount if practitionerId provided
   useEffect(() => {
     if (practitionerId) {
-      fetchPractitionerAvailability(practitionerId)
+      fetchMyAvailability()
     }
-  }, [practitionerId, fetchPractitionerAvailability])
+  }, [practitionerId, fetchMyAvailability])
 
   return {
     availability,
@@ -155,7 +151,6 @@ export function useAvailability(practitionerId?: number) {
     createSlot,
     bulkCreateSlots,
     updateSlot,
-    deleteSlot,
-    checkSlotAvailability
+    deleteSlot
   }
 }
