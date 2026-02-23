@@ -40,13 +40,13 @@ export function DashboardMobileNav() {
     const baseItems = [
       {
         name: 'Home',
-        href: '/dashboard',
+        href: userRole === 'practitioner' ? '/practitioner/dashboard' : '/client/dashboard',
         icon: HomeIcon,
         activeIcon: HomeIconSolid,
       },
       {
         name: 'Consultations',
-        href: '/dashboard/consultations',
+        href: userRole === 'practitioner' ? '/practitioner/dashboard/consultations' : '/client/dashboard/consultations',
         icon: CalendarIcon,
         activeIcon: CalendarIcon,
       },
@@ -73,13 +73,13 @@ export function DashboardMobileNav() {
         ...baseItems,
         {
           name: 'Experts',
-          href: '/dashboard/practitioners',
+          href: '/client/dashboard/practitioners',
           icon: UserGroupIcon,
           activeIcon: UserGroupIcon,
         },
         {
           name: 'Favorites',
-          href: '/dashboard/favorites',
+          href: '/client/dashboard/favorites',
           icon: HeartIcon,
           activeIcon: HeartIcon,
         },

@@ -9,11 +9,13 @@ import type {
   RegisterData,
   User,
   UserProfile,
-  MetricsResponse,
   Review,
   PaginatedResponse,
   Availability,
-  PractitionerMetrics
+  PractitionerMetrics,
+  PractitionerApplication,
+  PractitionerApplicationData,
+  DashboardStats
 } from '@/app/types/index'
 
 // Helper to build query strings
@@ -35,7 +37,7 @@ export const apiClient = {
   auth: {
     login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
       const response = await publicApi.post<AuthResponse>('/login/', {
-        username: credentials.email,
+        email: credentials.email,
         password: credentials.password
       })
       return response.data
@@ -59,27 +61,24 @@ export const apiClient = {
   },
 
   // ==================== PROFILES ====================
-  profiles: {
-    getMyProfile: async (): Promise<UserProfile> => {
-      const response = await api.get<UserProfile>('/my-profile/')
-      return response.data
-    },
+ // In your api/index.ts, update the profiles section:
 
-    update: async (id: number, data: Partial<UserProfile>): Promise<UserProfile> => {
-      const response = await api.put<UserProfile>(`/profiles/${id}/update/`, data)
-      return response.data
-    },
-
-    create: async (data: Partial<UserProfile>): Promise<UserProfile> => {
-      const response = await api.post<UserProfile>('/profiles/create/', data)
-      return response.data
-    },
-
-    getOne: async (id: number): Promise<UserProfile> => {
-      const response = await api.get<UserProfile>(`/profiles/${id}/`)
-      return response.data
-    }
+profiles: {
+  getMyProfile: async (): Promise<UserProfile> => {
+    const response = await api.get<UserProfile>('/profile/')
+    return response.data
   },
+
+  updateMyProfile: async (data: Partial<UserProfile>): Promise<UserProfile> => {
+    const response = await api.put<UserProfile>('/profile/', data)
+    return response.data
+  },
+
+  getOne: async (id: number): Promise<UserProfile> => {
+    const response = await api.get<UserProfile>(`/profiles/${id}/`)
+    return response.data
+  }
+},
 
   // ==================== PRACTITIONERS ====================
   practitioners: {
@@ -99,18 +98,43 @@ export const apiClient = {
       return response.data
     },
 
-    create: async (data: Partial<Practitioner>): Promise<Practitioner> => {
-      const response = await api.post<Practitioner>('/practitioners/create/', data)
+    updateMyProfile: async (data: Partial<Practitioner>): Promise<Practitioner> => {
+      const response = await api.put<Practitioner>('/practitioners/me/', data)
       return response.data
     },
 
-    update: async (id: number, data: Partial<Practitioner>): Promise<Practitioner> => {
-      const response = await api.put<Practitioner>(`/practitioners/${id}/update/`, data)
+    // Practitioner Applications
+    applications: {
+      create: async (data: PractitionerApplicationData): Promise<PractitionerApplication> => {
+        const response = await api.post<PractitionerApplication>('/practitioners/applications/create/', data)
+        return response.data
+      },
+
+      getMine: async (): Promise<PractitionerApplication> => {
+        const response = await api.get<PractitionerApplication>('/practitioners/applications/')
+        return response.data
+      },
+
+      update: async (data: Partial<PractitionerApplicationData>): Promise<PractitionerApplication> => {
+        const response = await api.put<PractitionerApplication>('/practitioners/applications/', data)
+        return response.data
+      },
+
+      submit: async (): Promise<{ message: string; status: string }> => {
+        const response = await api.post('/practitioners/applications/submit/')
+        return response.data
+      }
+    },
+
+    // Public availability
+    getAvailability: async (practitionerId: number): Promise<Availability[]> => {
+      const response = await api.get<Availability[]>(`/practitioners/${practitionerId}/availability/`)
       return response.data
     },
 
-    getSpecialties: async (id: number): Promise<Specialty[]> => {
-      const response = await api.get<Specialty[]>(`/practitioners/${id}/specialties/`)
+    // Reviews
+    getReviews: async (practitionerId: number): Promise<Review[]> => {
+      const response = await api.get<Review[]>(`/practitioners/${practitionerId}/reviews/`)
       return response.data
     }
   },
@@ -135,12 +159,7 @@ export const apiClient = {
       duration_minutes: number
       client_notes?: string
     }): Promise<Consultation> => {
-      const response = await api.post<Consultation>('/consultations/create/', data)
-      return response.data
-    },
-
-    update: async (id: number, data: Partial<Consultation>): Promise<Consultation> => {
-      const response = await api.put<Consultation>(`/consultations/${id}/update/`, data)
+      const response = await api.post<Consultation>('/consultations/', data)
       return response.data
     },
 
@@ -154,19 +173,6 @@ export const apiClient = {
       return response.data
     },
 
-    getByPractitioner: async (practitionerId: number, filters?: ConsultationFilters): Promise<Consultation[]> => {
-      const query = buildQueryString({ ...filters, practitioner: practitionerId })
-      const response = await api.get<Consultation[]>(`/consultations/by-practitioner/${practitionerId}/${query}`)
-      return response.data
-    },
-
-    getByClient: async (clientId: number, filters?: ConsultationFilters): Promise<Consultation[]> => {
-      const query = buildQueryString({ ...filters, client: clientId })
-      const response = await api.get<Consultation[]>(`/consultations/by-client/${clientId}/${query}`)
-      return response.data
-    },
-
-    // New methods for current user
     getMyClientConsultations: async (filters?: ConsultationFilters): Promise<Consultation[]> => {
       const query = buildQueryString(filters)
       const response = await api.get<Consultation[]>(`/consultations/my-client/${query}`)
@@ -193,11 +199,6 @@ export const apiClient = {
       return response.data
     },
 
-    getOne: async (id: number | string): Promise<Review> => {
-      const response = await api.get<Review>(`/reviews/${id}/`)
-      return response.data
-    },
-
     create: async (data: {
       consultation: number
       rating: number
@@ -207,33 +208,13 @@ export const apiClient = {
       return response.data
     },
 
-    update: async (id: number | string, data: Partial<Review>): Promise<Review> => {
-      const response = await api.put<Review>(`/reviews/${id}/update/`, data)
-      return response.data
-    },
-
-    delete: async (id: number | string): Promise<void> => {
-      await api.delete(`/reviews/${id}/delete/`)
-    },
-
-    getByConsultation: async (consultationId: number): Promise<Review> => {
-      const response = await api.get<Review>(`/reviews/by-consultation/${consultationId}/`)
-      return response.data
-    },
-
-    getByPractitioner: async (practitionerId: number): Promise<Review[]> => {
-      const response = await api.get<Review[]>(`/reviews/by-practitioner/${practitionerId}/`)
-      return response.data
-    },
-
-    // New methods for current user
     getMyReviews: async (): Promise<Review[]> => {
       const response = await api.get<Review[]>('/reviews/my-reviews/')
       return response.data
     },
 
-    getReviewsForMe: async (): Promise<Review[]> => {
-      const response = await api.get<Review[]>('/reviews/for-me/')
+    getByPractitioner: async (practitionerId: number): Promise<Review[]> => {
+      const response = await api.get<Review[]>(`/reviews/by-practitioner/${practitionerId}/`)
       return response.data
     }
   },
@@ -254,49 +235,21 @@ export const apiClient = {
     },
 
     create: async (data: Partial<Availability>): Promise<Availability> => {
-      const response = await api.post<Availability>('/availability/create/', data)
+      const response = await api.post<Availability>('/availability/', data)
       return response.data
     },
 
     update: async (id: number, data: Partial<Availability>): Promise<Availability> => {
-      const response = await api.put<Availability>(`/availability/${id}/update/`, data)
+      const response = await api.put<Availability>(`/availability/${id}/`, data)
       return response.data
     },
 
     delete: async (id: number): Promise<void> => {
-      await api.delete(`/availability/${id}/delete/`)
+      await api.delete(`/availability/${id}/`)
     },
 
     getSlots: async (practitionerId: number, date: string): Promise<string[]> => {
       const response = await api.get<string[]>(`/availability/slots/${practitionerId}/?date=${date}`)
-      return response.data
-    }
-  },
-
-  // ==================== ADMIN ====================
-  admin: {
-    getPendingPractitioners: async (): Promise<Practitioner[]> => {
-      const response = await api.get<Practitioner[]>('/admin/practitioners/pending/')
-      return response.data
-    },
-
-    approvePractitioner: async (id: number): Promise<{ message: string }> => {
-      const response = await api.patch(`/admin/practitioners/${id}/approve/`)
-      return response.data
-    },
-
-    rejectPractitioner: async (id: number, reason?: string): Promise<{ message: string }> => {
-      const response = await api.patch(`/admin/practitioners/${id}/reject/`, { reason })
-      return response.data
-    },
-
-    getAllUsers: async (): Promise<User[]> => {
-      const response = await api.get<User[]>('/admin/users/')
-      return response.data
-    },
-
-    getUserDetails: async (id: number): Promise<User & { profile: UserProfile }> => {
-      const response = await api.get<User & { profile: UserProfile }>(`/admin/users/${id}/`)
       return response.data
     }
   },
@@ -306,61 +259,85 @@ export const apiClient = {
     getAll: async (): Promise<Specialty[]> => {
       const response = await api.get<Specialty[]>('/specialties/')
       return response.data
-    },
-
-    getOne: async (id: number): Promise<Specialty> => {
-      const response = await api.get<Specialty>(`/specialties/${id}/`)
-      return response.data
-    },
-
-    create: async (data: { name: string; description?: string }): Promise<Specialty> => {
-      const response = await api.post<Specialty>('/specialties/create/', data)
-      return response.data
-    },
-
-    update: async (id: number, data: Partial<Specialty>): Promise<Specialty> => {
-      const response = await api.put<Specialty>(`/specialties/${id}/update/`, data)
-      return response.data
-    },
-
-    delete: async (id: number): Promise<void> => {
-      await api.delete(`/specialties/${id}/delete/`)
     }
   },
 
+  // ==================== NOTIFICATIONS ====================
+  notifications: {
+    getAll: async (): Promise<any[]> => {
+      const response = await api.get('/notifications/')
+      return response.data
+    },
+    
+    getUnreadCount: async (): Promise<{unread_count: number}> => {
+      const response = await api.get('/notifications/unread-count/')
+      return response.data
+    },
+    
+    markAsRead: async (id: number): Promise<void> => {
+      await api.post(`/notifications/${id}/read/`)
+    },
+    
+    markAllAsRead: async (): Promise<void> => {
+      await api.post('/notifications/mark-all-read/')
+    }
+  },
 
-  // ====================NOTIFICATIONS==================
-  // Add to your apiClient
-notifications: {
-  getAll: async (): Promise<any[]> => {
-    const response = await api.get('/notifications/')
-    return response.data
+  // ==================== ADMIN ====================
+  admin: {
+    // Practitioner applications
+    applications: {
+      getAll: async (status?: string): Promise<PractitionerApplication[]> => {
+        const query = status ? `?status=${status}` : ''
+        const response = await api.get<PractitionerApplication[]>(`/admin/applications/${query}`)
+        return response.data
+      },
+
+      getOne: async (id: number): Promise<PractitionerApplication> => {
+        const response = await api.get<PractitionerApplication>(`/admin/applications/${id}/`)
+        return response.data
+      },
+
+      approve: async (id: number): Promise<{ message: string }> => {
+        const response = await api.post(`/admin/applications/${id}/`, { action: 'approve' })
+        return response.data
+      },
+
+      reject: async (id: number, reason: string): Promise<{ message: string }> => {
+        const response = await api.post(`/admin/applications/${id}/`, { 
+          action: 'reject', 
+          reason 
+        })
+        return response.data
+      },
+
+      requestInfo: async (id: number, notes: string): Promise<{ message: string }> => {
+        const response = await api.post(`/admin/applications/${id}/`, { 
+          action: 'request_info', 
+          notes 
+        })
+        return response.data
+      }
+    },
+
+    // Practitioner management
+    practitioners: {
+      getPending: async (): Promise<Practitioner[]> => {
+        const response = await api.get<Practitioner[]>('/admin/practitioners/pending/')
+        return response.data
+      },
+
+      approve: async (id: number): Promise<{ message: string }> => {
+        const response = await api.patch(`/admin/practitioners/${id}/approve/`)
+        return response.data
+      }
+    }
   },
-  
-  getUnreadCount: async (): Promise<{unread_count: number}> => {
-    const response = await api.get('/notifications/unread-count/')
-    return response.data
-  },
-  
-  markAsRead: async (id: number): Promise<void> => {
-    await api.post(`/notifications/${id}/read/`)
-  },
-  
-  markAllAsRead: async (): Promise<void> => {
-    await api.post('/notifications/mark-all-read/')
-  }
-},
 
   // ==================== DASHBOARD ====================
   dashboard: {
-    getStats: async (): Promise<{
-      total_consultations: number
-      upcoming_consultations: number
-      total_practitioners: number
-      total_reviews: number
-      recent_activity: Consultation[]
-    }> => {
-      const response = await api.get('/dashboard/stats/')
+    getStats: async (): Promise<DashboardStats> => {
+      const response = await api.get<DashboardStats>('/consultations/metrics/')
       return response.data
     }
   }

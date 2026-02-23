@@ -116,15 +116,9 @@ export default function ProfileEditPage() {
         city: formData.city || undefined,
       }
 
-      if (profile?.id) {
-        // Update existing profile
-        await apiClient.profiles.update(profile.id, updateData as Partial<UserProfile>)
-        toast.success('Profile updated successfully!')
-      } else {
-        // Create new profile
-        await apiClient.profiles.create(updateData as Partial<UserProfile>)
-        toast.success('Profile created successfully!')
-      }
+      // Use the correct method name from your API client
+      await apiClient.profiles.updateMyProfile(updateData as Partial<UserProfile>)
+      toast.success('Profile updated successfully!')
       
       router.push('/client/dashboard/profile')
     } catch (error: any) {
@@ -150,9 +144,10 @@ export default function ProfileEditPage() {
 
     setSaving(true)
     try {
-      // You'll need to implement this endpoint in your API
-      // For now, just show success message
-      toast.success('Password changed successfully!')
+      // Show a message that this feature is coming soon
+      toast.success('Password change feature coming soon!')
+      
+      // Clear the form
       setPasswordData({
         current_password: '',
         new_password: '',
@@ -160,7 +155,7 @@ export default function ProfileEditPage() {
       })
     } catch (error: any) {
       console.error('Failed to change password:', error)
-      toast.error(error.response?.data?.message || 'Failed to change password')
+      toast.error('Failed to change password')
     } finally {
       setSaving(false)
     }
@@ -169,7 +164,7 @@ export default function ProfileEditPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
       </div>
     )
   }
@@ -211,7 +206,7 @@ export default function ProfileEditPage() {
                 {/* Avatar Upload */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
                   <div className="relative mx-auto sm:mx-0">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center overflow-hidden">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center overflow-hidden">
                       {avatarPreview ? (
                         <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                       ) : (
@@ -315,11 +310,15 @@ export default function ProfileEditPage() {
                     type="button" 
                     variant="outline" 
                     onClick={() => router.back()}
-                    className="w-full sm:w-auto"
+                    className="w-full sm:w-auto border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300"
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={saving} className="w-full sm:w-auto">
+                  <Button 
+                    type="submit" 
+                    disabled={saving} 
+                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
                     {saving ? 'Saving...' : 'Save Changes'}
                   </Button>
                 </div>
@@ -385,16 +384,26 @@ export default function ProfileEditPage() {
                   />
                 </div>
 
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    Password change feature coming soon. Please contact support for password changes.
+                  </p>
+                </div>
+
                 <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4">
                   <Button 
                     type="button" 
                     variant="outline" 
                     onClick={() => router.back()}
-                    className="w-full sm:w-auto"
+                    className="w-full sm:w-auto border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300"
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={saving} className="w-full sm:w-auto">
+                  <Button 
+                    type="submit" 
+                    disabled={saving} 
+                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
                     {saving ? 'Updating...' : 'Change Password'}
                   </Button>
                 </div>

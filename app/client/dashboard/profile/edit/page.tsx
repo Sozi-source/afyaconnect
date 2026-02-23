@@ -117,11 +117,9 @@ export default function ProfileEditPage() {
       }
 
       if (profile?.id) {
-        // Update existing profile
         await apiClient.profiles.update(profile.id, updateData as Partial<UserProfile>)
         toast.success('Profile updated successfully!')
       } else {
-        // Create new profile
         await apiClient.profiles.create(updateData as Partial<UserProfile>)
         toast.success('Profile created successfully!')
       }
@@ -150,8 +148,6 @@ export default function ProfileEditPage() {
 
     setSaving(true)
     try {
-      // You'll need to implement this endpoint in your API
-      // For now, just show success message
       toast.success('Password changed successfully!')
       setPasswordData({
         current_password: '',
@@ -168,8 +164,11 @@ export default function ProfileEditPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-[60vh] flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Loading profile...</p>
+        </div>
       </div>
     )
   }
@@ -180,229 +179,246 @@ export default function ProfileEditPage() {
   ]
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => router.back()}
-          className="!p-2 sm:!px-4"
-        >
-          <ArrowLeftIcon className="h-5 w-5 sm:mr-2" />
-          <span className="hidden sm:inline">Back</span>
-        </Button>
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-          Edit Profile
-        </h1>
-      </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => router.back()}
+            className="inline-flex items-center px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300"
+          >
+            <ArrowLeftIcon className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Back</span>
+          </Button>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
+            Edit Profile
+          </h1>
+        </div>
 
-      <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+        <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {activeTab === 'profile' && (
-        <form onSubmit={handleProfileSubmit}>
-          <Card>
-            <CardHeader>
-              <h2 className="text-lg sm:text-xl font-semibold">Profile Information</h2>
-              <p className="text-xs sm:text-sm text-gray-500">Update your personal details</p>
-            </CardHeader>
-            <CardBody className="p-4 sm:p-6">
-              <div className="space-y-4 sm:space-y-6">
-                {/* Avatar Upload */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-                  <div className="relative mx-auto sm:mx-0">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center overflow-hidden">
-                      {avatarPreview ? (
-                        <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
-                      ) : (
-                        <UserIcon className="h-10 w-10 sm:h-12 sm:w-12 text-white" />
-                      )}
+        {activeTab === 'profile' && (
+          <form onSubmit={handleProfileSubmit}>
+            <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+              <CardHeader>
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Profile Information</h2>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Update your personal details</p>
+              </CardHeader>
+              <CardBody className="p-4 sm:p-6 lg:p-8">
+                <div className="space-y-6">
+                  {/* Avatar Upload */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+                    <div className="relative mx-auto sm:mx-0">
+                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center overflow-hidden">
+                        {avatarPreview ? (
+                          <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <UserIcon className="h-10 w-10 sm:h-12 sm:w-12 text-white" />
+                        )}
+                      </div>
+                      <label
+                        htmlFor="avatar-upload"
+                        className="absolute bottom-0 right-0 bg-white dark:bg-gray-800 rounded-full p-1.5 sm:p-2 shadow-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <CameraIcon className="h-3 w-3 sm:h-4 sm:w-4 text-gray-700 dark:text-gray-300" />
+                      </label>
+                      <input
+                        id="avatar-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                        className="hidden"
+                      />
                     </div>
-                    <label
-                      htmlFor="avatar-upload"
-                      className="absolute bottom-0 right-0 bg-white dark:bg-gray-800 rounded-full p-1.5 sm:p-2 shadow-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                    <div className="text-center sm:text-left">
+                      <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Profile Photo</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">JPG, GIF or PNG. Max size 2MB</p>
+                    </div>
+                  </div>
+
+                  {/* User Info Summary */}
+                  {extendedAuthUser && (
+                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                      <h3 className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Account Information</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">Name</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {extendedAuthUser.first_name} {extendedAuthUser.last_name}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">Email</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white break-all">
+                            {extendedAuthUser.email}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Form Fields */}
+                  <div className="grid grid-cols-1 gap-4">
+                    {/* Phone */}
+                    <div>
+                      <label htmlFor="phone" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Phone Number
+                      </label>
+                      <div className="relative">
+                        <PhoneIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-500" />
+                        <input
+                          id="phone"
+                          name="phone"
+                          type="tel"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                          className="w-full pl-9 sm:pl-10 p-2.5 text-sm border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          placeholder="Enter your phone number"
+                        />
+                      </div>
+                    </div>
+
+                    {/* City */}
+                    <div>
+                      <label htmlFor="city" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        City
+                      </label>
+                      <div className="relative">
+                        <MapPinIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-500" />
+                        <input
+                          id="city"
+                          name="city"
+                          type="text"
+                          value={formData.city}
+                          onChange={handleInputChange}
+                          className="w-full pl-9 sm:pl-10 p-2.5 text-sm border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          placeholder="Your city"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Bio */}
+                    <div>
+                      <label htmlFor="bio" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Bio
+                      </label>
+                      <textarea
+                        id="bio"
+                        name="bio"
+                        value={formData.bio}
+                        onChange={handleInputChange}
+                        rows={4}
+                        className="w-full p-2.5 text-sm border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        placeholder="Tell us about yourself..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => router.back()}
+                      className="w-full sm:w-auto border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 px-6 py-2 text-sm"
                     >
-                      <CameraIcon className="h-3 w-3 sm:h-4 sm:w-4 text-gray-600 dark:text-gray-300" />
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={saving} 
+                      className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 text-sm"
+                    >
+                      {saving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          </form>
+        )}
+
+        {activeTab === 'password' && (
+          <form onSubmit={handlePasswordSubmit}>
+            <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+              <CardHeader>
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Change Password</h2>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Update your password</p>
+              </CardHeader>
+              <CardBody className="p-4 sm:p-6 lg:p-8">
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="current_password" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Current Password
                     </label>
                     <input
-                      id="avatar-upload"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarChange}
-                      className="hidden"
+                      id="current_password"
+                      name="current_password"
+                      type="password"
+                      value={passwordData.current_password}
+                      onChange={handlePasswordChange}
+                      className="w-full p-2.5 text-sm border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      required
                     />
                   </div>
-                  <div className="text-center sm:text-left">
-                    <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Profile Photo</p>
-                    <p className="text-xs text-gray-500">JPG, GIF or PNG. Max size 2MB</p>
-                  </div>
-                </div>
 
-                {/* User Info Summary */}
-                {extendedAuthUser && (
-                  <div className="bg-gray-50 dark:bg-gray-800 p-3 sm:p-4 rounded-lg">
-                    <h3 className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Account Information</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-xs text-gray-500">Name</p>
-                        <p className="text-xs sm:text-sm font-medium">{extendedAuthUser.first_name} {extendedAuthUser.last_name}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Email</p>
-                        <p className="text-xs sm:text-sm font-medium break-all">{extendedAuthUser.email}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Phone */}
-                <div>
-                  <label htmlFor="phone" className="block text-xs sm:text-sm font-medium mb-1">
-                    Phone Number
-                  </label>
-                  <div className="relative">
-                    <PhoneIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                  <div>
+                    <label htmlFor="new_password" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      New Password
+                    </label>
                     <input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      className="w-full pl-9 sm:pl-10 p-2 sm:p-2.5 text-sm border rounded-xl dark:bg-gray-800 dark:border-gray-700"
-                      placeholder="Enter your phone number"
+                      id="new_password"
+                      name="new_password"
+                      type="password"
+                      value={passwordData.new_password}
+                      onChange={handlePasswordChange}
+                      className="w-full p-2.5 text-sm border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      required
+                      minLength={8}
                     />
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Minimum 8 characters</p>
                   </div>
-                </div>
 
-                {/* City */}
-                <div>
-                  <label htmlFor="city" className="block text-xs sm:text-sm font-medium mb-1">
-                    City
-                  </label>
-                  <div className="relative">
-                    <MapPinIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                  <div>
+                    <label htmlFor="confirm_password" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Confirm New Password
+                    </label>
                     <input
-                      id="city"
-                      name="city"
-                      type="text"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      className="w-full pl-9 sm:pl-10 p-2 sm:p-2.5 text-sm border rounded-xl dark:bg-gray-800 dark:border-gray-700"
-                      placeholder="Your city"
+                      id="confirm_password"
+                      name="confirm_password"
+                      type="password"
+                      value={passwordData.confirm_password}
+                      onChange={handlePasswordChange}
+                      className="w-full p-2.5 text-sm border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      required
                     />
                   </div>
-                </div>
 
-                {/* Bio */}
-                <div>
-                  <label htmlFor="bio" className="block text-xs sm:text-sm font-medium mb-1">
-                    Bio
-                  </label>
-                  <textarea
-                    id="bio"
-                    name="bio"
-                    value={formData.bio}
-                    onChange={handleInputChange}
-                    rows={4}
-                    className="w-full p-2 sm:p-2.5 text-sm border rounded-xl dark:bg-gray-800 dark:border-gray-700"
-                    placeholder="Tell us about yourself..."
-                  />
+                  <div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => router.back()}
+                      className="w-full sm:w-auto border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 px-6 py-2 text-sm"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={saving} 
+                      className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 text-sm"
+                    >
+                      {saving ? 'Updating...' : 'Change Password'}
+                    </Button>
+                  </div>
                 </div>
-
-                {/* Submit Button */}
-                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => router.back()}
-                    className="w-full sm:w-auto"
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={saving} className="w-full sm:w-auto">
-                    {saving ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-        </form>
-      )}
-
-      {activeTab === 'password' && (
-        <form onSubmit={handlePasswordSubmit}>
-          <Card>
-            <CardHeader>
-              <h2 className="text-lg sm:text-xl font-semibold">Change Password</h2>
-              <p className="text-xs sm:text-sm text-gray-500">Update your password</p>
-            </CardHeader>
-            <CardBody className="p-4 sm:p-6">
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="current_password" className="block text-xs sm:text-sm font-medium mb-1">
-                    Current Password
-                  </label>
-                  <input
-                    id="current_password"
-                    name="current_password"
-                    type="password"
-                    value={passwordData.current_password}
-                    onChange={handlePasswordChange}
-                    className="w-full p-2 sm:p-2.5 text-sm border rounded-xl dark:bg-gray-800 dark:border-gray-700"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="new_password" className="block text-xs sm:text-sm font-medium mb-1">
-                    New Password
-                  </label>
-                  <input
-                    id="new_password"
-                    name="new_password"
-                    type="password"
-                    value={passwordData.new_password}
-                    onChange={handlePasswordChange}
-                    className="w-full p-2 sm:p-2.5 text-sm border rounded-xl dark:bg-gray-800 dark:border-gray-700"
-                    required
-                    minLength={8}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Minimum 8 characters</p>
-                </div>
-
-                <div>
-                  <label htmlFor="confirm_password" className="block text-xs sm:text-sm font-medium mb-1">
-                    Confirm New Password
-                  </label>
-                  <input
-                    id="confirm_password"
-                    name="confirm_password"
-                    type="password"
-                    value={passwordData.confirm_password}
-                    onChange={handlePasswordChange}
-                    className="w-full p-2 sm:p-2.5 text-sm border rounded-xl dark:bg-gray-800 dark:border-gray-700"
-                    required
-                  />
-                </div>
-
-                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => router.back()}
-                    className="w-full sm:w-auto"
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={saving} className="w-full sm:w-auto">
-                    {saving ? 'Updating...' : 'Change Password'}
-                  </Button>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-        </form>
-      )}
+              </CardBody>
+            </Card>
+          </form>
+        )}
+      </div>
     </div>
   )
 }

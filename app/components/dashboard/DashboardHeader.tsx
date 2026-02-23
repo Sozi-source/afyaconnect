@@ -17,7 +17,6 @@ import {
   UserCircleIcon,
   ArrowRightOnRectangleIcon,
   Cog6ToothIcon,
-  CheckCircleIcon
 } from '@heroicons/react/24/outline'
 import { apiClient } from '@/app/lib/api'
 
@@ -25,7 +24,6 @@ interface DashboardHeaderProps {
   onMenuClick: () => void
 }
 
-// Extended user type
 interface ExtendedUser {
   id: number
   email: string
@@ -84,7 +82,6 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
     return () => document.removeEventListener('click', handleClickOutside)
   }, [])
 
-  // Fetch notifications
   const fetchNotifications = async () => {
     try {
       const [notifs, countData] = await Promise.all([
@@ -100,7 +97,6 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
     }
   }
 
-  // Mark notification as read
   const markAsRead = async (id: number) => {
     try {
       await apiClient.notifications.markAsRead(id)
@@ -115,7 +111,6 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
     }
   }
 
-  // Mark all as read
   const markAllAsRead = async () => {
     try {
       await apiClient.notifications.markAllAsRead()
@@ -128,11 +123,8 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
     }
   }
 
-  // Fetch on mount and periodically
   useEffect(() => {
     fetchNotifications()
-    
-    // Poll every 30 seconds for new notifications
     const interval = setInterval(fetchNotifications, 30000)
     return () => clearInterval(interval)
   }, [])
@@ -178,7 +170,6 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
       markAsRead(notification.id)
     }
     
-    // Navigate based on notification type
     if (notification.data?.consultation_id) {
       const basePath = extendedUser?.role === 'practitioner' 
         ? '/practitioner/dashboard/consultations'
@@ -194,53 +185,52 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 lg:left-64 z-30 transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 lg:left-72 z-40 transition-all duration-300 ${
           isScrolled
             ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-lg'
             : 'bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800'
         }`}
       >
-        <div className="px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 lg:h-20">
             {/* Left Section */}
             <div className="flex items-center flex-1">
               <button
                 onClick={onMenuClick}
-                className="lg:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 mr-3"
+                className="lg:hidden p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 mr-3 transition-colors"
                 aria-label="Open menu"
               >
-                <Bars3Icon className="h-5 w-5" />
+                <Bars3Icon className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
               
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-900 dark:text-white truncate">
                 {getPageTitle()}
               </h1>
             </div>
 
             {/* Search Bar - Desktop */}
             <div className="hidden md:block flex-1 max-w-md mx-4">
-              <form onSubmit={handleSearch}>
-                <div className="relative">
-                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search practitioners..."
-                    className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
+              <form onSubmit={handleSearch} className="relative">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search practitioners..."
+                  className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                />
               </form>
             </div>
 
             {/* Right Section */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 sm:space-x-3">
               {/* Mobile Search Toggle */}
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="md:hidden p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                aria-label="Search"
               >
-                <MagnifyingGlassIcon className="h-5 w-5" />
+                <MagnifyingGlassIcon className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
 
               {/* Theme Toggle */}
@@ -250,9 +240,9 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                 aria-label="Toggle theme"
               >
                 {theme === 'dark' ? (
-                  <SunIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                  <SunIcon className="h-5 w-5 sm:h-6 sm:w-6 text-gray-700 dark:text-gray-300" />
                 ) : (
-                  <MoonIcon className="h-5 w-5 text-gray-600" />
+                  <MoonIcon className="h-5 w-5 sm:h-6 sm:w-6 text-gray-700" />
                 )}
               </button>
 
@@ -264,12 +254,12 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                     setIsNotificationsOpen(!isNotificationsOpen)
                     setIsProfileOpen(false)
                   }}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 relative"
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 relative transition-colors"
                   aria-label="Notifications"
                 >
-                  <BellIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                  <BellIcon className="h-5 w-5 sm:h-6 sm:w-6 text-gray-700 dark:text-gray-300" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white dark:ring-gray-900"></span>
+                    <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white dark:ring-gray-900"></span>
                   )}
                 </button>
 
@@ -279,14 +269,14 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                       initial={{ opacity: 0, y: -10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                      className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50"
+                      className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden z-50"
                     >
-                      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                      <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
                         <h3 className="font-semibold text-gray-900 dark:text-white">Notifications</h3>
                         {unreadCount > 0 && (
                           <button
                             onClick={markAllAsRead}
-                            className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                            className="text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-medium transition-colors"
                           >
                             Mark all as read
                           </button>
@@ -294,33 +284,35 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                       </div>
                       <div className="max-h-96 overflow-y-auto">
                         {loading ? (
-                          <div className="p-4 text-center text-gray-500">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600 mx-auto"></div>
+                          <div className="p-8 text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-3 border-emerald-200 border-t-emerald-600 mx-auto"></div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Loading...</p>
                           </div>
                         ) : notifications.length === 0 ? (
-                          <div className="p-4 text-center text-gray-500">
-                            No notifications
+                          <div className="p-8 text-center">
+                            <BellIcon className="h-12 w-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
+                            <p className="text-sm text-gray-600 dark:text-gray-400">No notifications</p>
                           </div>
                         ) : (
                           notifications.map((notification) => (
                             <div
                               key={notification.id}
                               onClick={() => handleNotificationClick(notification)}
-                              className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer border-b last:border-0 border-gray-100 dark:border-gray-700 transition ${
+                              className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer border-b last:border-0 border-gray-100 dark:border-gray-800 transition ${
                                 !notification.is_read ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : ''
                               }`}
                             >
                               <div className="flex items-start gap-3">
-                                <span className="text-lg">{getNotificationIcon(notification.notification_type)}</span>
-                                <div className="flex-1">
+                                <span className="text-xl">{getNotificationIcon(notification.notification_type)}</span>
+                                <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-gray-900 dark:text-white">
                                     {notification.title}
                                   </p>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
                                     {notification.message}
                                   </p>
                                   <div className="flex items-center justify-between mt-2">
-                                    <span className="text-xs text-gray-400">
+                                    <span className="text-xs text-gray-500 dark:text-gray-500">
                                       {notification.time_ago}
                                     </span>
                                     {!notification.is_read && (
@@ -346,22 +338,24 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                     setIsProfileOpen(!isProfileOpen)
                     setIsNotificationsOpen(false)
                   }}
-                  className="flex items-center space-x-2 p-1 pr-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="flex items-center space-x-2 p-1.5 pr-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   aria-label="Profile menu"
                 >
-                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center text-white font-medium text-sm">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center text-white font-medium text-sm sm:text-base shadow-md">
                     {extendedUser?.first_name?.[0] || extendedUser?.username?.[0]?.toUpperCase() || 'U'}
                   </div>
                   <div className="hidden lg:block text-left">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[120px]">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[150px]">
                       {displayName}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center">
                       {extendedUser?.role || 'client'}
-                      {extendedUser?.is_verified && ' ✓'}
+                      {extendedUser?.is_verified && (
+                        <span className="ml-1 text-emerald-600 dark:text-emerald-400">✓</span>
+                      )}
                     </p>
                   </div>
-                  <ChevronDownIcon className="h-4 w-4 text-gray-400 hidden lg:block" />
+                  <ChevronDownIcon className="h-4 w-4 text-gray-500 dark:text-gray-400 hidden lg:block" />
                 </button>
 
                 <AnimatePresence>
@@ -370,41 +364,41 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                       initial={{ opacity: 0, y: -10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                      className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50"
+                      className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden z-50"
                     >
-                      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">{displayName}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{displayName}</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 truncate mt-0.5">
                           {extendedUser?.email}
                         </p>
                       </div>
                       
                       <Link
                         href={`/${extendedUser?.role || 'client'}/dashboard/profile`}
-                        className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                         onClick={() => setIsProfileOpen(false)}
                       >
-                        <UserCircleIcon className="h-5 w-5" />
+                        <UserCircleIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                         <span>Your Profile</span>
                       </Link>
                       
                       <Link
                         href={`/${extendedUser?.role || 'client'}/dashboard/settings`}
-                        className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                         onClick={() => setIsProfileOpen(false)}
                       >
-                        <Cog6ToothIcon className="h-5 w-5" />
+                        <Cog6ToothIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                         <span>Settings</span>
                       </Link>
                       
-                      <hr className="border-gray-200 dark:border-gray-700" />
+                      <hr className="border-gray-200 dark:border-gray-800" />
                       
                       <button
                         onClick={() => {
                           logout()
                           setIsProfileOpen(false)
                         }}
-                        className="w-full flex items-center space-x-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        className="w-full flex items-center space-x-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                       >
                         <ArrowRightOnRectangleIcon className="h-5 w-5" />
                         <span>Logout</span>
@@ -427,35 +421,35 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsSearchOpen(false)}
-              className="fixed inset-0 bg-black/50 z-40 md:hidden"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden"
             />
             
             <motion.div
               initial={{ y: '-100%' }}
               animate={{ y: 0 }}
               exit={{ y: '-100%' }}
-              className="fixed top-0 left-0 right-0 bg-white dark:bg-gray-900 z-50 md:hidden p-4 shadow-lg"
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-0 left-0 right-0 bg-white dark:bg-gray-900 z-50 md:hidden shadow-xl"
             >
-              <div className="flex items-center space-x-3">
-                <form onSubmit={handleSearch} className="flex-1">
-                  <div className="relative">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search practitioners..."
-                      className="w-full pl-9 pr-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white"
-                      autoFocus
-                    />
-                  </div>
+              <div className="p-4">
+                <form onSubmit={handleSearch} className="relative">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500 dark:text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search practitioners..."
+                    className="w-full pl-10 pr-12 py-3 text-base border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsSearchOpen(false)}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <XMarkIcon className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                  </button>
                 </form>
-                <button
-                  onClick={() => setIsSearchOpen(false)}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                >
-                  <XMarkIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-                </button>
               </div>
             </motion.div>
           </>

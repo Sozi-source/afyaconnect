@@ -7,7 +7,7 @@ export interface User {
   username?: string
   is_staff?: boolean
   is_active?: boolean
-  role?: 'client' | 'practitioner'
+  role?: 'client' | 'practitioner' | 'admin'
   is_verified?: boolean
   profile?: UserProfile
 }
@@ -33,6 +33,15 @@ export interface AuthResponse {
   is_practitioner: boolean
   is_verified: boolean
   is_staff: boolean
+  user?: {
+    email: string
+    first_name: string
+    last_name: string
+    role: string
+    is_practitioner: boolean
+    is_verified: boolean
+    is_staff: boolean
+  }
 }
 
 export interface LoginCredentials {
@@ -51,6 +60,7 @@ export interface RegisterData {
   city?: string
   hourly_rate?: number
   years_of_experience?: number
+  currency?: string
 }
 
 // ==================== SPECIALTY TYPES ====================
@@ -77,8 +87,62 @@ export interface Practitioner {
   profile_complete: boolean
   specialties: Specialty[]
   availability_count?: number
+  application_status?: ApplicationStatus
+  total_reviews?: number
+  average_rating?: number
   created_at: string
   updated_at: string
+}
+
+// ==================== PRACTITIONER APPLICATION TYPES ====================
+export type ApplicationStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'info_needed'
+
+export interface PractitionerApplication {
+  id: number
+  user: number
+  user_email?: string
+  user_name?: string
+  full_name?: string
+  email?: string
+  professional_title: string
+  qualifications: string
+  experience_description: string
+  specialized_areas: string
+  id_document?: string
+  certification_documents?: string
+  profile_photo?: string
+  linkedin_url?: string
+  website_url?: string
+  status: ApplicationStatus
+  admin_notes?: string
+  rejection_reason?: string
+  submitted_at?: string
+  reviewed_at?: string
+  reviewed_by?: number
+  terms_accepted: boolean
+  data_consent_given: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface PractitionerApplicationData {
+  professional_title?: string
+  qualifications: string
+  experience_description: string
+  specialized_areas?: string
+  id_document?: File
+  certification_documents?: File
+  profile_photo?: File
+  linkedin_url?: string
+  website_url?: string
+  terms_accepted: boolean
+  data_consent_given: boolean
+}
+
+export interface ApplicationStatusResponse {
+  hasApplication: boolean
+  application: PractitionerApplication | null
+  can_edit?: boolean
 }
 
 // ==================== AVAILABILITY TYPES ====================
@@ -91,6 +155,7 @@ export interface Availability {
   practitioner_name?: string
   recurrence_type: RecurrenceType
   day_of_week: DayOfWeek | null
+  day_display?: string
   specific_date: string | null
   start_time: string
   end_time: string
@@ -145,6 +210,12 @@ export interface Review {
   consultation_time?: string
 }
 
+export interface CreateReviewData {
+  consultation: number
+  rating: number
+  comment?: string
+}
+
 // ==================== TIME SLOT TYPES ====================
 export interface TimeSlot {
   date: string
@@ -153,6 +224,7 @@ export interface TimeSlot {
   practitioner_id: number
   practitioner_name: string
   formatted_time?: string
+  is_available?: boolean
 }
 
 // ==================== FILTER TYPES ====================
@@ -195,33 +267,37 @@ export interface PaginatedResponse<T> {
 // ==================== METRICS TYPES ====================
 export interface ClientMetrics {
   total_consultations: number
-  completed: number
-  pending: number
-  cancelled: number
+  completed_consultations: number
+  upcoming_consultations: number
+  cancelled_consultations: number
   total_spent: number
-  upcoming?: number
-  pending_reviews?: number
+  pending_reviews: number
+  average_rating?: number
 }
 
 export interface PractitionerMetrics {
   total_consultations: number
   completed_consultations: number
-  cancelled_consultations: number
   upcoming_consultations: number
+  cancelled_consultations: number
   total_earnings: number
   average_rating: number
   total_reviews: number
   completion_rate: number
+  total_clients?: number
 }
 
 export interface MetricsResponse {
   as_client?: ClientMetrics
   as_practitioner?: PractitionerMetrics
-  totalEarnings?: number
-  completedCount?: number
-  upcomingCount?: number
-  averageRating?: number
-  totalReviews?: number
+  total_consultations?: number
+  completed_consultations?: number
+  upcoming_consultations?: number
+  cancelled_consultations?: number
+  total_earnings?: number
+  total_spent?: number
+  pending_reviews?: number
+  average_rating?: number
 }
 
 // ==================== CREATE/UPDATE TYPES ====================
@@ -240,7 +316,6 @@ export interface UpdateConsultationData {
 }
 
 export interface CreateAvailabilityData {
-  practitioner_id: number
   recurrence_type: RecurrenceType
   day_of_week?: DayOfWeek
   specific_date?: string
@@ -251,7 +326,6 @@ export interface CreateAvailabilityData {
 }
 
 export interface BulkAvailabilityData {
-  practitioner_id: number
   days: DayOfWeek[]
   start_time: string
   end_time: string
@@ -259,41 +333,19 @@ export interface BulkAvailabilityData {
   notes?: string
 }
 
-// ==================== APPLICATION TYPES ====================
-export type ApplicationStatus = 'pending' | 'approved' | 'rejected' | 'more_info'
-
-export interface PractitionerApplication {
-  id: number
-  user: number
-  user_email?: string
-  user_name?: string
-  bio: string
-  city: string
-  hourly_rate: string
-  years_of_experience: number
-  qualifications: string
-  license_number: string
-  specialties: Specialty[]
-  status: ApplicationStatus
-  admin_notes?: string
-  created_at: string
-  updated_at: string
-  reviewed_at?: string
-  reviewed_by?: number
-}
-
-export interface ApplicationStatusResponse {
-  hasApplication: boolean
-  application: PractitionerApplication | null
-}
-
 // ==================== DASHBOARD TYPES ====================
 export interface DashboardStats {
   total_consultations: number
   upcoming_consultations: number
-  total_practitioners: number
-  total_reviews: number
-  recent_activity: Consultation[]
+  completed_consultations: number
+  cancelled_consultations: number
+  total_earnings?: number
+  total_spent?: number
+  pending_reviews?: number
+  average_rating?: number
+  total_reviews?: number
+  total_clients?: number
+  recent_activity?: Consultation[]
 }
 
 // ==================== PRACTITIONER METRIC TYPES ====================
@@ -307,6 +359,8 @@ export interface PractitionerMetric {
   revenue: number
   average_rating: number
   hourly_rate?: number
+  city?: string
+  is_verified?: boolean
 }
 
 // ==================== SLOT CHECK TYPES ====================
@@ -321,4 +375,89 @@ export interface CheckSlotResponse {
   }
   practitioner_name?: string
   available_slots?: TimeSlot[]
+}
+
+// ==================== NOTIFICATION TYPES ====================
+export type NotificationType = 
+  | 'consultation_request'
+  | 'consultation_confirmed'
+  | 'consultation_cancelled'
+  | 'consultation_completed'
+  | 'review_received'
+  | 'payment_received'
+  | 'practitioner_verified'
+  | 'application_approved'
+  | 'application_rejected'
+  | 'info_requested'
+  | 'system'
+
+export interface Notification {
+  id: number
+  recipient: number
+  notification_type: NotificationType
+  title: string
+  message: string
+  data: Record<string, any>
+  is_read: boolean
+  created_at: string
+  read_at?: string
+  time_ago?: string
+}
+
+export interface UnreadCountResponse {
+  unread_count: number
+}
+
+// ==================== ADMIN TYPES ====================
+export interface AdminStats {
+  total_users: number
+  total_practitioners: number
+  total_clients: number
+  pending_applications: number
+  pending_verifications: number
+  total_consultations: number
+  total_revenue: number
+  recent_applications?: PractitionerApplication[]
+  recent_consultations?: Consultation[]
+}
+
+export interface AdminActionResponse {
+  message: string
+  status: string
+  id?: number
+}
+
+// ==================== FILE UPLOAD TYPES ====================
+export interface FileUploadResponse {
+  id: number
+  file: string
+  filename: string
+  uploaded_at: string
+}
+
+// ==================== PAYMENT TYPES (Future) ====================
+export interface Payment {
+  id: number
+  consultation: number
+  amount: number
+  currency: string
+  status: 'pending' | 'completed' | 'failed' | 'refunded'
+  payment_method: string
+  transaction_id?: string
+  created_at: string
+  completed_at?: string
+}
+
+// ==================== CHAT/MESSAGE TYPES (Future) ====================
+export interface Message {
+  id: number
+  sender: number
+  sender_name?: string
+  recipient: number
+  recipient_name?: string
+  consultation?: number
+  content: string
+  is_read: boolean
+  created_at: string
+  attachments?: FileUploadResponse[]
 }

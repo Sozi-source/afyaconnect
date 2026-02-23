@@ -40,24 +40,16 @@ export default function ClientConsultationsPage() {
       setLoading(true)
       setError(null)
       
-      // Build filters
-      const filters: any = {
-        client: user?.id
-      }
+      const filters: any = {}
+      
+      // Add status filter based on selected tab
       if (filter !== 'all') {
         filters.status = filter === 'upcoming' ? 'booked' : filter
       }
       
-      const data = await apiClient.consultations.getAll(filters)
-      
-      // Handle paginated response
-      if (data && typeof data === 'object' && 'results' in data) {
-        setConsultations(data.results)
-      } else if (Array.isArray(data)) {
-        setConsultations(data)
-      } else {
-        setConsultations([])
-      }
+      // Use the appropriate endpoint based on user role
+      const data = await apiClient.consultations.getMyClientConsultations(filters)
+      setConsultations(data)
     } catch (error: any) {
       console.error('Error fetching consultations:', error)
       setError(error.message || 'Failed to load consultations')
@@ -74,10 +66,14 @@ export default function ClientConsultationsPage() {
 
   const getStatusColor = (status: string) => {
     switch(status) {
-      case 'booked': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-      case 'completed': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-      case 'cancelled': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-      default: return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+      case 'booked': 
+        return 'bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-800'
+      case 'completed': 
+        return 'bg-green-50 text-green-800 border border-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-800'
+      case 'cancelled': 
+        return 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-800'
+      default: 
+        return 'bg-gray-50 text-gray-800 border border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700'
     }
   }
 
@@ -112,141 +108,190 @@ export default function ClientConsultationsPage() {
     return consultation.status === 'completed' && !consultation.has_review
   }
 
+  const handleJoinCall = (consultation: Consultation) => {
+    // Implement video/phone call logic here
+    console.log('Joining call for consultation:', consultation.id)
+  }
+
   if (loading && !refreshing) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Loading consultations...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">My Consultations</h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Track and manage your appointments
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </Button>
-          <Link href="/client/dashboard/practitioners">
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
-              Book New
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-        </div>
-      )}
-
-      {/* Filter Tabs */}
-      <div className="flex overflow-x-auto pb-2 gap-2">
-        {['upcoming', 'completed', 'cancelled', 'all'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setFilter(tab as any)}
-            className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition ${
-              filter === tab
-                ? 'bg-emerald-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400'
-            }`}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {/* Consultations List */}
-      <div className="space-y-3">
-        {consultations.length > 0 ? (
-          consultations.map((consultation, index) => (
-            <motion.div
-              key={consultation.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
+              My Consultations
+            </h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Track and manage your appointments
+            </p>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex flex-col xs:flex-row gap-2 w-full sm:w-auto">
+            <Button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              variant="outline"
+              className="w-full xs:w-auto inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
-              <Link href={`/client/dashboard/consultations/${consultation.id}`}>
-                <Card hoverable>
-                  <CardBody className="p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
-                          {consultation.practitioner_name?.[0] || 'P'}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold">
-                            Dr. {consultation.practitioner_name || 'Practitioner'}
-                          </h3>
-                          <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                            <span className="flex items-center">
-                              <CalendarIcon className="h-3 w-3 mr-1" />
-                              {formatDate(consultation.date)}
-                            </span>
-                            <span className="flex items-center">
-                              <ClockIcon className="h-3 w-3 mr-1" />
-                              {formatTime(consultation.time)}
-                            </span>
-                            <span className="text-xs text-gray-400">
-                              ({consultation.duration_minutes} min)
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+              <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <span className="sm:inline">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+            </Button>
+            <Link href="/client/dashboard/practitioners" className="w-full xs:w-auto">
+              <Button className="w-full xs:w-auto inline-flex items-center justify-center px-3 sm:px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors">
+                Book New
+              </Button>
+            </Link>
+          </div>
+        </div>
 
-                      <div className="flex items-center gap-3">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(consultation.status)}`}>
-                          {getStatusText(consultation.status)}
-                        </span>
-                        {canWriteReview(consultation) && (
-                          <span className="flex items-center text-xs text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-1 rounded-full">
-                            <StarIcon className="h-3 w-3 mr-1" />
-                            Review
-                          </span>
-                        )}
-                        {consultation.status === 'booked' && (
-                          <div className="flex gap-2">
-                            <button className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200">
-                              <VideoCameraIcon className="h-4 w-4 text-gray-600 dark:text-gray-300" />
-                            </button>
-                            <button className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200">
-                              <PhoneIcon className="h-4 w-4 text-gray-600 dark:text-gray-300" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {consultation.client_notes && (
-                      <p className="mt-3 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-2 rounded">
-                        📝 {consultation.client_notes}
-                      </p>
-                    )}
-                  </CardBody>
-                </Card>
-              </Link>
-            </motion.div>
-          ))
-        ) : (
-          <EmptyState filter={filter} />
+        {/* Error Alert */}
+        {error && (
+          <div className="mb-6 p-3 sm:p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-xs sm:text-sm text-red-700 dark:text-red-300">{error}</p>
+          </div>
         )}
+
+        {/* Filter Tabs */}
+        <div className="mb-6 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
+          <div className="flex sm:flex-wrap gap-2 min-w-max sm:min-w-0">
+            {['upcoming', 'completed', 'cancelled', 'all'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setFilter(tab as any)}
+                className={`
+                  px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap transition-all
+                  ${filter === tab
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  }
+                `}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Consultations Grid */}
+        <div className="space-y-3 sm:space-y-4">
+          {consultations.length > 0 ? (
+            consultations.map((consultation, index) => (
+              <motion.div
+                key={consultation.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <Link href={`/client/dashboard/consultations/${consultation.id}`}>
+                  <Card className="block bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:shadow-lg transition-all">
+                    <CardBody className="p-3 sm:p-4 lg:p-5">
+                      {/* Main Content */}
+                      <div className="flex flex-col gap-3">
+                        {/* Top Row: Practitioner Info + Status */}
+                        <div className="flex items-start justify-between gap-2">
+                          {/* Practitioner Info */}
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-base flex-shrink-0">
+                              {consultation.practitioner_name?.[0] || 'P'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
+                                Dr. {consultation.practitioner_name || 'Practitioner'}
+                              </h3>
+                              {/* Date/Time */}
+                              <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-0.5">
+                                <span className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                  <CalendarIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1" />
+                                  {formatDate(consultation.date)}
+                                </span>
+                                <span className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                  <ClockIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1" />
+                                  {formatTime(consultation.time)}
+                                </span>
+                                <span className="text-xs text-gray-500 dark:text-gray-500 whitespace-nowrap">
+                                  ({consultation.duration_minutes}m)
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Status Badge */}
+                          <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(consultation.status)}`}>
+                            {getStatusText(consultation.status)}
+                          </span>
+                        </div>
+
+                        {/* Bottom Row: Review + Actions */}
+                        <div className="flex items-center justify-between gap-2 pl-12 sm:pl-14">
+                          {/* Review Badge */}
+                          <div className="flex-1 min-w-0">
+                            {canWriteReview(consultation) && (
+                              <span className="inline-flex items-center text-xs text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-300 px-2 py-1 rounded-full">
+                                <StarIcon className="h-3 w-3 mr-1" />
+                                <span className="hidden xs:inline">Write a Review</span>
+                                <span className="xs:hidden">Review</span>
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Action Buttons */}
+                          {consultation.status === 'booked' && (
+                            <div className="flex gap-1 sm:gap-2">
+                              <button 
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  handleJoinCall(consultation)
+                                }}
+                                className="p-1.5 sm:p-2 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                title="Video Call"
+                              >
+                                <VideoCameraIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-700 dark:text-gray-300" />
+                              </button>
+                              <button 
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  handleJoinCall(consultation)
+                                }}
+                                className="p-1.5 sm:p-2 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                title="Phone Call"
+                              >
+                                <PhoneIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-700 dark:text-gray-300" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Client Notes */}
+                        {consultation.client_notes && (
+                          <div className="mt-2 p-2 sm:p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 break-words">
+                              <span className="font-medium">📝 Note:</span> {consultation.client_notes}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </CardBody>
+                  </Card>
+                </Link>
+              </motion.div>
+            ))
+          ) : (
+            <EmptyState filter={filter} />
+          )}
+        </div>
       </div>
     </div>
   )
@@ -254,17 +299,19 @@ export default function ClientConsultationsPage() {
 
 function EmptyState({ filter }: { filter: string }) {
   return (
-    <div className="text-center py-12">
-      <div className="text-5xl mb-4">📅</div>
-      <h3 className="text-lg font-semibold mb-2">No consultations found</h3>
-      <p className="text-sm text-gray-500">
+    <div className="text-center py-8 sm:py-12 lg:py-16 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+      <div className="text-4xl sm:text-5xl lg:text-6xl mb-3 sm:mb-4">📅</div>
+      <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-900 dark:text-white mb-2">
+        No consultations found
+      </h3>
+      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 max-w-md mx-auto px-4">
         {filter === 'upcoming' 
-          ? "You don't have any upcoming consultations"
+          ? "You don't have any upcoming consultations. Book your first consultation now!"
           : `No ${filter} consultations to display`}
       </p>
       {filter === 'upcoming' && (
-        <Link href="/client/dashboard/practitioners" className="inline-block mt-4">
-          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
+        <Link href="/client/dashboard/practitioners" className="inline-block mt-4 sm:mt-6">
+          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg">
             Find a Practitioner
           </Button>
         </Link>

@@ -13,12 +13,14 @@ import {
   StarIcon,
   CurrencyDollarIcon,
   ArrowLeftIcon,
+  CheckCircleIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline'
 import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import { apiClient } from '@/app/lib/api'
 import type { Consultation, ClientMetrics } from '@/app/types'
-import { TrendingDownIcon, TrendingUpIcon } from 'lucide-react'
+import { TrendingDownIcon, TrendingUpDown, TrendingUpIcon } from 'lucide-react'
 
 export default function ClientMetricsPage() {
   const { user, isAuthenticated, isLoading } = useAuth()
@@ -59,11 +61,10 @@ export default function ClientMetricsPage() {
 
       const clientMetrics: ClientMetrics = {
         total_consultations: consultations.length,
-        completed: completed.length,
-        pending: upcoming.length,
-        cancelled: cancelled.length,
+        completed_consultations: completed.length,
+        upcoming_consultations: upcoming.length,
+        cancelled_consultations: cancelled.length,
         total_spent: totalSpent,
-        upcoming: upcoming.length,
         pending_reviews: pendingReviews
       }
 
@@ -101,7 +102,7 @@ export default function ClientMetricsPage() {
   }
 
   const completionRate = metrics?.total_consultations 
-    ? ((metrics.completed / metrics.total_consultations) * 100).toFixed(1) 
+    ? ((metrics.completed_consultations / metrics.total_consultations) * 100).toFixed(1) 
     : '0'
 
   return (
@@ -129,13 +130,13 @@ export default function ClientMetricsPage() {
         />
         <MetricCard
           title="Completed"
-          value={metrics?.completed || 0}
+          value={metrics?.completed_consultations || 0}
           icon={CheckCircleIcon}
           color="green"
         />
         <MetricCard
           title="Upcoming"
-          value={metrics?.upcoming || 0}
+          value={metrics?.upcoming_consultations || 0}
           icon={ClockIcon}
           color="purple"
         />
@@ -168,7 +169,7 @@ export default function ClientMetricsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Cancelled</p>
-                <p className="text-2xl font-bold mt-1">{metrics?.cancelled || 0}</p>
+                <p className="text-2xl font-bold mt-1">{metrics?.cancelled_consultations || 0}</p>
               </div>
               <div className="p-3 bg-red-100 rounded-xl">
                 <TrendingDownIcon className="h-5 w-5 text-red-600" />
@@ -220,7 +221,7 @@ export default function ClientMetricsPage() {
                         Dr. {activity.practitioner_name || 'Unknown'}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {new Date(activity.date).toLocaleDateString()} at {activity.time}
+                        {new Date(activity.date).toLocaleDateString()} at {activity.time?.slice(0,5)}
                       </p>
                     </div>
                   </div>
@@ -268,7 +269,14 @@ export default function ClientMetricsPage() {
   )
 }
 
-function MetricCard({ title, value, icon: Icon, color }: any) {
+interface MetricCardProps {
+  title: string
+  value: string | number
+  icon: React.ElementType
+  color: 'blue' | 'green' | 'purple' | 'emerald' | 'red' | 'yellow'
+}
+
+function MetricCard({ title, value, icon: Icon, color }: MetricCardProps) {
   const colorClasses: Record<string, string> = {
     blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
     green: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
@@ -292,13 +300,5 @@ function MetricCard({ title, value, icon: Icon, color }: any) {
         </div>
       </CardBody>
     </Card>
-  )
-}
-
-function CheckCircleIcon(props: any) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
   )
 }

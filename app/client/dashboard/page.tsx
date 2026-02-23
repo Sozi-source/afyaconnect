@@ -1,69 +1,68 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { apiClient } from '@/app/lib/api'
-import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
-import { Button } from '@/app/components/ui/Buttons'
+import { useAuth } from '@/app/contexts/AuthContext'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { 
-  CalendarIcon, 
-  ClockIcon, 
-  UserGroupIcon,
-  ChevronRightIcon,
-  StarIcon
-} from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
-import { Consultation, Practitioner, PaginatedResponse } from '@/app/types'
+import { 
+  CalendarIcon,
+  ClockIcon,
+  UserGroupIcon,
+  StarIcon,
+  BriefcaseIcon,
+  CheckCircleIcon,
+  XCircleIcon
+} from '@heroicons/react/24/outline'
+import { Card, CardBody } from '@/app/components/ui/Card'
+import { Button } from '@/app/components/ui/Buttons'
+import { apiClient } from '@/app/lib/api'
+import type { Consultation } from '@/app/types'
 
 export default function ClientDashboardPage() {
-  const [upcomingConsultations, setUpcomingConsultations] = useState<Consultation[]>([])
-  const [recommendedPractitioners, setRecommendedPractitioners] = useState<Practitioner[]>([])
+  const { user, isAuthenticated } = useAuth()
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [showPractitionerInfo, setShowPractitionerInfo] = useState(false)
+  const [stats, setStats] = useState({
+    totalConsultations: 0,
+    upcoming: 0,
+    completed: 0,
+    cancelled: 0
+  })
+  const [recentConsultations, setRecentConsultations] = useState<Consultation[]>([])
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/login')
+      return
+    }
     fetchDashboardData()
-  }, [])
+  }, [isAuthenticated, router])
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
-      setError(null)
       
-      // Fetch upcoming consultations for current client
-      const consultationsResponse = await apiClient.consultations.getMyClientConsultations({
-        status: 'booked'
-      })
+      // This works with your current API
+      const consultations = await apiClient.consultations.getMyClientConsultations()
       
-      // Handle response
-      let consultations: Consultation[] = []
-      if (Array.isArray(consultationsResponse)) {
-        consultations = consultationsResponse
-      } else if (consultationsResponse && 'results' in consultationsResponse) {
-        consultations = (consultationsResponse as PaginatedResponse<Consultation>).results
-      }
-      
-      setUpcomingConsultations(consultations.slice(0, 3)) // Show only 3 most recent
+      // Calculate stats
+      const upcoming = consultations.filter(c => c.status === 'booked').length
+      const completed = consultations.filter(c => c.status === 'completed').length
+      const cancelled = consultations.filter(c => c.status === 'cancelled').length
 
-      // Fetch recommended practitioners (verified practitioners)
-      const practitionersResponse = await apiClient.practitioners.getAll({
-        verified: true,
-        limit: 4
+      setStats({
+        totalConsultations: consultations.length,
+        upcoming,
+        completed,
+        cancelled
       })
+
+      setRecentConsultations(consultations.slice(0, 5))
       
-      // Handle response
-      let practitioners: Practitioner[] = []
-      if (Array.isArray(practitionersResponse)) {
-        practitioners = practitionersResponse
-      } else if (practitionersResponse && 'results' in practitionersResponse) {
-        practitioners = (practitionersResponse as PaginatedResponse<Practitioner>).results
-      }
-      
-      setRecommendedPractitioners(practitioners.slice(0, 4))
-      
-    } catch (error: any) {
-      console.error('Failed to fetch dashboard data:', error)
-      setError(error.message || 'Failed to load dashboard data')
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
     } finally {
       setLoading(false)
     }
@@ -71,142 +70,157 @@ export default function ClientDashboardPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
-        <Button onClick={fetchDashboardData}>Try Again</Button>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* Welcome Header */}
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome back!</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">Here's what's happening with your health journey</p>
+        <h1 className="text-2xl font-bold">Client Dashboard</h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          Welcome back, {user?.first_name || 'User'}!
+        </p>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Link href="/client/dashboard/consultations/book">
-          <Card hoverable className="text-center p-4 cursor-pointer">
-            <CalendarIcon className="h-6 w-6 mx-auto mb-2 text-blue-500" />
-            <h3 className="text-sm font-medium dark:text-white">Book</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">New consultation</p>
-          </Card>
-        </Link>
-        <Link href="/client/dashboard/practitioners">
-          <Card hoverable className="text-center p-4 cursor-pointer">
-            <UserGroupIcon className="h-6 w-6 mx-auto mb-2 text-green-500" />
-            <h3 className="text-sm font-medium dark:text-white">Find</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Practitioners</p>
-          </Card>
-        </Link>
-        <Link href="/client/dashboard/consultations">
-          <Card hoverable className="text-center p-4 cursor-pointer">
-            <ClockIcon className="h-6 w-6 mx-auto mb-2 text-purple-500" />
-            <h3 className="text-sm font-medium dark:text-white">View</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">History</p>
-          </Card>
-        </Link>
-        <Link href="/client/dashboard/favourites">
-          <Card hoverable className="text-center p-4 cursor-pointer">
-            <StarIcon className="h-6 w-6 mx-auto mb-2 text-yellow-500" />
-            <h3 className="text-sm font-medium dark:text-white">Favourites</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Saved practitioners</p>
-          </Card>
-        </Link>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        <Card>
+          <CardBody className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-gray-500">Total Consultations</p>
+              <CalendarIcon className="h-4 w-4 text-emerald-500" />
+            </div>
+            <p className="text-xl font-bold">{stats.totalConsultations}</p>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-gray-500">Upcoming</p>
+              <ClockIcon className="h-4 w-4 text-blue-500" />
+            </div>
+            <p className="text-xl font-bold">{stats.upcoming}</p>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-gray-500">Completed</p>
+              <CheckCircleIcon className="h-4 w-4 text-green-500" />
+            </div>
+            <p className="text-xl font-bold">{stats.completed}</p>
+          </CardBody>
+        </Card>
       </div>
 
-      {/* Upcoming Consultations */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold dark:text-white">Upcoming Consultations</h2>
-            <Link href="/client/dashboard/consultations" className="text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400">
-              View all
-            </Link>
-          </div>
-        </CardHeader>
-        <CardBody className="p-4">
-          {upcomingConsultations.length > 0 ? (
-            <div className="space-y-3">
-              {upcomingConsultations.map((consultation) => (
-                <Link
-                  key={consultation.id}
-                  href={`/client/dashboard/consultations/${consultation.id}`}
-                  className="block p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        Dr. {consultation.practitioner_name || 'Unknown'}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(consultation.date).toLocaleDateString()} at {consultation.time}
-                      </p>
-                    </div>
-                    <ChevronRightIcon className="h-5 w-5 text-gray-400" />
-                  </div>
+      {/* Two Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent Consultations */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardBody className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold">Recent Consultations</h2>
+                <Link href="/client/dashboard/consultations" className="text-sm text-emerald-600 hover:underline">
+                  View all
                 </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-gray-500 dark:text-gray-400 mb-3">No upcoming consultations</p>
-              <Link href="/client/dashboard/consultations/book">
-                <Button size="sm">Book a consultation</Button>
-              </Link>
-            </div>
-          )}
-        </CardBody>
-      </Card>
+              </div>
+              {recentConsultations.length > 0 ? (
+                <div className="space-y-3">
+                  {recentConsultations.map((consultation) => (
+                    <Link 
+                      key={consultation.id} 
+                      href={`/client/dashboard/consultations/${consultation.id}`}
+                      className="block p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">Dr. {consultation.practitioner_name}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(consultation.date).toLocaleDateString()} at {consultation.time.slice(0,5)}
+                          </p>
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          consultation.status === 'completed' 
+                            ? 'bg-green-100 text-green-800'
+                            : consultation.status === 'cancelled'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {consultation.status}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-sm text-gray-500">No consultations yet</p>
+                  <Link href="/client/dashboard/practitioners">
+                    <Button size="sm" className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white">
+                      Book Your First Consultation
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        </div>
 
-      {/* Recommended Practitioners */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold dark:text-white">Recommended Practitioners</h2>
-            <Link href="/client/dashboard/practitioners" className="text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400">
-              View all
-            </Link>
-          </div>
-        </CardHeader>
-        <CardBody className="p-4">
-          {recommendedPractitioners.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {recommendedPractitioners.map((practitioner) => (
-                <Link
-                  key={practitioner.id}
-                  href={`/client/dashboard/practitioners/${practitioner.id}`}
-                  className="block p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm transition"
-                >
-                  <h3 className="font-medium text-gray-900 dark:text-white">{practitioner.full_name}</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{practitioner.city}</p>
-                  <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-1">
-                    KES {practitioner.hourly_rate}/hr
+        {/* Right Sidebar */}
+        <div className="space-y-4">
+          {/* Quick Actions */}
+          <Card>
+            <CardBody className="p-4">
+              <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
+              <div className="space-y-2">
+                <Link href="/client/dashboard/practitioners">
+                  <Button variant="outline" fullWidth className="justify-start">
+                    <UserGroupIcon className="h-4 w-4 mr-2" />
+                    Find Practitioners
+                  </Button>
+                </Link>
+                <Link href="/client/dashboard/consultations">
+                  <Button variant="outline" fullWidth className="justify-start">
+                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    View Consultations
+                  </Button>
+                </Link>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Practitioner Info Card - Just Informational */}
+          <Card>
+            <CardBody className="p-4 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white">
+                  <BriefcaseIcon className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Become a Practitioner</h3>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    Interested in becoming a practitioner? Contact our support team to learn more.
                   </p>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-gray-500 dark:text-gray-400 py-4">No practitioners found</p>
-          )}
-        </CardBody>
-      </Card>
+                  <a
+                    href="mailto:support@nutriconnect.com?subject=Practitioner%20Application"
+                    className="inline-block mt-3 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+                  >
+                    Contact Support →
+                  </a>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }

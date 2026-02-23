@@ -1,49 +1,54 @@
+// app/client/dashboard/layout.tsx
+
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useAuth } from '@/app/contexts/AuthContext'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { ClientSidebar } from '@/app/components/dashboard/ClientSidebar'
 import { DashboardHeader } from '@/app/components/dashboard/DashboardHeader'
 import { DashboardMobileNav } from '@/app/components/dashboard/DashboardMobileNav'
+import ProtectedRoute from '@/app/components/ProtectedRoute'
+import { useAuth } from '@/app/contexts/AuthContext'
 
-export default function ClientLayout({
+export default function ClientDashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { user, isAuthenticated, isLoading } = useAuth()
-  const router = useRouter()
+  const { isLoading, isAuthenticated } = useAuth()
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login')
-    }
-    // Redirect if not client
-    if (!isLoading && user && user.role !== 'client') {
-      router.push(`/${user.role}/dashboard`)
-    }
-  }, [isLoading, isAuthenticated, user, router])
-
+  // Show loading spinner while checking auth
   if (isLoading) {
-    return <div>Loading...</div>
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Loading dashboard...</p>
+        </div>
+      </div>
+    )
   }
 
-  if (!isAuthenticated || user?.role !== 'client') {
+  // Don't render anything if not authenticated (ProtectedRoute will handle redirect)
+  if (!isAuthenticated) {
     return null
   }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <ClientSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="lg:pl-64">
+      
+      <div className="lg:pl-64 flex flex-col min-h-screen">
         <DashboardHeader onMenuClick={() => setSidebarOpen(true)} />
-        <main className="min-h-screen pt-16">
+        
+        <main className="flex-1 pt-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-            {children}
+            <ProtectedRoute allowedRoles={['client']}>
+              {children}
+            </ProtectedRoute>
           </div>
         </main>
+        
         <DashboardMobileNav />
       </div>
     </div>

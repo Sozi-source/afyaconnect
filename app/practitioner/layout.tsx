@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { PractitionerSidebar } from '@/app/components/dashboard/PractitionerSidebar'
 import { DashboardHeader } from '@/app/components/dashboard/DashboardHeader'
 import { DashboardMobileNav } from '@/app/components/dashboard/DashboardMobileNav'
+import ProtectedRoute from '../components/ProtectedRoute'
 
 export default function PractitionerLayout({
   children,
@@ -41,7 +42,9 @@ export default function PractitionerLayout({
         <DashboardHeader onMenuClick={() => setSidebarOpen(true)} />
         <main className="min-h-screen pt-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-            {children}
+            <ProtectedRoute allowedRoles={['practitioner']}>
+              {children}
+            </ProtectedRoute>
           </div>
         </main>
         <DashboardMobileNav />

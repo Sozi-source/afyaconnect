@@ -11,7 +11,8 @@ import {
   EyeIcon, 
   EyeSlashIcon,
   ArrowRightIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 
 export default function LoginPage() {
@@ -21,15 +22,35 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<{email?: string; password?: string}>({})
+  const [rememberMe, setRememberMe] = useState(false)
   
   const router = useRouter()
-  const { login, isAuthenticated } = useAuth()
+  const { login, isAuthenticated, user } = useAuth()
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      console.log('🔍 User already authenticated:', user)
+      if (user.is_staff) {
+        console.log('👑 Redirecting to admin dashboard')
+        router.push('/admin')
+      } else if (user.role === 'practitioner') {
+        console.log('👨‍⚕️ Redirecting to practitioner dashboard')
+        router.push('/practitioner/dashboard')
+      } else {
+        console.log('👤 Redirecting to client dashboard')
+        router.push('/client/dashboard')
+      }
+    }
+  }, [isAuthenticated, user, router])
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/client/dashboard')
+    const savedEmail = localStorage.getItem('rememberedEmail')
+    if (savedEmail) {
+      setEmail(savedEmail)
+      setRememberMe(true)
     }
-  }, [isAuthenticated, router])
+  }, [])
 
   const validateForm = () => {
     const errors: {email?: string; password?: string} = {}
@@ -58,14 +79,25 @@ export default function LoginPage() {
     setError('')
     setFieldErrors({})
 
+    if (rememberMe) {
+      localStorage.setItem('rememberedEmail', email)
+    } else {
+      localStorage.removeItem('rememberedEmail')
+    }
+
     try {
-      // Call login with username (email) and password
-      await login({ username: email, password })
-      // Redirect happens in AuthContext based on role
-    } catch (err: any) {
-      console.error('Login error:', err)
+      // Login with credentials object (username = email)
+      await login({ 
+        username: email, 
+        password 
+      })
       
-      // Handle specific error messages
+      // No need to redirect here - the useEffect will handle it
+      console.log('✅ Login successful, waiting for auth state update...')
+      
+    } catch (err: any) {
+      console.error('❌ Login error:', err)
+      
       if (err.message?.includes('Invalid') || err.message?.includes('credentials')) {
         setError('Invalid email or password')
       } else if (err.message?.includes('active')) {
@@ -80,35 +112,57 @@ export default function LoginPage() {
     }
   }
 
+  const fillTestCredentials = (type: 'client' | 'practitioner') => {
+    if (type === 'client') {
+      setEmail('client@example.com')
+      setPassword('Client123')
+    } else {
+      setEmail('practitioner@example.com')
+      setPassword('practitioner123')
+    }
+    setFieldErrors({})
+    setError('')
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 py-6 px-4 sm:px-6">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-6 px-4 sm:px-6">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-200 dark:bg-emerald-900/20 rounded-full blur-3xl opacity-30"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-teal-200 dark:bg-teal-900/20 rounded-full blur-3xl opacity-30"></div>
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="w-full max-w-[400px]"
+        className="w-full max-w-[400px] relative z-10"
       >
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
+        <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl shadow-2xl shadow-emerald-500/10 overflow-hidden border border-emerald-100/20 dark:border-gray-700/50">
           {/* Header */}
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-8 sm:px-8 sm:py-10">
+          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-8 sm:px-8 sm:py-10 relative overflow-hidden">
+            <div className="absolute inset-0 bg-white/10 skew-y-12 transform translate-y-full"></div>
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.1 }}
-              className="w-16 h-16 sm:w-20 sm:h-20 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center mx-auto mb-4"
+              className="relative"
             >
-              <ShieldCheckIcon className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center mx-auto mb-4 ring-4 ring-white/30">
+                <ShieldCheckIcon className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white text-center drop-shadow-md">
+                Welcome Back
+              </h1>
+              <p className="text-emerald-100 text-center text-sm sm:text-base mt-2">
+                Sign in to continue to NutriConnect
+              </p>
             </motion.div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white text-center">
-              Welcome Back
-            </h1>
-            <p className="text-emerald-100 text-center text-sm sm:text-base mt-2">
-              Sign in to continue to NutriConnect
-            </p>
           </div>
 
           {/* Form Container */}
           <div className="p-6 sm:p-8">
+            {/* Error Alert */}
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -5 }}
@@ -120,12 +174,13 @@ export default function LoginPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Email Field */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Email Address
                 </label>
-                <div className="relative">
-                  <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <div className="relative group">
+                  <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
                   <input
                     id="email"
                     type="email"
@@ -134,27 +189,34 @@ export default function LoginPage() {
                       setEmail(e.target.value)
                       if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }))
                     }}
-                    className={`w-full pl-10 pr-4 py-3.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 dark:bg-gray-700 dark:text-white transition-colors ${
+                    className={`w-full pl-10 pr-4 py-3.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all ${
                       fieldErrors.email 
                         ? 'border-red-300 focus:ring-red-500 dark:border-red-600' 
                         : 'border-gray-300 focus:ring-emerald-500 dark:border-gray-600'
-                    }`}
+                    } bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500`}
                     placeholder="you@example.com"
                     disabled={isLoading}
                     autoComplete="email"
                   />
                 </div>
                 {fieldErrors.email && (
-                  <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{fieldErrors.email}</p>
+                  <motion.p 
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-1.5 text-xs text-red-600 dark:text-red-400"
+                  >
+                    {fieldErrors.email}
+                  </motion.p>
                 )}
               </div>
 
+              {/* Password Field */}
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Password
                 </label>
-                <div className="relative">
-                  <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <div className="relative group">
+                  <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
                   <input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
@@ -163,11 +225,11 @@ export default function LoginPage() {
                       setPassword(e.target.value)
                       if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }))
                     }}
-                    className={`w-full pl-10 pr-12 py-3.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 dark:bg-gray-700 dark:text-white transition-colors ${
+                    className={`w-full pl-10 pr-12 py-3.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all ${
                       fieldErrors.password 
                         ? 'border-red-300 focus:ring-red-500 dark:border-red-600' 
                         : 'border-gray-300 focus:ring-emerald-500 dark:border-gray-600'
-                    }`}
+                    } bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500`}
                     placeholder="••••••••"
                     disabled={isLoading}
                     autoComplete="current-password"
@@ -179,30 +241,50 @@ export default function LoginPage() {
                     disabled={isLoading}
                   >
                     {showPassword ? (
-                      <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                      <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
                     ) : (
-                      <EyeIcon className="h-5 w-5 text-gray-400" />
+                      <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
                     )}
                   </button>
                 </div>
                 {fieldErrors.password && (
-                  <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{fieldErrors.password}</p>
+                  <motion.p 
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-1.5 text-xs text-red-600 dark:text-red-400"
+                  >
+                    {fieldErrors.password}
+                  </motion.p>
                 )}
               </div>
 
-              <div className="text-right">
+              {/* Remember Me & Forgot Password */}
+              <div className="flex items-center justify-between">
+                <label className="flex items-center space-x-2 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 dark:border-gray-600 dark:bg-gray-700"
+                  />
+                  <span className="text-sm text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-300 transition">
+                    Remember me
+                  </span>
+                </label>
+                
                 <Link 
                   href="/forgot-password" 
-                  className="text-sm text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 font-medium"
+                  className="text-sm text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 font-medium transition-colors"
                 >
                   Forgot password?
                 </Link>
               </div>
 
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-3.5 px-4 rounded-xl transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-3.5 px-4 rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-emerald-500/20"
               >
                 {isLoading ? (
                   <span className="flex items-center justify-center">
@@ -213,10 +295,14 @@ export default function LoginPage() {
                     Signing in...
                   </span>
                 ) : (
-                  'Sign In'
+                  <span className="flex items-center justify-center">
+                    Sign In
+                    <ArrowRightIcon className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </span>
                 )}
               </button>
 
+              {/* Sign Up Link */}
               <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
                 Don't have an account?{' '}
                 <Link 
@@ -224,38 +310,61 @@ export default function LoginPage() {
                   className="text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 font-semibold inline-flex items-center gap-1 group"
                 >
                   Sign up
-                  <ArrowRightIcon className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                  <SparklesIcon className="h-3 w-3 group-hover:rotate-12 transition-transform" />
                 </Link>
               </p>
             </form>
 
-            {/* Optional test accounts */}
-            <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-xs text-center text-gray-500 dark:text-gray-400 mb-3">
-                Quick test accounts
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => {
-                    setEmail('client@example.com')
-                    setPassword('client123')
-                  }}
-                  className="text-xs bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg p-2 transition-colors"
-                >
-                  <span className="font-medium text-gray-700 dark:text-gray-300">Client</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setEmail('practitioner@example.com')
-                    setPassword('practitioner123')
-                  }}
-                  className="text-xs bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg p-2 transition-colors"
-                >
-                  <span className="font-medium text-gray-700 dark:text-gray-300">Practitioner</span>
-                </button>
+            {/* Test Accounts Divider */}
+            <div className="relative mt-8">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                  Quick test accounts
+                </span>
               </div>
             </div>
+
+            {/* Test Account Buttons */}
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                onClick={() => fillTestCredentials('client')}
+                className="group relative overflow-hidden text-xs bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-700 dark:to-gray-600 hover:from-emerald-100 hover:to-teal-100 dark:hover:from-gray-600 dark:hover:to-gray-500 rounded-xl p-3 transition-all border border-emerald-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-medium"
+              >
+                <span className="relative z-10">Client</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+              </button>
+              <button
+                onClick={() => fillTestCredentials('practitioner')}
+                className="group relative overflow-hidden text-xs bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-700 dark:to-gray-600 hover:from-emerald-100 hover:to-teal-100 dark:hover:from-gray-600 dark:hover:to-gray-500 rounded-xl p-3 transition-all border border-emerald-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-medium"
+              >
+                <span className="relative z-10">Practitioner</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+              </button>
+            </div>
+
+            {/* Security Note */}
+            <p className="mt-6 text-center text-xs text-gray-500 dark:text-gray-400">
+              🔒 Secured with industry-standard encryption
+            </p>
           </div>
+        </div>
+
+        {/* Footer Links */}
+        <div className="mt-6 text-center space-x-4">
+          <Link href="/terms" className="text-xs text-gray-500 hover:text-emerald-600 dark:text-gray-400 dark:hover:text-emerald-400 transition">
+            Terms
+          </Link>
+          <span className="text-xs text-gray-300 dark:text-gray-600">•</span>
+          <Link href="/privacy" className="text-xs text-gray-500 hover:text-emerald-600 dark:text-gray-400 dark:hover:text-emerald-400 transition">
+            Privacy
+          </Link>
+          <span className="text-xs text-gray-300 dark:text-gray-600">•</span>
+          <Link href="/help" className="text-xs text-gray-500 hover:text-emerald-600 dark:text-gray-400 dark:hover:text-emerald-400 transition">
+            Help
+          </Link>
         </div>
       </motion.div>
     </div>
