@@ -17,8 +17,8 @@ import {
 import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import { apiClient } from '@/app/lib/api'
-import type { Consultation, PractitionerMetrics, ClientMetrics } from '@/app/types'
-import { TrendingDownIcon, TrendingUp, TrendingUpIcon } from 'lucide-react'
+import type { Consultation, ClientMetrics } from '@/app/types'
+import { TrendingDownIcon, TrendingUpIcon } from 'lucide-react'
 
 export default function ClientMetricsPage() {
   const { user, isAuthenticated, isLoading } = useAuth()
@@ -269,7 +269,7 @@ export default function ClientMetricsPage() {
 }
 
 function MetricCard({ title, value, icon: Icon, color }: any) {
-  const colorClasses = {
+  const colorClasses: Record<string, string> = {
     blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
     green: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
     purple: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
@@ -286,7 +286,7 @@ function MetricCard({ title, value, icon: Icon, color }: any) {
             <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
           </div>
-          <div className={`p-3 rounded-xl`}>
+          <div className={`p-3 rounded-xl ${colorClasses[color] || colorClasses.blue}`}>
             <Icon className="h-5 w-5" />
           </div>
         </div>
@@ -295,7 +295,6 @@ function MetricCard({ title, value, icon: Icon, color }: any) {
   )
 }
 
-// Missing CheckCircleIcon import - add this
 function CheckCircleIcon(props: any) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>

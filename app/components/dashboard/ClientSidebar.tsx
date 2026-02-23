@@ -37,7 +37,7 @@ export function ClientSidebar({ isOpen, onClose }: ClientSidebarProps) {
     { name: 'Dashboard', href: '/client/dashboard', icon: HomeIcon, isReady: true },
     { name: 'Find Experts', href: '/client/dashboard/practitioners', icon: UserGroupIcon, isReady: true },
     { name: 'My Consultations', href: '/client/dashboard/consultations', icon: CalendarIcon, isReady: true },
-    { name: 'Favorites', href: '/client/dashboard/favorites', icon: HeartIcon, isReady: false },
+    { name: 'Favorites', href: '/client/dashboard/favorites', icon: HeartIcon, isReady: true },
     { name: 'My Reviews', href: '/client/dashboard/reviews', icon: StarIcon, isReady: true },
     { name: 'Profile', href: '/client/dashboard/profile', icon: UserIcon, isReady: true },
   ]

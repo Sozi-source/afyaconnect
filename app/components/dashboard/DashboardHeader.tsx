@@ -16,8 +16,10 @@ import {
   MoonIcon,
   UserCircleIcon,
   ArrowRightOnRectangleIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline'
+import { apiClient } from '@/app/lib/api'
 
 interface DashboardHeaderProps {
   onMenuClick: () => void
@@ -34,6 +36,17 @@ interface ExtendedUser {
   is_verified?: boolean
 }
 
+interface Notification {
+  id: number
+  notification_type: string
+  title: string
+  message: string
+  data: any
+  is_read: boolean
+  created_at: string
+  time_ago: string
+}
+
 export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
@@ -41,6 +54,9 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [mounted, setMounted] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [loading, setLoading] = useState(true)
   
   const pathname = usePathname()
   const { user, logout } = useAuth()
@@ -68,6 +84,59 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
     return () => document.removeEventListener('click', handleClickOutside)
   }, [])
 
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    try {
+      const [notifs, countData] = await Promise.all([
+        apiClient.notifications.getAll(),
+        apiClient.notifications.getUnreadCount()
+      ])
+      setNotifications(notifs)
+      setUnreadCount(countData.unread_count)
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Mark notification as read
+  const markAsRead = async (id: number) => {
+    try {
+      await apiClient.notifications.markAsRead(id)
+      setNotifications(prev =>
+        prev.map(n =>
+          n.id === id ? { ...n, is_read: true } : n
+        )
+      )
+      setUnreadCount(prev => Math.max(0, prev - 1))
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error)
+    }
+  }
+
+  // Mark all as read
+  const markAllAsRead = async () => {
+    try {
+      await apiClient.notifications.markAllAsRead()
+      setNotifications(prev =>
+        prev.map(n => ({ ...n, is_read: true }))
+      )
+      setUnreadCount(0)
+    } catch (error) {
+      console.error('Failed to mark all as read:', error)
+    }
+  }
+
+  // Fetch on mount and periodically
+  useEffect(() => {
+    fetchNotifications()
+    
+    // Poll every 30 seconds for new notifications
+    const interval = setInterval(fetchNotifications, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
   if (!mounted) return null
 
   const getPageTitle = () => {
@@ -84,17 +153,43 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
     }
   }
 
-  const notifications = [
-    { id: 1, title: 'New consultation request', time: '5 min ago', read: false, type: 'request' },
-    { id: 2, title: 'Review received', time: '1 hour ago', read: false, type: 'review' },
-    { id: 3, title: 'Payment confirmed', time: '3 hours ago', read: true, type: 'payment' },
-  ]
-
-  const unreadCount = notifications.filter(n => !n.read).length
-
   const displayName = extendedUser?.first_name 
     ? `${extendedUser.first_name} ${extendedUser.last_name || ''}`.trim()
     : extendedUser?.username || 'User'
+
+  const getNotificationIcon = (type: string) => {
+    switch(type) {
+      case 'consultation_request':
+      case 'consultation_confirmed':
+        return '📅'
+      case 'review_received':
+        return '⭐'
+      case 'payment_received':
+        return '💰'
+      case 'practitioner_verified':
+        return '✅'
+      default:
+        return '🔔'
+    }
+  }
+
+  const handleNotificationClick = (notification: Notification) => {
+    if (!notification.is_read) {
+      markAsRead(notification.id)
+    }
+    
+    // Navigate based on notification type
+    if (notification.data?.consultation_id) {
+      const basePath = extendedUser?.role === 'practitioner' 
+        ? '/practitioner/dashboard/consultations'
+        : '/client/dashboard/consultations'
+      window.location.href = `${basePath}/${notification.data.consultation_id}`
+    } else if (notification.data?.review_id) {
+      window.location.href = `/client/dashboard/reviews/${notification.data.review_id}`
+    }
+    
+    setIsNotificationsOpen(false)
+  }
 
   return (
     <>
@@ -186,11 +281,23 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                       exit={{ opacity: 0, y: -10, scale: 0.95 }}
                       className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50"
                     >
-                      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                         <h3 className="font-semibold text-gray-900 dark:text-white">Notifications</h3>
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={markAllAsRead}
+                            className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                          >
+                            Mark all as read
+                          </button>
+                        )}
                       </div>
                       <div className="max-h-96 overflow-y-auto">
-                        {notifications.length === 0 ? (
+                        {loading ? (
+                          <div className="p-4 text-center text-gray-500">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600 mx-auto"></div>
+                          </div>
+                        ) : notifications.length === 0 ? (
                           <div className="p-4 text-center text-gray-500">
                             No notifications
                           </div>
@@ -198,16 +305,30 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                           notifications.map((notification) => (
                             <div
                               key={notification.id}
-                              className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer border-b last:border-0 border-gray-100 dark:border-gray-700 ${
-                                !notification.read ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : ''
+                              onClick={() => handleNotificationClick(notification)}
+                              className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer border-b last:border-0 border-gray-100 dark:border-gray-700 transition ${
+                                !notification.is_read ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : ''
                               }`}
                             >
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                {notification.title}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {notification.time}
-                              </p>
+                              <div className="flex items-start gap-3">
+                                <span className="text-lg">{getNotificationIcon(notification.notification_type)}</span>
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {notification.title}
+                                  </p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                                    {notification.message}
+                                  </p>
+                                  <div className="flex items-center justify-between mt-2">
+                                    <span className="text-xs text-gray-400">
+                                      {notification.time_ago}
+                                    </span>
+                                    {!notification.is_read && (
+                                      <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           ))
                         )}
@@ -237,6 +358,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {extendedUser?.role || 'client'}
+                      {extendedUser?.is_verified && ' ✓'}
                     </p>
                   </div>
                   <ChevronDownIcon className="h-4 w-4 text-gray-400 hidden lg:block" />
@@ -258,7 +380,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                       </div>
                       
                       <Link
-                        href="/client/dashboard/profile"
+                        href={`/${extendedUser?.role || 'client'}/dashboard/profile`}
                         className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={() => setIsProfileOpen(false)}
                       >
@@ -267,7 +389,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                       </Link>
                       
                       <Link
-                        href="/client/dashboard/settings"
+                        href={`/${extendedUser?.role || 'client'}/dashboard/settings`}
                         className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={() => setIsProfileOpen(false)}
                       >

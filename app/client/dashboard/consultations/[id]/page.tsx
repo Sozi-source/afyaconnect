@@ -55,23 +55,8 @@ export default function ConsultationDetailPage() {
   const fetchConsultation = async () => {
     try {
       setLoading(true)
-      // Mock data - replace with API call
-      const mockData: Consultation = {
-        id: parseInt(id),
-        client: 101,
-        client_name: 'Mary Wanjiku',
-        practitioner: 201,
-        practitioner_name: 'Dr. James Omondi',
-        date: '2024-02-22',
-        time: '10:00:00',
-        status: 'booked',
-        duration_minutes: 60,
-        client_notes: 'First consultation about nutrition plan. Need help with meal planning for diabetes management.',
-        practitioner_notes: '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-      setConsultation(mockData)
+      const data = await apiClient.consultations.getOne(parseInt(id))
+      setConsultation(data)
     } catch (error) {
       console.error('Error fetching consultation:', error)
     } finally {
@@ -82,8 +67,7 @@ export default function ConsultationDetailPage() {
   const handleCancel = async () => {
     setIsCancelling(true)
     try {
-      // API call to cancel consultation
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await apiClient.consultations.updateStatus(parseInt(id), 'cancelled')
       setConsultation(prev => prev ? { ...prev, status: 'cancelled' } : null)
       setShowCancelModal(false)
     } catch (error) {
@@ -94,11 +78,10 @@ export default function ConsultationDetailPage() {
   }
 
   const handleReschedule = () => {
-    router.push(`/dashboard/consultations/reschedule/${id}`)
+    router.push(`/client/dashboard/consultations/reschedule/${id}`)
   }
 
   const handleJoinCall = () => {
-    // Implement video/audio call logic
     window.open(`/call/${id}`, '_blank')
   }
 
@@ -231,7 +214,7 @@ export default function ConsultationDetailPage() {
                     <Button
                       variant="outline"
                       fullWidth
-                      onClick={() => router.push(`/dashboard/consultations/${id}/notes`)}
+                      onClick={() => router.push(`/practitioner/dashboard/consultations/${id}/notes`)}
                     >
                       <PencilIcon className="h-4 w-4 mr-2" />
                       Add Consultation Notes
@@ -337,7 +320,7 @@ export default function ConsultationDetailPage() {
                   <Button
                     fullWidth
                     variant="outline"
-                    onClick={() => router.push(`/dashboard/reviews/new?consultation=${id}`)}
+                    onClick={() => router.push(`/client/dashboard/reviews/create?consultation=${id}`)}
                   >
                     <DocumentTextIcon className="h-4 w-4 mr-2" />
                     Leave a Review

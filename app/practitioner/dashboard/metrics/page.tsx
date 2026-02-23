@@ -220,7 +220,7 @@ export default function PractitionerMetricsPage() {
 }
 
 function MetricCard({ title, value, icon: Icon, color }: any) {
-  const colorClasses = {
+  const colorClasses: Record<string, string> = {
     blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
     green: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
     purple: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
@@ -236,7 +236,7 @@ function MetricCard({ title, value, icon: Icon, color }: any) {
             <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
           </div>
-          <div className={`p-3 rounded-xl`}>
+          <div className={`p-3 rounded-xl ${colorClasses[color] || colorClasses.blue}`}>
             <Icon className="h-5 w-5" />
           </div>
         </div>

@@ -328,6 +328,29 @@ export const apiClient = {
     }
   },
 
+
+  // ====================NOTIFICATIONS==================
+  // Add to your apiClient
+notifications: {
+  getAll: async (): Promise<any[]> => {
+    const response = await api.get('/notifications/')
+    return response.data
+  },
+  
+  getUnreadCount: async (): Promise<{unread_count: number}> => {
+    const response = await api.get('/notifications/unread-count/')
+    return response.data
+  },
+  
+  markAsRead: async (id: number): Promise<void> => {
+    await api.post(`/notifications/${id}/read/`)
+  },
+  
+  markAllAsRead: async (): Promise<void> => {
+    await api.post('/notifications/mark-all-read/')
+  }
+},
+
   // ==================== DASHBOARD ====================
   dashboard: {
     getStats: async (): Promise<{
