@@ -20,24 +20,18 @@ import { Button } from '@/app/components/ui/Buttons'
 import { apiClient } from '@/app/lib/api'
 import type { Practitioner, Specialty } from '@/app/types'
 
-interface ExtendedUser {
-  id: number
-  email: string
-  role?: string
-}
-
 export default function PractitionersPage() {
   const { user, isAuthenticated } = useAuth()
   const router = useRouter()
-  const extendedUser = user as ExtendedUser | null
   const [practitioners, setPractitioners] = useState<Practitioner[]>([])
   const [specialties, setSpecialties] = useState<Specialty[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedSpecialty, setSelectedSpecialty] = useState('')
-  const [selectedCity, setSelectedCity] = useState('')
+  const [selectedSpecialty, setSelectedSpecialty] = useState<string>('')
+  const [selectedCity, setSelectedCity] = useState<string>('')
   const [showFilters, setShowFilters] = useState(false)
   const [favorites, setFavorites] = useState<number[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -52,45 +46,87 @@ export default function PractitionersPage() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [practitionersData, specialtiesData] = await Promise.all([
-        apiClient.practitioners.getAll({ verified: true }),
-        apiClient.specialties.getAll()
-      ])
-      setPractitioners(practitionersData)
-      setSpecialties(specialtiesData)
+      setError(null)
+      
+      // Fetch verified practitioners
+      const practitionersData = await apiClient.practitioners.getAll({ verified: true })
+      
+      // Fetch specialties
+      let specialtiesData: Specialty[] = []
+      try {
+        specialtiesData = await apiClient.specialties.getAll()
+      } catch (err) {
+        console.error('Error fetching specialties:', err)
+        // Continue without specialties if they fail to load
+      }
+      
+      // Ensure practitionersData is an array
+      setPractitioners(Array.isArray(practitionersData) ? practitionersData : [])
+      setSpecialties(Array.isArray(specialtiesData) ? specialtiesData : [])
     } catch (error) {
       console.error('Error fetching data:', error)
+      setError('Failed to load practitioners. Please try again.')
+      setPractitioners([])
+      setSpecialties([])
     } finally {
       setLoading(false)
     }
   }
 
   const loadFavorites = () => {
-    const saved = localStorage.getItem('favoritePractitioners')
-    if (saved) {
-      setFavorites(JSON.parse(saved))
+    try {
+      const saved = localStorage.getItem('favoritePractitioners')
+      if (saved) {
+        setFavorites(JSON.parse(saved))
+      }
+    } catch (error) {
+      console.error('Error loading favorites:', error)
     }
   }
 
   const toggleFavorite = (id: number) => {
-    const newFavorites = favorites.includes(id)
-      ? favorites.filter(f => f !== id)
-      : [...favorites, id]
-    setFavorites(newFavorites)
-    localStorage.setItem('favoritePractitioners', JSON.stringify(newFavorites))
+    try {
+      const newFavorites = favorites.includes(id)
+        ? favorites.filter(f => f !== id)
+        : [...favorites, id]
+      setFavorites(newFavorites)
+      localStorage.setItem('favoritePractitioners', JSON.stringify(newFavorites))
+    } catch (error) {
+      console.error('Error toggling favorite:', error)
+    }
   }
 
   const filteredPractitioners = practitioners.filter(p => {
-    const matchesSearch = p.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         p.bio?.toLowerCase().includes(searchTerm.toLowerCase())
+    // Ensure p exists
+    if (!p) return false
+    
+    const fullName = `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase()
+    const matchesSearch = !searchTerm || 
+      fullName.includes(searchTerm.toLowerCase()) ||
+      (p.bio && p.bio.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (p.specialties && p.specialties.some(s => s?.name?.toLowerCase().includes(searchTerm.toLowerCase())))
+    
     const matchesSpecialty = !selectedSpecialty || 
-                            p.specialties?.some(s => s.id.toString() === selectedSpecialty)
+      (p.specialties && p.specialties.some(s => s?.id?.toString() === selectedSpecialty))
+    
     const matchesCity = !selectedCity || 
-                       p.city?.toLowerCase().includes(selectedCity.toLowerCase())
+      (p.city && p.city.toLowerCase() === selectedCity.toLowerCase())
+    
     return matchesSearch && matchesSpecialty && matchesCity
   })
 
-  const cities = [...new Set(practitioners.map(p => p.city).filter(Boolean))]
+  // Get unique cities
+  const cities = [...new Set(
+    practitioners
+      .filter(p => p && p.city)
+      .map(p => p.city as string)
+  )].sort()
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    setSelectedSpecialty('')
+    setSelectedCity('')
+  }
 
   if (loading) {
     return (
@@ -98,6 +134,21 @@ export default function PractitionersPage() {
         <div className="flex flex-col items-center gap-3">
           <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
           <p className="text-sm text-gray-600 dark:text-gray-400">Loading practitioners...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="text-4xl mb-4">⚠️</div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            Something went wrong
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+          <Button onClick={fetchData}>Try Again</Button>
         </div>
       </div>
     )
@@ -117,18 +168,17 @@ export default function PractitionersPage() {
             </p>
           </div>
           
-          {/* Results count moved here for better visibility */}
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-500">
-            {filteredPractitioners.length} practitioners found
+            {filteredPractitioners.length} practitioner{filteredPractitioners.length !== 1 ? 's' : ''} found
           </p>
         </div>
 
-        {/* Search Bar - Fixed visibility */}
+        {/* Search Bar */}
         <div className="relative mb-4">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-500 dark:text-gray-400" />
           <input
             type="text"
-            placeholder="Search by name or specialty..."
+            placeholder="Search by name, specialty, or keywords..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 sm:pl-10 pr-20 py-2.5 sm:py-3 text-sm border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -140,16 +190,18 @@ export default function PractitionersPage() {
                 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' 
                 : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
             }`}
+            aria-label="Toggle filters"
           >
             <FunnelIcon className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Filters - Improved visibility */}
+        {/* Filters */}
         {showFilters && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
             className="bg-white dark:bg-gray-900 rounded-xl p-4 sm:p-5 shadow-lg border border-gray-200 dark:border-gray-800 mb-6"
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -164,7 +216,7 @@ export default function PractitionersPage() {
                 >
                   <option value="">All Specialties</option>
                   {specialties.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
+                    <option key={s.id} value={s.id.toString()}>{s.name}</option>
                   ))}
                 </select>
               </div>
@@ -188,10 +240,7 @@ export default function PractitionersPage() {
                   variant="outline"
                   size="sm"
                   fullWidth
-                  onClick={() => {
-                    setSelectedSpecialty('')
-                    setSelectedCity('')
-                  }}
+                  onClick={clearFilters}
                   className="text-sm border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   Clear Filters
@@ -214,11 +263,7 @@ export default function PractitionersPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                setSearchTerm('')
-                setSelectedSpecialty('')
-                setSelectedCity('')
-              }}
+              onClick={clearFilters}
               className="mt-4 text-sm border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300"
             >
               Clear All Filters
@@ -226,123 +271,143 @@ export default function PractitionersPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
-            {filteredPractitioners.map((practitioner, index) => (
-              <motion.div
-                key={practitioner.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="h-full"
-              >
-                <Card className="h-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:shadow-lg transition-all">
-                  <CardBody className="p-3 sm:p-4 lg:p-5 flex flex-col h-full">
-                    {/* Header with Favorite */}
-                    <div className="flex justify-between items-start gap-2 mb-3">
-                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-base flex-shrink-0">
-                          {practitioner.first_name?.[0]}{practitioner.last_name?.[0]}
+            {filteredPractitioners.map((practitioner, index) => {
+              // Calculate average rating (placeholder - replace with actual rating when available)
+              const averageRating = practitioner.average_rating || 4.0
+              const fullStars = Math.floor(averageRating)
+              const hasHalfStar = averageRating % 1 >= 0.5
+              const totalReviews = practitioner.total_reviews || 0
+
+              return (
+                <motion.div
+                  key={practitioner.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="h-full"
+                >
+                  <Card className="h-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:shadow-lg transition-all">
+                    <CardBody className="p-3 sm:p-4 lg:p-5 flex flex-col h-full">
+                      {/* Header with Favorite */}
+                      <div className="flex justify-between items-start gap-2 mb-3">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-base flex-shrink-0">
+                            {practitioner.first_name?.[0] || ''}{practitioner.last_name?.[0] || ''}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
+                              Dr. {practitioner.first_name} {practitioner.last_name}
+                            </h3>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                              {practitioner.specialties?.[0]?.name || 'General Practitioner'}
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
-                            Dr. {practitioner.first_name} {practitioner.last_name}
-                          </h3>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                            {practitioner.specialties?.[0]?.name || 'General Practitioner'}
-                          </p>
+                        <button
+                          onClick={() => toggleFavorite(practitioner.id)}
+                          className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors flex-shrink-0"
+                          aria-label={favorites.includes(practitioner.id) ? 'Remove from favorites' : 'Add to favorites'}
+                        >
+                          <HeartIcon 
+                            className={`h-4 w-4 sm:h-5 sm:w-5 ${
+                              favorites.includes(practitioner.id) 
+                                ? 'text-red-500 fill-red-500' 
+                                : 'text-gray-500 dark:text-gray-500'
+                            }`} 
+                          />
+                        </button>
+                      </div>
+
+                      {/* Details */}
+                      <div className="space-y-2 mb-3">
+                        <div className="flex items-center text-xs text-gray-700 dark:text-gray-300">
+                          <MapPinIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1.5 flex-shrink-0 text-gray-500 dark:text-gray-500" />
+                          <span className="truncate">{practitioner.city || 'Location not specified'}</span>
+                        </div>
+                        <div className="flex items-center text-xs text-gray-700 dark:text-gray-300">
+                          <CurrencyDollarIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1.5 flex-shrink-0 text-gray-500 dark:text-gray-500" />
+                          <span>KES {practitioner.hourly_rate?.toLocaleString() || 0}/hr</span>
+                        </div>
+                        <div className="flex items-center text-xs text-gray-700 dark:text-gray-300">
+                          <BriefcaseIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1.5 flex-shrink-0 text-gray-500 dark:text-gray-500" />
+                          <span>{practitioner.years_of_experience || 0} years exp</span>
                         </div>
                       </div>
-                      <button
-                        onClick={() => toggleFavorite(practitioner.id)}
-                        className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors flex-shrink-0"
-                      >
-                        <HeartIcon 
-                          className={`h-4 w-4 sm:h-5 sm:w-5 ${
-                            favorites.includes(practitioner.id) 
-                              ? 'text-red-500 fill-red-500' 
-                              : 'text-gray-500 dark:text-gray-500'
-                          }`} 
-                        />
-                      </button>
-                    </div>
 
-                    {/* Details - Improved text visibility */}
-                    <div className="space-y-2 mb-3">
-                      <div className="flex items-center text-xs text-gray-700 dark:text-gray-300">
-                        <MapPinIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1.5 flex-shrink-0 text-gray-500 dark:text-gray-500" />
-                        <span className="truncate">{practitioner.city || 'Location not specified'}</span>
-                      </div>
-                      <div className="flex items-center text-xs text-gray-700 dark:text-gray-300">
-                        <CurrencyDollarIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1.5 flex-shrink-0 text-gray-500 dark:text-gray-500" />
-                        <span>KES {practitioner.hourly_rate}/hr</span>
-                      </div>
-                      <div className="flex items-center text-xs text-gray-700 dark:text-gray-300">
-                        <BriefcaseIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1.5 flex-shrink-0 text-gray-500 dark:text-gray-500" />
-                        <span>{practitioner.years_of_experience} years exp</span>
-                      </div>
-                    </div>
+                      {/* Specialties */}
+                      {practitioner.specialties && practitioner.specialties.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          {practitioner.specialties.slice(0, 2).map(s => (
+                            <span key={s.id} className="px-2 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 rounded-full text-xs font-medium">
+                              {s.name}
+                            </span>
+                          ))}
+                          {practitioner.specialties.length > 2 && (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 rounded-full text-xs font-medium">
+                              +{practitioner.specialties.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      )}
 
-                    {/* Specialties - Better visibility */}
-                    {practitioner.specialties && practitioner.specialties.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-3">
-                        {practitioner.specialties.slice(0, 2).map(s => (
-                          <span key={s.id} className="px-2 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 rounded-full text-xs font-medium">
-                            {s.name}
-                          </span>
-                        ))}
-                        {practitioner.specialties.length > 2 && (
-                          <span className="px-2 py-1 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 rounded-full text-xs font-medium">
-                            +{practitioner.specialties.length - 2}
-                          </span>
-                        )}
+                      {/* Rating */}
+                      <div className="flex items-center mb-3 sm:mb-4">
+                        <div className="flex gap-0.5">
+                          {[1, 2, 3, 4, 5].map(star => {
+                            if (star <= fullStars) {
+                              return <StarIconSolid key={star} className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-400" />
+                            } else if (hasHalfStar && star === fullStars + 1) {
+                              return (
+                                <div key={star} className="relative">
+                                  <StarIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-300 dark:text-gray-600" />
+                                  <div className="absolute top-0 left-0 overflow-hidden w-1/2">
+                                    <StarIconSolid className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-400" />
+                                  </div>
+                                </div>
+                              )
+                            } else {
+                              return <StarIcon key={star} className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-300 dark:text-gray-600" />
+                            }
+                          })}
+                        </div>
+                        <span className="text-xs text-gray-600 dark:text-gray-400 ml-2">
+                          ({totalReviews} {totalReviews === 1 ? 'review' : 'reviews'})
+                        </span>
                       </div>
-                    )}
 
-                    {/* Rating - Fixed visibility */}
-                    <div className="flex items-center mb-3 sm:mb-4">
-                      <div className="flex gap-0.5">
-                        {[1,2,3,4,5].map(star => (
-                          star <= 4 ? (
-                            <StarIconSolid key={star} className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-400" />
-                          ) : (
-                            <StarIcon key={star} className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-300 dark:text-gray-600" />
-                          )
-                        ))}
-                      </div>
-                      <span className="text-xs text-gray-600 dark:text-gray-400 ml-2">(4.0)</span>
-                    </div>
-
-                    {/* Actions - Full width buttons on mobile */}
-                    <div className="flex gap-2 mt-auto">
-                      <Link 
-                        href={`/dashboard/practitioners/${practitioner.id}`} 
-                        className="flex-1"
-                      >
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          fullWidth
-                          className="text-xs sm:text-sm border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      {/* Actions */}
+                      <div className="flex gap-2 mt-auto">
+                        <Link 
+                          href={`/client/dashboard/practitioners/${practitioner.id}`} 
+                          className="flex-1"
                         >
-                          View Profile
-                        </Button>
-                      </Link>
-                      <Link 
-                        href={`/dashboard/consultations/create?practitioner=${practitioner.id}`} 
-                        className="flex-1"
-                      >
-                        <Button 
-                          size="sm" 
-                          fullWidth 
-                          className="text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            fullWidth
+                            className="text-xs sm:text-sm border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800"
+                          >
+                            View Profile
+                          </Button>
+                        </Link>
+                        <Link 
+                          href={`/client/dashboard/consultations/create?practitioner=${practitioner.id}`} 
+                          className="flex-1"
                         >
-                          Book
-                        </Button>
-                      </Link>
-                    </div>
-                  </CardBody>
-                </Card>
-              </motion.div>
-            ))}
+                          <Button 
+                            size="sm" 
+                            fullWidth 
+                            className="text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                          >
+                            Book
+                          </Button>
+                        </Link>
+                      </div>
+                    </CardBody>
+                  </Card>
+                </motion.div>
+              )
+            })}
           </div>
         )}
       </div>

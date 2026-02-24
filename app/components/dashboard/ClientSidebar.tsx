@@ -12,21 +12,38 @@ import {
   Cog6ToothIcon,
   DocumentTextIcon,
   XMarkIcon,
-  LockClosedIcon
+  LockClosedIcon,
+  BriefcaseIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
-interface ClientSidebarProps {
+interface SidebarProps {
   isOpen: boolean
   onClose: () => void
 }
 
-export function ClientSidebar({ isOpen, onClose }: ClientSidebarProps) {
+export function ClientSidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const [showComingSoon, setShowComingSoon] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<'client' | 'practitioner' | null>(null)
 
-  const navItems = [
+  useEffect(() => {
+    // Get user from localStorage
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr)
+        setUserRole(user.role || 'client')
+      } catch (error) {
+        console.error('Failed to parse user:', error)
+      }
+    }
+  }, [])
+
+  // Client navigation items
+  const clientNavItems = [
     { name: 'Dashboard', href: '/client/dashboard', icon: HomeIcon, isReady: true },
     { name: 'Find Experts', href: '/client/dashboard/practitioners', icon: UserGroupIcon, isReady: true },
     { name: 'My Consultations', href: '/client/dashboard/consultations', icon: CalendarIcon, isReady: true },
@@ -35,10 +52,25 @@ export function ClientSidebar({ isOpen, onClose }: ClientSidebarProps) {
     { name: 'Profile', href: '/client/dashboard/profile', icon: UserIcon, isReady: true },
   ]
 
-  const secondaryNav = [
-    { name: 'Settings', href: '/client/dashboard/settings', icon: Cog6ToothIcon, isReady: false },
-    { name: 'Help & Support', href: '/client/dashboard/support', icon: DocumentTextIcon, isReady: false },
+  // Practitioner navigation items
+  const practitionerNavItems = [
+    { name: 'Dashboard', href: '/practitioner/dashboard', icon: HomeIcon, isReady: true },
+    { name: 'My Schedule', href: '/practitioner/dashboard/schedule', icon: ClockIcon, isReady: true },
+    { name: 'Consultations', href: '/practitioner/dashboard/consultations', icon: CalendarIcon, isReady: true },
+    { name: 'Clients', href: '/practitioner/dashboard/clients', icon: UserGroupIcon, isReady: true },
+    { name: 'Reviews', href: '/practitioner/dashboard/reviews', icon: StarIcon, isReady: true },
+    { name: 'Profile', href: '/practitioner/dashboard/profile', icon: UserIcon, isReady: true },
   ]
+
+  const secondaryNav = [
+    { name: 'Settings', href: `/${userRole}/dashboard/settings`, icon: Cog6ToothIcon, isReady: false },
+    { name: 'Help & Support', href: `/${userRole}/dashboard/support`, icon: DocumentTextIcon, isReady: false },
+  ]
+
+  // Choose navigation based on role
+  const navItems = userRole === 'practitioner' ? practitionerNavItems : clientNavItems
+  const portalName = userRole === 'practitioner' ? 'Practitioner Portal' : 'Client Portal'
+  const basePath = userRole === 'practitioner' ? '/practitioner' : '/client'
 
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + '/')
 
@@ -56,7 +88,7 @@ export function ClientSidebar({ isOpen, onClose }: ClientSidebarProps) {
       <div className="flex flex-col flex-1 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 shadow-xl">
         {/* Logo */}
         <div className="h-20 flex items-center px-6 border-b border-gray-200 dark:border-gray-800">
-          <Link href="/client/dashboard" className="flex items-center space-x-3 group">
+          <Link href={basePath + '/dashboard'} className="flex items-center space-x-3 group">
             <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all">
               <span className="text-white font-bold text-lg">NC</span>
             </div>
@@ -64,7 +96,7 @@ export function ClientSidebar({ isOpen, onClose }: ClientSidebarProps) {
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">
                 Nutri<span className="text-emerald-600">Connect</span>
               </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Client Portal</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{portalName}</p>
             </div>
           </Link>
         </div>
@@ -207,7 +239,7 @@ export function ClientSidebar({ isOpen, onClose }: ClientSidebarProps) {
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                       NutriConnect
                     </h2>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Client Portal</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{portalName}</p>
                   </div>
                 </div>
                 <button 
