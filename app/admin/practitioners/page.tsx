@@ -56,13 +56,13 @@ export default function AdminPractitionersPage() {
       setLoading(true)
       setError(null)
       
-      // Fetch pending practitioners
-      const pendingData = await apiClient.admin.getPendingPractitioners()
-      setPending(pendingData)
+      // Fetch pending practitioners using the correct method
+      const pendingData = await apiClient.admin.practitioners.getPending()
+      setPending(Array.isArray(pendingData) ? pendingData : [])
 
       // Fetch all verified practitioners
       const allPractitioners = await apiClient.practitioners.getAll({ verified: true })
-      setApproved(allPractitioners)
+      setApproved(Array.isArray(allPractitioners) ? allPractitioners : [])
     } catch (error: any) {
       console.error('Error loading data:', error)
       setError(error.message || 'Failed to load practitioners')
@@ -76,7 +76,7 @@ export default function AdminPractitionersPage() {
       setProcessing(id)
       setError(null)
       
-      await apiClient.admin.approvePractitioner(id)
+      await apiClient.admin.practitioners.approve(id)
       
       // Update lists
       const approvedPractitioner = pending.find(p => p.id === id)
@@ -96,8 +96,26 @@ export default function AdminPractitionersPage() {
   }
 
   const handleReject = async (id: number) => {
-    // Implement reject functionality if needed
-    toast.error('Reject functionality not implemented')
+    const reason = window.prompt('Please enter a reason for rejection:')
+    if (!reason) return
+
+    try {
+      setProcessing(id)
+      setError(null)
+      
+      await apiClient.admin.practitioners.reject(id, reason)
+      
+      // Remove from pending list
+      setPending(prev => prev.filter(p => p.id !== id))
+      
+      toast.success('Practitioner rejected')
+    } catch (error: any) {
+      console.error('Error rejecting practitioner:', error)
+      setError(error.message || 'Failed to reject practitioner')
+      toast.error('Failed to reject practitioner')
+    } finally {
+      setProcessing(null)
+    }
   }
 
   if (loading) {
@@ -215,7 +233,7 @@ export default function AdminPractitionersPage() {
                         )}
 
                         {/* Specialties */}
-                        {practitioner.specialties.length > 0 && (
+                        {practitioner.specialties && practitioner.specialties.length > 0 && (
                           <div className="mt-4">
                             <p className="text-xs text-gray-500 mb-2">Specialties</p>
                             <div className="flex flex-wrap gap-2">
@@ -270,32 +288,41 @@ export default function AdminPractitionersPage() {
       {/* Approved Tab */}
       {activeTab === 'approved' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {approved.map((practitioner, index) => (
-            <motion.div
-              key={practitioner.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <Card>
-                <CardBody className="p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
-                      {practitioner.first_name?.[0]}{practitioner.last_name?.[0]}
+          {approved.length === 0 ? (
+            <Card className="col-span-full">
+              <CardBody className="p-8 text-center">
+                <UserIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-600 dark:text-gray-400">No approved practitioners</p>
+              </CardBody>
+            </Card>
+          ) : (
+            approved.map((practitioner, index) => (
+              <motion.div
+                key={practitioner.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <Card>
+                  <CardBody className="p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
+                        {practitioner.first_name?.[0]}{practitioner.last_name?.[0]}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">Dr. {practitioner.first_name} {practitioner.last_name}</h3>
+                        <p className="text-xs text-gray-500">{practitioner.city || 'Location N/A'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold">Dr. {practitioner.first_name} {practitioner.last_name}</h3>
-                      <p className="text-xs text-gray-500">{practitioner.city || 'Location N/A'}</p>
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>{practitioner.specialties?.length || 0} specialties</span>
+                      <span>KES {practitioner.hourly_rate}/hr</span>
                     </div>
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>{practitioner.specialties.length} specialties</span>
-                    <span>KES {practitioner.hourly_rate}/hr</span>
-                  </div>
-                </CardBody>
-              </Card>
-            </motion.div>
-          ))}
+                  </CardBody>
+                </Card>
+              </motion.div>
+            ))
+          )}
         </div>
       )}
     </div>

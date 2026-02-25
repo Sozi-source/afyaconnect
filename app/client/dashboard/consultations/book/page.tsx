@@ -470,15 +470,12 @@ function DateTimeSelector({
   const [selectedTime, setSelectedTime] = useState<string>('')
   const [currentMonth, setCurrentMonth] = useState(new Date(2026, 1, 1)) // February 2026
 
-  // Based on your data: Wednesday (day_of_week = 2) should match JS Wednesday (day 3)
   const getBackendDay = (jsDay: number): number => {
-    // JS: 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
-    // Your backend: 0=Mon,1=Tue,2=Wed,3=Thu,4=Fri,5=Sat,6=Sun
     const mapping: Record<number, number> = {
       0: 6, // Sunday -> 6
       1: 0, // Monday -> 0
       2: 1, // Tuesday -> 1
-      3: 2, // Wednesday -> 2 ✓ (this matches your data)
+      3: 2, // Wednesday -> 2
       4: 3, // Thursday -> 3
       5: 4, // Friday -> 4
       6: 5, // Saturday -> 5
@@ -486,67 +483,73 @@ function DateTimeSelector({
     return mapping[jsDay];
   }
 
-  const getDaysInMonth = (): DayCell[] => {
-    const year = currentMonth.getFullYear()
-    const month = currentMonth.getMonth()
-    const lastDay = new Date(year, month + 1, 0)
-    const days: DayCell[] = []
+  const dateHasAvailability = (dateStr: string): boolean => {
+    const date = new Date(dateStr);
+    const jsDay = date.getDay();
+    const backendDay = getBackendDay(jsDay);
+    
+    return availability.some(slot => {
+      if (!slot.is_available) return false;
+      
+      if (slot.recurrence_type === 'weekly') {
+        return slot.day_of_week === backendDay;
+      } else if (slot.recurrence_type === 'one_time') {
+        return slot.specific_date === dateStr;
+      }
+      return false;
+    });
+  };
+
+  const getTimeSlotsForDate = (dateStr: string): string[] => {
+    if (!dateStr) return [];
+    
+    const date = new Date(dateStr);
+    const jsDay = date.getDay();
+    const backendDay = getBackendDay(jsDay);
+    
+    return availability
+      .filter(slot => {
+        if (!slot.is_available) return false;
+        
+        if (slot.recurrence_type === 'weekly') {
+          return slot.day_of_week === backendDay;
+        } else if (slot.recurrence_type === 'one_time') {
+          return slot.specific_date === dateStr;
+        }
+        return false;
+      })
+      .map(slot => slot.start_time.slice(0,5))
+      .sort();
+  };
+
+  const generateCalendarDays = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const days = [];
+    
+    for (let i = 0; i < firstDay.getDay(); i++) {
+      days.push(null);
+    }
     
     for (let d = 1; d <= lastDay.getDate(); d++) {
-      const date = new Date(year, month, d)
-      const dateStr = date.toISOString().split('T')[0]
-      const jsDay = date.getDay()
-      const backendDay = getBackendDay(jsDay)
+      const date = new Date(year, month, d);
+      const dateStr = date.toISOString().split('T')[0];
+      const hasSlot = dateHasAvailability(dateStr);
       
-      // Check if this day has availability
-      const hasSlot = availability.some((slot: Availability) => {
-        if (!slot.is_available) return false
-        
-        if (slot.recurrence_type === 'weekly') {
-          // For weekly slots, check if the day matches
-          return slot.day_of_week === backendDay
-        } else if (slot.recurrence_type === 'one_time') {
-          // For one-time slots, check exact date
-          return slot.specific_date === dateStr
-        }
-        return false
-      })
-
-      days.push({ date, dateStr, hasSlot })
+      days.push({
+        date,
+        dateStr,
+        hasSlot
+      });
     }
-    return days
-  }
+    
+    return days;
+  };
 
-  const getTimeSlots = (): string[] => {
-    if (!selectedDate) return []
-    
-    const date = new Date(selectedDate)
-    const jsDay = date.getDay()
-    const backendDay = getBackendDay(jsDay)
-    
-    // Filter availability for this specific day
-    const slots = availability
-      .filter((slot: Availability) => {
-        if (!slot.is_available) return false
-        
-        if (slot.recurrence_type === 'weekly') {
-          return slot.day_of_week === backendDay
-        } else if (slot.recurrence_type === 'one_time') {
-          return slot.specific_date === selectedDate
-        }
-        return false
-      })
-      .map((slot: Availability) => {
-        // Format time to show only hours and minutes
-        return slot.start_time.slice(0,5)
-      })
-      .sort()
-    
-    return slots
-  }
-
-  const days = getDaysInMonth()
-  const timeSlots = getTimeSlots()
+  const days = generateCalendarDays();
+  const timeSlots = getTimeSlotsForDate(selectedDate);
   
   const weekDays = [
     { key: 'sun', label: 'S' },
@@ -556,10 +559,7 @@ function DateTimeSelector({
     { key: 'thu', label: 'T' },
     { key: 'fri', label: 'F' },
     { key: 'sat', label: 'S' }
-  ]
-
-  const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay()
-  const emptyDays = Array(firstDayOfMonth).fill(null)
+  ];
 
   return (
     <motion.div
@@ -608,42 +608,55 @@ function DateTimeSelector({
           </div>
 
           <div className="grid grid-cols-7 gap-1">
-            {emptyDays.map((_, i) => (
-              <div key={`empty-${i}`} className="aspect-square p-1" />
-            ))}
-            
-            {days.map((day: DayCell) => {
-              const isWednesday = day.date.getDay() === 3; // Wednesday
-              const shouldHaveSlot = isWednesday; // Based on your data
-              
+            {days.map((day, index) => {
+              if (!day) {
+                return <div key={`empty-${index}`} className="aspect-square p-1" />;
+              }
+
+              const isSelected = selectedDate === day.dateStr;
+              const isPast = day.date < new Date(new Date().setHours(0,0,0,0));
+              const isToday = day.dateStr === new Date().toISOString().split('T')[0];
+
               return (
                 <div key={day.dateStr} className="aspect-square p-1">
                   <button
                     onClick={() => {
-                      if (day.hasSlot) {
-                        setSelectedDate(day.dateStr)
-                        setSelectedTime('')
+                      if (day.hasSlot && !isPast) {
+                        setSelectedDate(day.dateStr);
+                        setSelectedTime('');
                       }
                     }}
-                    disabled={!day.hasSlot}
+                    disabled={!day.hasSlot || isPast}
                     className={`
                       w-full h-full rounded-xl flex flex-col items-center justify-center text-sm transition
-                      ${selectedDate === day.dateStr
-                        ? 'bg-emerald-600 text-white'
-                        : day.hasSlot
+                      ${isSelected 
+                        ? 'bg-emerald-600 text-white' 
+                        : day.hasSlot && !isPast
                           ? 'hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-slate-700 dark:text-slate-300 cursor-pointer'
                           : 'text-slate-300 dark:text-slate-700 cursor-not-allowed'
                       }
+                      ${isToday && !isSelected ? 'ring-2 ring-emerald-200 dark:ring-emerald-800' : ''}
                     `}
                   >
                     <span>{day.date.getDate()}</span>
-                    {day.hasSlot && selectedDate !== day.dateStr && (
+                    {day.hasSlot && !isPast && !isSelected && (
                       <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1" />
                     )}
                   </button>
                 </div>
-              )
+              );
             })}
+          </div>
+
+          <div className="flex items-center gap-4 mt-4 text-xs text-slate-500">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+              <span>Available</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-emerald-600"></div>
+              <span>Selected</span>
+            </div>
           </div>
         </div>
 
@@ -653,12 +666,17 @@ function DateTimeSelector({
             <>
               <h3 className="font-medium mb-4 flex items-center gap-2">
                 <ClockIcon className="h-5 w-5 text-slate-400" />
-                Available Times
+                Available Times for {new Date(selectedDate).toLocaleDateString(undefined, { 
+                  weekday: 'short', 
+                  month: 'short', 
+                  day: 'numeric' 
+                })}
               </h3>
+              
               {timeSlots.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-2">
-                    {timeSlots.map((time: string) => (
+                    {timeSlots.map((time) => (
                       <button
                         key={time}
                         onClick={() => setSelectedTime(time)}
@@ -679,14 +697,13 @@ function DateTimeSelector({
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="pt-4"
                     >
                       <button
                         onClick={() => onSelect(selectedDate, selectedTime)}
-                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition"
+                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition flex items-center justify-center gap-2"
                       >
                         Continue to Details
-                        <ChevronRightIcon className="h-5 w-5 inline ml-2" />
+                        <ChevronRightIcon className="h-5 w-5" />
                       </button>
                     </motion.div>
                   )}
@@ -694,22 +711,25 @@ function DateTimeSelector({
               ) : (
                 <div className="text-center py-8 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
                   <ClockIcon className="h-8 w-8 mx-auto text-slate-400 mb-2" />
-                  <p className="text-sm text-slate-600 dark:text-slate-400">No slots available</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    No available slots for this date
+                  </p>
                 </div>
               )}
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center py-12">
               <CalendarDaysIcon className="h-12 w-12 text-slate-300 dark:text-slate-700 mb-4" />
-              <p className="text-slate-600 dark:text-slate-400">Select a date to see available times</p>
+              <p className="text-slate-600 dark:text-slate-400">
+                Select a date to see available times
+              </p>
             </div>
           )}
         </div>
       </div>
     </motion.div>
-  )
+  );
 }
-
 // ============================================================================
 // DetailsForm Component
 // ============================================================================

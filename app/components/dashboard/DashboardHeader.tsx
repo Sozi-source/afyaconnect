@@ -34,6 +34,7 @@ interface ExtendedUser {
   is_verified?: boolean
 }
 
+// Update the Notification interface to match API response
 interface Notification {
   id: number
   notification_type: string
@@ -42,7 +43,8 @@ interface Notification {
   data: any
   is_read: boolean
   created_at: string
-  time_ago: string
+  // time_ago is optional since it might not come from API
+  time_ago?: string
 }
 
 export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
@@ -88,7 +90,14 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         apiClient.notifications.getAll(),
         apiClient.notifications.getUnreadCount()
       ])
-      setNotifications(notifs)
+      
+      // Process notifications to add time_ago client-side if needed
+      const processedNotifs = notifs.map((notif: any) => ({
+        ...notif,
+        time_ago: formatTimeAgo(notif.created_at)
+      }))
+      
+      setNotifications(processedNotifs)
       setUnreadCount(countData.unread_count)
     } catch (error) {
       console.error('Failed to fetch notifications:', error)
@@ -121,6 +130,21 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
     } catch (error) {
       console.error('Failed to mark all as read:', error)
     }
+  }
+
+  const formatTimeAgo = (dateString: string): string => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`
+    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`
+    if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
   useEffect(() => {
@@ -313,7 +337,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                                   </p>
                                   <div className="flex items-center justify-between mt-2">
                                     <span className="text-xs text-gray-500 dark:text-gray-500">
-                                      {notification.time_ago}
+                                      {notification.time_ago || formatTimeAgo(notification.created_at)}
                                     </span>
                                     {!notification.is_read && (
                                       <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>

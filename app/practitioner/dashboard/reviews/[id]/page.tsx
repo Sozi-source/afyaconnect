@@ -9,14 +9,7 @@ import { StarIcon } from '@heroicons/react/24/solid'
 import { PencilIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-
-interface Review {
-  id: number
-  consultation: number
-  rating: number
-  comment: string | null
-  created_at: string
-}
+import type { Review } from '@/app/types'
 
 export default function ReviewDetailPage() {
   const params = useParams()
@@ -25,42 +18,73 @@ export default function ReviewDetailPage() {
   
   const [review, setReview] = useState<Review | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchReview = async () => {
       try {
-        const data = await apiClient.reviews.getOne(id)
-        setReview(data)
+        setLoading(true)
+        setError(null)
+        
+        // Option 1: If you have a way to get a single review
+        // You might need to fetch all reviews and find the one you want
+        const reviews = await apiClient.reviews.getMyReviews()
+        const foundReview = reviews.find(r => r.id === id)
+        
+        if (foundReview) {
+          setReview(foundReview)
+        } else {
+          setError('Review not found')
+        }
+        
+        // Option 2: If there's an endpoint for practitioner reviews
+        // You could also try fetching by practitioner if you have the ID
+        // const practitionerReviews = await apiClient.reviews.getByPractitioner(practitionerId)
+        // const foundReview = practitionerReviews.find(r => r.id === id)
+        
       } catch (error) {
         console.error('Failed to fetch review:', error)
+        setError('Failed to load review')
       } finally {
         setLoading(false)
       }
     }
-    fetchReview()
+    
+    if (id) {
+      fetchReview()
+    }
   }, [id])
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
       </div>
     )
   }
 
-  if (!review) {
+  if (error || !review) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-bold">Review not found</h2>
-        <Button onClick={() => router.back()} className="mt-4">
-          Go Back
-        </Button>
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center py-12">
+        <Card>
+          <CardBody className="p-8">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              {error || 'Review not found'}
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              The review you're looking for doesn't exist or you don't have permission to view it.
+            </p>
+            <Button onClick={() => router.back()} variant="primary">
+              Go Back
+            </Button>
+          </CardBody>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6">
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6">
       {/* Header with back button */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -133,7 +157,7 @@ export default function ReviewDetailPage() {
                 </h3>
                 <Link 
                   href={`/dashboard/consultations/${review.consultation}`} 
-                  className="inline-flex items-center text-sm sm:text-base text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                  className="inline-flex items-center text-sm sm:text-base text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
                 >
                   View Consultation #{review.consultation}
                   <svg className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">

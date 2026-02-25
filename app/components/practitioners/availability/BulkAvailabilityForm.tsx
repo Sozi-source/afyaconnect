@@ -82,8 +82,8 @@ export function BulkAvailabilityForm({
     
     try {
       // Prepare data in the format expected by BulkAvailabilityData
+      // Note: practitioner_id is not needed as it's determined from the auth token
       const bulkData: BulkAvailabilityData = {
-        practitioner_id: practitionerId,
         days: selectedDays,
         start_time: startTime,
         end_time: endTime,

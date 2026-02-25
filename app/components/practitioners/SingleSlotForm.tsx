@@ -6,7 +6,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import { useAvailability } from '@/app/hooks/useAvailability'
-import type { RecurrenceType, DayOfWeek, Availability } from '@/app/types'
+import type { RecurrenceType, DayOfWeek, Availability, CreateAvailabilityData } from '@/app/types'
 
 const RECURRENCE_TYPES = [
   { value: 'weekly' as RecurrenceType, label: 'Weekly Recurring' },
@@ -100,29 +100,28 @@ export function SingleSlotForm({
     setError(null)
     
     try {
-      // Prepare data matching the model exactly
-      const slotData: Partial<Availability> = {
-        practitioner: practitionerId,
+      // Prepare data matching CreateAvailabilityData type
+      const slotData: Partial<CreateAvailabilityData> = {
         recurrence_type: formData.recurrence_type,
         start_time: formData.start_time,
         end_time: formData.end_time,
         is_available: formData.is_available,
-        notes: formData.notes.trim() || null
+        notes: formData.notes.trim() || undefined
       }
 
       // Add conditional fields based on recurrence type
       if (formData.recurrence_type === 'weekly') {
-        slotData.day_of_week = formData.day_of_week
-        slotData.specific_date = null
+        slotData.day_of_week = formData.day_of_week ?? undefined
+        slotData.specific_date = undefined
       } else {
-        slotData.day_of_week = null
-        slotData.specific_date = formData.specific_date
+        slotData.day_of_week = undefined
+        slotData.specific_date = formData.specific_date || undefined
       }
 
       if (initialData) {
         await updateSlot(initialData.id, slotData)
       } else {
-        await createSlot(slotData)
+        await createSlot(slotData as CreateAvailabilityData)
       }
       onSuccess()
     } catch (err: any) {

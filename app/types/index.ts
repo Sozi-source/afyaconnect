@@ -225,6 +225,7 @@ export interface TimeSlot {
   practitioner_name: string
   formatted_time?: string
   is_available?: boolean
+  id?:number
 }
 
 // ==================== FILTER TYPES ====================

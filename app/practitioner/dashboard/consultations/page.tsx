@@ -21,6 +21,9 @@ import { Button } from '@/app/components/ui/Buttons'
 import { apiClient } from '@/app/lib/api'
 import type { Consultation } from '@/app/types'
 
+// We need to import the actual ConsultationStatus type
+import type { ConsultationStatus } from '@/app/types'
+
 export default function PractitionerConsultationsPage() {
   const { user, isAuthenticated } = useAuth()
   const router = useRouter()
@@ -97,9 +100,10 @@ export default function PractitionerConsultationsPage() {
     await fetchConsultations()
   }
 
+  // FIXED: Cast the status to the imported ConsultationStatus type
   const handleStatusUpdate = async (consultationId: number, newStatus: string) => {
     try {
-      await apiClient.consultations.updateStatus(consultationId, newStatus)
+      await apiClient.consultations.updateStatus(consultationId, newStatus as ConsultationStatus)
       await fetchConsultations()
     } catch (error) {
       console.error('Failed to update status:', error)

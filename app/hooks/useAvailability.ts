@@ -1,153 +1,92 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { availabilityApi } from '@/app/lib/api/availability'
-import type { Availability, TimeSlot, BulkAvailabilityData } from '@/app/types'
-import { toast } from 'react-hot-toast'
+import type { Availability, CreateAvailabilityData, BulkAvailabilityData } from '@/app/types'
 
 export function useAvailability(practitionerId?: number) {
   const [availability, setAvailability] = useState<Availability[]>([])
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch my availability (for practitioner dashboard)
-  const fetchMyAvailability = useCallback(async (params?: any) => {
+  const fetchAvailability = useCallback(async (params?: Record<string, any>) => {
     setLoading(true)
     setError(null)
     try {
-      const data = await availabilityApi.getMyAvailability(params)
+      // Use getAll with practitionerId if available
+      const data = await availabilityApi.getAll(practitionerId)
       setAvailability(data)
       return data
     } catch (err: any) {
-      const errorMessage = err.message || 'Failed to load availability'
-      setError(errorMessage)
-      console.error('Error loading availability:', err)
-      toast.error(errorMessage)
-      return []
+      setError(err.message || 'Failed to fetch availability')
+      throw err
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [practitionerId])
 
-  // Fetch practitioner's public availability
-  const fetchPractitionerAvailability = useCallback(async (id: number) => {
+  const createSlot = useCallback(async (data: CreateAvailabilityData) => {
     setLoading(true)
     setError(null)
-    try {
-      const data = await availabilityApi.getPractitionerAvailability(id)
-      setAvailability(data)
-      return data
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to load availability'
-      setError(errorMessage)
-      console.error('Error loading availability:', err)
-      toast.error(errorMessage)
-      return []
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  // Fetch available time slots for a date range
-  const fetchTimeSlots = useCallback(async (
-    pId: number,
-    startDate: string,
-    endDate: string
-  ) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await availabilityApi.getPractitionerSlots(pId, startDate, endDate)
-      setTimeSlots(data)
-      return data
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to load time slots'
-      setError(errorMessage)
-      console.error('Error loading time slots:', err)
-      toast.error(errorMessage)
-      return []
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  // Create availability slot
-  const createSlot = useCallback(async (data: Partial<Availability>) => {
-    setLoading(true)
     try {
       const newSlot = await availabilityApi.create(data)
       setAvailability(prev => [...prev, newSlot])
-      toast.success('Availability slot created')
       return newSlot
     } catch (err: any) {
-      toast.error(err.message || 'Failed to create slot')
+      setError(err.message || 'Failed to create slot')
       throw err
     } finally {
       setLoading(false)
     }
   }, [])
 
-  // Bulk create slots - using multiple API calls
   const bulkCreateSlots = useCallback(async (data: BulkAvailabilityData) => {
     setLoading(true)
+    setError(null)
     try {
       const newSlots = await availabilityApi.bulkCreate(data)
       setAvailability(prev => [...prev, ...newSlots])
-      toast.success(`Created ${newSlots.length} availability slots`)
       return newSlots
     } catch (err: any) {
-      toast.error(err.message || 'Failed to create slots')
+      setError(err.message || 'Failed to create slots')
       throw err
     } finally {
       setLoading(false)
     }
   }, [])
 
-  // Update slot
-  const updateSlot = useCallback(async (id: number, data: Partial<Availability>) => {
+  const updateSlot = useCallback(async (id: number, data: Partial<CreateAvailabilityData>) => {
     setLoading(true)
+    setError(null)
     try {
       const updated = await availabilityApi.update(id, data)
       setAvailability(prev => prev.map(slot => slot.id === id ? updated : slot))
-      toast.success('Availability slot updated')
       return updated
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update slot')
+      setError(err.message || 'Failed to update slot')
       throw err
     } finally {
       setLoading(false)
     }
   }, [])
 
-  // Delete slot
   const deleteSlot = useCallback(async (id: number) => {
     setLoading(true)
+    setError(null)
     try {
       await availabilityApi.delete(id)
       setAvailability(prev => prev.filter(slot => slot.id !== id))
-      toast.success('Availability slot deleted')
     } catch (err: any) {
-      toast.error(err.message || 'Failed to delete slot')
+      setError(err.message || 'Failed to delete slot')
       throw err
     } finally {
       setLoading(false)
     }
   }, [])
 
-  // Load data on mount if practitionerId provided
-  useEffect(() => {
-    if (practitionerId) {
-      fetchMyAvailability()
-    }
-  }, [practitionerId, fetchMyAvailability])
-
   return {
     availability,
-    timeSlots,
     loading,
     error,
-    fetchMyAvailability,
-    fetchPractitionerAvailability,
-    fetchTimeSlots,
+    fetchAvailability,
     createSlot,
     bulkCreateSlots,
     updateSlot,

@@ -1,161 +1,175 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  ChevronLeftIcon, 
+import { motion } from 'framer-motion'
+import {
+  ChevronLeftIcon,
   ChevronRightIcon,
   ClockIcon,
-  CalendarIcon,
-  XMarkIcon,
-  CheckCircleIcon
+  CalendarDaysIcon
 } from '@heroicons/react/24/outline'
+import { Card, CardBody } from '@/app/components/ui/Card'
+import { Button } from '@/app/components/ui/Buttons'
 import { availabilityApi } from '@/app/lib/api/availability'
-import type { TimeSlot } from '@/app/types'
+import type { Availability } from '@/app/types'
 
 interface ClientBookingCalendarProps {
   practitionerId: number
-  practitionerName: string
-   onSelectSlot?: (slot: TimeSlot) => void 
+  onSelectSlot: (date: string, time: string) => void
 }
 
-interface DayWithSlots {
+interface DayCell {
   date: Date
   dateStr: string
-  slots: TimeSlot[]
-  isAvailable: boolean
+  hasSlots: boolean
+  slots: string[]
 }
 
-export function ClientBookingCalendar({ 
-  practitionerId, 
-  practitionerName,
-  onSelectSlot 
-}: ClientBookingCalendarProps) {
+export function ClientBookingCalendar({ practitionerId, onSelectSlot }: ClientBookingCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const [slots, setSlots] = useState<TimeSlot[]>([])
-  const [loading, setLoading] = useState(false)
-  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
-  const [showBookingModal, setShowBookingModal] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<string>('')
+  const [selectedTime, setSelectedTime] = useState<string>('')
+  const [availability, setAvailability] = useState<Availability[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Fetch slots for current month
+  const weekDays = [
+    { key: 'sun', label: 'S' },
+    { key: 'mon', label: 'M' },
+    { key: 'tue', label: 'T' },
+    { key: 'wed', label: 'W' },
+    { key: 'thu', label: 'T' },
+    { key: 'fri', label: 'F' },
+    { key: 'sat', label: 'S' }
+  ]
+
   useEffect(() => {
-    const fetchSlots = async () => {
-      setLoading(true)
-      try {
-        const year = currentMonth.getFullYear()
-        const month = currentMonth.getMonth()
-        const startDate = new Date(year, month, 1).toISOString().split('T')[0]
-        const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0]
-        
-        const availableSlots = await availabilityApi.getPractitionerSlots(
-          practitionerId,
-          startDate,
-          endDate
-        )
-        setSlots(availableSlots)
-      } catch (error) {
-        console.error('Error fetching slots:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (practitionerId) {
-      fetchSlots()
-    }
+    fetchAvailability()
   }, [practitionerId, currentMonth])
 
-  // Generate calendar days
-  const getDaysInMonth = (): DayWithSlots[] => {
+  const fetchAvailability = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      // Fetch all availability for this practitioner
+      const data = await availabilityApi.getAll(practitionerId)
+      setAvailability(data)
+      
+    } catch (error) {
+      console.error('Failed to fetch availability:', error)
+      setError('Failed to load availability')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getBackendDay = (jsDay: number): number => {
+    const mapping: Record<number, number> = {
+      0: 6, // Sunday -> 6
+      1: 0, // Monday -> 0
+      2: 1, // Tuesday -> 1
+      3: 2, // Wednesday -> 2
+      4: 3, // Thursday -> 3
+      5: 4, // Friday -> 4
+      6: 5, // Saturday -> 5
+    }
+    return mapping[jsDay]
+  }
+
+  const getDaysInMonth = (): DayCell[] => {
     const year = currentMonth.getFullYear()
     const month = currentMonth.getMonth()
-    
     const firstDay = new Date(year, month, 1)
     const lastDay = new Date(year, month + 1, 0)
-    
-    const days: DayWithSlots[] = []
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    // Create array of all days in month
+    const days: DayCell[] = []
+
     for (let d = 1; d <= lastDay.getDate(); d++) {
       const date = new Date(year, month, d)
       const dateStr = date.toISOString().split('T')[0]
-      const daySlots = slots.filter(slot => slot.date === dateStr)
-      
+      const jsDay = date.getDay()
+      const backendDay = getBackendDay(jsDay)
+
+      // Find slots for this day
+      const slots = availability
+        .filter(slot => {
+          if (!slot.is_available) return false
+          
+          if (slot.recurrence_type === 'weekly') {
+            return slot.day_of_week === backendDay
+          } else if (slot.recurrence_type === 'one_time') {
+            return slot.specific_date === dateStr
+          }
+          return false
+        })
+        .map(slot => slot.start_time.slice(0,5))
+        .sort()
+
       days.push({
         date,
         dateStr,
-        slots: daySlots,
-        isAvailable: daySlots.length > 0 && date >= today
+        hasSlots: slots.length > 0,
+        slots
       })
     }
-    
+
     return days
   }
 
-  const handlePrevMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))
-    setSelectedDate(null)
-    setSelectedSlot(null)
-  }
+  const days = getDaysInMonth()
+  const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay()
+  const emptyDays = Array(firstDayOfMonth).fill(null)
 
-  const handleNextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))
-    setSelectedDate(null)
-    setSelectedSlot(null)
-  }
-
-  const handleDateClick = (dateStr: string) => {
+  const handleDateSelect = (dateStr: string) => {
     setSelectedDate(dateStr)
-    setSelectedSlot(null)
+    setSelectedTime('')
   }
 
-  const handleSlotSelect = (slot: TimeSlot) => {
-    setSelectedSlot(slot)
-    setShowBookingModal(true)
+  const handleTimeSelect = (time: string) => {
+    setSelectedTime(time)
   }
 
-  const confirmBooking = () => {
-    if (selectedSlot && onSelectSlot) {
-      onSelectSlot(selectedSlot)
-      setShowBookingModal(false)
+  const handleContinue = () => {
+    if (selectedDate && selectedTime) {
+      onSelectSlot(selectedDate, selectedTime)
     }
   }
 
-  const days = getDaysInMonth()
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  
-  // Get slots for selected date
-  const selectedDateSlots = selectedDate 
-    ? slots.filter(slot => slot.date === selectedDate)
-    : []
+  const selectedDaySlots = days.find(d => d.dateStr === selectedDate)?.slots || []
 
-  const isPastDate = (date: Date) => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    return date < today
+  if (loading) {
+    return (
+      <Card>
+        <CardBody className="p-8 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-4 border-emerald-200 border-t-emerald-600 mx-auto"></div>
+          <p className="text-sm text-gray-500 mt-4">Loading availability...</p>
+        </CardBody>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardBody className="p-8 text-center">
+          <div className="text-red-500 mb-4">⚠️</div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{error}</p>
+          <Button onClick={fetchAvailability} className="mt-4">
+            Try Again
+          </Button>
+        </CardBody>
+      </Card>
+    )
   }
 
   return (
-    <>
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Book with {practitionerName}
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Select an available time slot below
-          </p>
-        </div>
-
-        {/* Calendar Navigation */}
-        <div className="p-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+    <Card>
+      <CardBody className="p-6">
+        {/* Calendar Header */}
+        <div className="flex items-center justify-between mb-6">
           <button
-            onClick={handlePrevMonth}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
           >
             <ChevronLeftIcon className="h-5 w-5" />
           </button>
@@ -163,237 +177,117 @@ export function ClientBookingCalendar({
             {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
           </h3>
           <button
-            onClick={handleNextMonth}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
           >
             <ChevronRightIcon className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Calendar Grid */}
-        <div className="p-4">
-          {/* Weekday headers */}
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {weekDays.map(day => (
-              <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
-                {day}
-              </div>
-            ))}
-          </div>
-
-          {/* Calendar days */}
-          <div className="grid grid-cols-7 gap-1">
-            {/* Add empty cells for days before month starts */}
-            {Array.from({ length: new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay() }).map((_, i) => (
-              <div key={`empty-${i}`} className="aspect-square p-2" />
-            ))}
-
-            {days.map((day, index) => {
-              const isPast = isPastDate(day.date)
-              const isSelected = selectedDate === day.dateStr
-              
-              return (
-                <motion.button
-                  key={index}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: index * 0.01 }}
-                  onClick={() => day.isAvailable && !isPast && handleDateClick(day.dateStr)}
-                  disabled={!day.isAvailable || isPast}
-                  className={`
-                    aspect-square p-2 rounded-lg border-2 transition relative
-                    ${day.isAvailable && !isPast 
-                      ? 'cursor-pointer hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20' 
-                      : 'cursor-not-allowed opacity-50'
-                    }
-                    ${isSelected ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-transparent'}
-                    ${isPast ? 'bg-gray-100 dark:bg-gray-800' : 'bg-white dark:bg-gray-800'}
-                  `}
-                >
-                  <div className="h-full flex flex-col">
-                    <span className={`text-sm font-medium ${
-                      isPast ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'
-                    }`}>
-                      {day.date.getDate()}
-                    </span>
-                    
-                    {/* Slot indicators */}
-                    {day.isAvailable && !isPast && (
-                      <>
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {day.slots.slice(0, 3).map((_, i) => (
-                            <div
-                              key={i}
-                              className="w-1.5 h-1.5 rounded-full bg-green-500"
-                            />
-                          ))}
-                          {day.slots.length > 3 && (
-                            <span className="text-xs text-green-600">+{day.slots.length - 3}</span>
-                          )}
-                        </div>
-                        <span className="text-xs text-green-600 mt-auto">
-                          {day.slots.length} slot{day.slots.length !== 1 ? 's' : ''}
-                        </span>
-                      </>
-                    )}
-
-                    {/* No availability indicator */}
-                    {!day.isAvailable && !isPast && (
-                      <span className="text-xs text-gray-400 mt-auto">No slots</span>
-                    )}
-
-                    {isPast && (
-                      <span className="text-xs text-gray-400 mt-auto">Past</span>
-                    )}
-                  </div>
-                </motion.button>
-              )
-            })}
-          </div>
-
-          {/* Legend */}
-          <div className="mt-4 flex items-center gap-4 text-sm border-t pt-4">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-green-500"></div>
-              <span>Available</span>
+        {/* Weekday Headers */}
+        <div className="grid grid-cols-7 gap-1 mb-2">
+          {weekDays.map((day) => (
+            <div key={day.key} className="text-center text-xs font-medium text-gray-500 py-2">
+              {day.label}
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-gray-300"></div>
-              <span>No slots</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-gray-100 border border-gray-300"></div>
-              <span>Past date</span>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Selected Date Slots */}
-        <AnimatePresence>
-          {selectedDate && selectedDateSlots.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50"
-            >
-              <h3 className="font-medium mb-3 flex items-center gap-2">
-                <CalendarIcon className="h-5 w-5 text-gray-500" />
-                Available times for {new Date(selectedDate).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </h3>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                {selectedDateSlots.map((slot, index) => (
-                  <motion.button
-                    key={index}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.05 }}
-                    onClick={() => handleSlotSelect(slot)}
-                    className="p-3 rounded-lg border-2 border-green-200 bg-green-50 
-                             hover:border-green-500 hover:bg-green-100 
-                             text-green-700 font-medium transition-all hover:scale-105"
-                  >
-                    <ClockIcon className="h-4 w-4 mx-auto mb-1" />
-                    {slot.start_time.slice(0,5)}
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-1 mb-6">
+          {emptyDays.map((_, i) => (
+            <div key={`empty-${i}`} className="aspect-square p-1" />
+          ))}
+          
+          {days.map((day) => {
+            const isSelected = selectedDate === day.dateStr
+            const isPast = day.date < new Date(new Date().setHours(0,0,0,0))
+            const isToday = day.dateStr === new Date().toISOString().split('T')[0]
 
-        {/* Loading state */}
-        {loading && (
-          <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-            <p className="mt-2 text-gray-500">Loading available slots...</p>
+            return (
+              <div key={day.dateStr} className="aspect-square p-1">
+                <button
+                  onClick={() => day.hasSlots && !isPast && handleDateSelect(day.dateStr)}
+                  disabled={!day.hasSlots || isPast}
+                  className={`
+                    w-full h-full rounded-lg flex flex-col items-center justify-center text-sm transition
+                    ${isSelected
+                      ? 'bg-emerald-600 text-white'
+                      : day.hasSlots && !isPast
+                        ? 'hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-gray-700 dark:text-gray-300 cursor-pointer'
+                        : 'text-gray-300 dark:text-gray-700 cursor-not-allowed'
+                    }
+                    ${isToday && !isSelected ? 'ring-2 ring-emerald-200 dark:ring-emerald-800' : ''}
+                  `}
+                >
+                  <span>{day.date.getDate()}</span>
+                  {day.hasSlots && !isPast && !isSelected && (
+                    <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1" />
+                  )}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Time Slots */}
+        {selectedDate && (
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="text-sm font-medium mb-4 flex items-center gap-2">
+              <ClockIcon className="h-4 w-4 text-gray-400" />
+              Available Times for {new Date(selectedDate).toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric'
+              })}
+            </h4>
+
+            {selectedDaySlots.length > 0 ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {selectedDaySlots.map((time) => (
+                    <button
+                      key={time}
+                      onClick={() => handleTimeSelect(time)}
+                      className={`
+                        p-3 rounded-lg border-2 transition text-center
+                        ${selectedTime === time
+                          ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-900/30'
+                          : 'border-gray-200 hover:border-emerald-300 dark:border-gray-700 dark:hover:border-emerald-800'
+                        }
+                      `}
+                    >
+                      <span className="text-sm font-medium">{time}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {selectedTime && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <Button
+                      onClick={handleContinue}
+                      fullWidth
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      Continue to Booking
+                    </Button>
+                  </motion.div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                <CalendarDaysIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No available slots for this date
+                </p>
+              </div>
+            )}
           </div>
         )}
-      </div>
-
-      {/* Booking Confirmation Modal */}
-      <AnimatePresence>
-        {showBookingModal && selectedSlot && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
-            onClick={() => setShowBookingModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-bold">Confirm Booking</h3>
-                <button
-                  onClick={() => setShowBookingModal(false)}
-                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                >
-                  <XMarkIcon className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <CheckCircleIcon className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                  <p className="text-center text-green-700 dark:text-green-300 font-medium">
-                    Selected time is available!
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-500">Practitioner</p>
-                  <p className="font-medium">{practitionerName}</p>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-500">Date</p>
-                  <p className="font-medium">
-                    {new Date(selectedSlot.date).toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-500">Time</p>
-                  <p className="font-medium text-lg">
-                    {selectedSlot.start_time.slice(0,5)} - {selectedSlot.end_time.slice(0,5)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowBookingModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmBooking}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                >
-                  Confirm Booking
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+      </CardBody>
+    </Card>
   )
 }

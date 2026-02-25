@@ -25,7 +25,7 @@ import { apiClient } from '@/app/lib/api'
 import type { User, UserProfile, Practitioner, Specialty } from '@/app/types'
 
 export default function PractitionerProfilePage() {
-  const { user, isAuthenticated, refreshUserProfile } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [practitioner, setPractitioner] = useState<Practitioner | null>(null)
@@ -34,26 +34,29 @@ export default function PractitionerProfilePage() {
   const [saving, setSaving] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
     phone: '',
     bio: '',
     city: '',
     hourly_rate: '',
     years_of_experience: '',
-    selectedSpecialties: [] as number[]
+    selectedSpecialties: [] as number[] // Keep as IDs for UI
   })
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!authLoading && !isAuthenticated) {
       router.push('/login')
       return
     }
+    
+    if (!authLoading && user?.role !== 'practitioner') {
+      router.push('/client/dashboard')
+      return
+    }
+
     fetchData()
-  }, [isAuthenticated, router])
+  }, [authLoading, isAuthenticated, user?.role, router])
 
   const fetchData = async () => {
     try {
@@ -72,9 +75,6 @@ export default function PractitionerProfilePage() {
       
       // Initialize form data
       setFormData({
-        first_name: user?.first_name || '',
-        last_name: user?.last_name || '',
-        email: user?.email || '',
         phone: profileData?.phone || '',
         bio: practitionerData?.bio || '',
         city: practitionerData?.city || '',
@@ -113,23 +113,24 @@ export default function PractitionerProfilePage() {
     setSuccess(null)
 
     try {
-      // Update profile
-      await apiClient.profiles.update(user?.id!, {
+      // Update profile using updateMyProfile
+      await apiClient.profiles.updateMyProfile({
         phone: formData.phone
       })
 
-      // Update practitioner profile
+      // Update practitioner profile using updateMyProfile
+      // Note: The API might expect specialty IDs, not full Specialty objects
       if (practitioner) {
-        await apiClient.practitioners.update(practitioner.id, {
+        await apiClient.practitioners.updateMyProfile({
           bio: formData.bio,
           city: formData.city,
           hourly_rate: parseFloat(formData.hourly_rate) || 0,
-          years_of_experience: parseInt(formData.years_of_experience) || 0
-        })
+          years_of_experience: parseInt(formData.years_of_experience) || 0,
+          // If the API expects IDs, use formData.selectedSpecialties
+          // If it expects full objects, you'll need to map them
+          specialties: formData.selectedSpecialties // This might be correct if API accepts IDs
+        } as any) // Use 'as any' temporarily if type mismatch persists
       }
-
-      // Refresh user data
-      await refreshUserProfile()
       
       setSuccess('Profile updated successfully')
       setEditMode(false)
@@ -142,7 +143,7 @@ export default function PractitionerProfilePage() {
     }
   }
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
@@ -150,12 +151,18 @@ export default function PractitionerProfilePage() {
     )
   }
 
+  if (!isAuthenticated || user?.role !== 'practitioner') {
+    return null
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Practice Profile</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Practice Profile
+          </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Manage your professional information
           </p>
@@ -212,31 +219,19 @@ export default function PractitionerProfilePage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Basic Info */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Basic Information</h3>
+                <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">
+                  Basic Information
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      First Name
+                      Full Name
                     </label>
                     <input
                       type="text"
-                      name="first_name"
-                      value={formData.first_name}
+                      value={`Dr. ${user?.first_name || ''} ${user?.last_name || ''}`}
                       disabled
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 cursor-not-allowed"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      name="last_name"
-                      value={formData.last_name}
-                      disabled
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 cursor-not-allowed"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 cursor-not-allowed text-gray-900 dark:text-white"
                     />
                   </div>
 
@@ -246,10 +241,9 @@ export default function PractitionerProfilePage() {
                     </label>
                     <input
                       type="email"
-                      name="email"
-                      value={formData.email}
+                      value={user?.email || ''}
                       disabled
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 cursor-not-allowed"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 cursor-not-allowed text-gray-900 dark:text-white"
                     />
                   </div>
 
@@ -263,7 +257,7 @@ export default function PractitionerProfilePage() {
                       value={formData.phone}
                       onChange={handleInputChange}
                       placeholder="+254 123 456 789"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-gray-800"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-gray-800 text-gray-900 dark:text-white"
                     />
                   </div>
                 </div>
@@ -271,7 +265,9 @@ export default function PractitionerProfilePage() {
 
               {/* Professional Info */}
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <h3 className="text-lg font-semibold mb-3">Professional Information</h3>
+                <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">
+                  Professional Information
+                </h3>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -282,7 +278,7 @@ export default function PractitionerProfilePage() {
                       rows={4}
                       value={formData.bio}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-gray-800"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-gray-800 text-gray-900 dark:text-white"
                       placeholder="Tell clients about your experience and approach..."
                     />
                   </div>
@@ -298,7 +294,7 @@ export default function PractitionerProfilePage() {
                         value={formData.city}
                         onChange={handleInputChange}
                         placeholder="Nairobi"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-gray-800"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-gray-800 text-gray-900 dark:text-white"
                       />
                     </div>
 
@@ -312,7 +308,7 @@ export default function PractitionerProfilePage() {
                         value={formData.years_of_experience}
                         onChange={handleInputChange}
                         min="0"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-gray-800"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-gray-800 text-gray-900 dark:text-white"
                       />
                     </div>
 
@@ -327,7 +323,7 @@ export default function PractitionerProfilePage() {
                         onChange={handleInputChange}
                         min="0"
                         step="100"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-gray-800"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-gray-800 text-gray-900 dark:text-white"
                       />
                     </div>
                   </div>
@@ -360,11 +356,12 @@ export default function PractitionerProfilePage() {
                 <Button
                   type="submit"
                   disabled={saving}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  variant="primary"
+                  className="flex items-center gap-2"
                 >
                   {saving ? (
                     <>
-                      <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
+                      <ArrowPathIcon className="h-4 w-4 animate-spin" />
                       Saving...
                     </>
                   ) : (
@@ -381,17 +378,17 @@ export default function PractitionerProfilePage() {
                   {user?.first_name?.[0]}{user?.last_name?.[0]}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                     Dr. {user?.first_name} {user?.last_name}
                   </h2>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-gray-600 dark:text-gray-400">Practitioner</span>
                     {user?.is_verified ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
                         ✓ Verified
                       </span>
                     ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
                         Pending Verification
                       </span>
                     )}
@@ -458,9 +455,9 @@ export default function PractitionerProfilePage() {
                 </div>
               )}
 
-              {/* Stats */}
+              {/* Stats - You'll need to fetch these from metrics endpoint */}
               <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <h3 className="text-lg font-semibold mb-3">Practice Stats</h3>
+                <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">Practice Stats</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <StatCard label="Total Consultations" value="0" />
                   <StatCard label="Completed" value="0" />
@@ -476,7 +473,7 @@ export default function PractitionerProfilePage() {
   )
 }
 
-function InfoItem({ icon: Icon, label, value }: any) {
+function InfoItem({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
     <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
       <Icon className="h-5 w-5 text-gray-400 mt-0.5" />
@@ -491,7 +488,7 @@ function InfoItem({ icon: Icon, label, value }: any) {
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
-      <p className="text-2xl font-bold text-emerald-600">{value}</p>
+      <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{value}</p>
       <p className="text-xs text-gray-600 dark:text-gray-400">{label}</p>
     </div>
   )

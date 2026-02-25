@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/app/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -11,7 +11,7 @@ import {
   PlusIcon,
   ChartBarIcon,
 } from '@heroicons/react/24/outline'
-import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
+import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import { useAvailability } from '@/app/hooks/useAvailability'
 import { AvailabilityCalendar } from '@/app/components/practitioners/availability/AvailabilityCalendar'
@@ -19,6 +19,7 @@ import { BulkAvailabilityForm } from '@/app/components/practitioners/availabilit
 import { SingleSlotForm } from '@/app/components/practitioners/SingleSlotForm'
 import { AvailabilityList } from '@/app/components/practitioners/availability/AvailabilityList'
 import { apiClient } from '@/app/lib/api'
+import { Availability, CreateAvailabilityData } from '@/app/types/index'
 
 interface PractitionerStats {
   totalWeeklySlots: number
@@ -54,7 +55,7 @@ export default function PractitionerAvailabilityPage() {
   const {
     availability,
     loading,
-    fetchMyAvailability,
+    fetchAvailability,
     bulkCreateSlots,
     createSlot,
     updateSlot,
@@ -89,9 +90,9 @@ export default function PractitionerAvailabilityPage() {
 
   useEffect(() => {
     if (practitionerId) {
-      fetchMyAvailability()
+      fetchAvailability()
     }
-  }, [practitionerId, fetchMyAvailability])
+  }, [practitionerId, fetchAvailability])
 
   // Calculate stats whenever availability changes
   useEffect(() => {
@@ -118,6 +119,37 @@ export default function PractitionerAvailabilityPage() {
       })
     }
   }, [availability])
+
+  // Type-safe update handler that returns Promise<Availability>
+  const handleUpdateSlot = useCallback(async (id: number, data: Partial<Availability>) => {
+    // Only include properties that exist on Availability and are needed for update
+    const updateData: Partial<CreateAvailabilityData> = {
+      // Convert null to undefined for day_of_week
+      ...(data.day_of_week !== undefined && { 
+        day_of_week: data.day_of_week ?? undefined 
+      }),
+      ...(data.start_time && { start_time: data.start_time }),
+      ...(data.end_time && { end_time: data.end_time }),
+      ...(data.is_available !== undefined && { is_available: data.is_available }),
+      ...(data.recurrence_type && { recurrence_type: data.recurrence_type }),
+      // recurrence_end_date is intentionally omitted as it doesn't exist on Availability
+    };
+    
+    // Remove any undefined values
+    const cleanedData = Object.fromEntries(
+      Object.entries(updateData).filter(([_, value]) => value !== undefined)
+    );
+    
+    // Return the result from updateSlot (which returns Promise<Availability>)
+    return await updateSlot(id, cleanedData);
+  }, [updateSlot]);
+
+  // Type-safe delete handler
+  const handleDeleteSlot = useCallback(async (id: number) => {
+    if (window.confirm('Are you sure you want to delete this availability slot?')) {
+      await deleteSlot(id);
+    }
+  }, [deleteSlot]);
 
   if (isLoading) {
     return (
@@ -228,7 +260,7 @@ export default function PractitionerAvailabilityPage() {
               practitionerId={practitionerId!}
               onSuccess={() => {
                 setShowBulkForm(false)
-                fetchMyAvailability()
+                fetchAvailability()
               }}
               onCancel={() => setShowBulkForm(false)}
             />
@@ -248,7 +280,7 @@ export default function PractitionerAvailabilityPage() {
               practitionerId={practitionerId!}
               onSuccess={() => {
                 setShowSingleForm(false)
-                fetchMyAvailability()
+                fetchAvailability()
               }}
               onCancel={() => setShowSingleForm(false)}
             />
@@ -287,14 +319,14 @@ export default function PractitionerAvailabilityPage() {
         <AvailabilityList
           availability={availability}
           loading={loading}
-          onEdit={updateSlot}
-          onDelete={deleteSlot}
+          onEdit={handleUpdateSlot}
+          onDelete={handleDeleteSlot}
         />
       ) : (
         <AvailabilityCalendar
           availability={availability}
           loading={loading}
-          onEdit={updateSlot}
+          onEdit={handleUpdateSlot}
         />
       )}
     </div>
