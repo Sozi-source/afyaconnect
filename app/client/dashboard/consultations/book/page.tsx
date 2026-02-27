@@ -1,6 +1,7 @@
+// app/client/dashboard/consultations/create/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -21,6 +22,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { useAuth } from '@/app/contexts/AuthContext'
 import { apiClient } from '@/app/lib/api'
+import { extractResults, formatDate, formatCurrency, getDayName } from '@/app/lib/utils'
 import type { Practitioner, Availability } from '@/app/types'
 
 type Step = 'practitioners' | 'datetime' | 'details' | 'confirmation' | 'success'
@@ -76,10 +78,13 @@ export default function NewBookingPage() {
   const fetchPractitioners = async () => {
     try {
       setLoading(true)
+      setError(null)
       const data = await apiClient.practitioners.getAll({ verified: true })
-      setPractitioners(Array.isArray(data) ? data : [])
+      const practitionersList = extractResults<Practitioner>(data)
+      setPractitioners(practitionersList)
     } catch (error) {
       setError('Failed to load practitioners')
+      console.error('Error fetching practitioners:', error)
     } finally {
       setLoading(false)
     }
@@ -89,26 +94,28 @@ export default function NewBookingPage() {
     try {
       setLoading(true)
       setError(null)
-      const data = await apiClient.availability.getAll(practitionerId)
-      setAvailability(Array.isArray(data) ? data : [])
+      const data = await apiClient.practitioners.getAvailability(practitionerId)
+      const availabilityList = extractResults<Availability>(data)
+      setAvailability(availabilityList)
       
-      if (data.length === 0) {
+      if (availabilityList.length === 0) {
         setError('This practitioner has no availability yet')
       }
     } catch (error) {
       setError('Failed to load availability')
+      console.error('Error fetching availability:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSelectPractitioner = (practitioner: Practitioner) => {
+  const handleSelectPractitioner = useCallback((practitioner: Practitioner) => {
     setSelectedPractitioner(practitioner)
     fetchAvailability(practitioner.id)
     setCurrentStep('datetime')
-  }
+  }, [])
 
-  const handleSelectSlot = (date: string, time: string) => {
+  const handleSelectSlot = useCallback((date: string, time: string) => {
     if (!selectedPractitioner) return
     setSelectedSlot({
       date,
@@ -117,9 +124,9 @@ export default function NewBookingPage() {
       practitionerName: `Dr. ${selectedPractitioner.first_name} ${selectedPractitioner.last_name}`
     })
     setCurrentStep('details')
-  }
+  }, [selectedPractitioner])
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     if (currentStep === 'datetime') {
       setSelectedPractitioner(null)
       setCurrentStep('practitioners')
@@ -128,17 +135,18 @@ export default function NewBookingPage() {
     } else if (currentStep === 'confirmation') {
       setCurrentStep('details')
     }
-  }
+  }, [currentStep])
 
-  const handleContinueToConfirmation = () => {
+  const handleContinueToConfirmation = useCallback(() => {
     setCurrentStep('confirmation')
-  }
+  }, [])
 
   const handleConfirmBooking = async () => {
     if (!selectedPractitioner || !selectedSlot) return
 
     try {
       setLoading(true)
+      setError(null)
       await apiClient.consultations.create({
         practitioner: selectedPractitioner.id,
         date: selectedSlot.date,
@@ -149,21 +157,36 @@ export default function NewBookingPage() {
       setCurrentStep('success')
     } catch (error) {
       setError('Failed to book consultation')
+      console.error('Error creating consultation:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setSelectedPractitioner(null)
     setSelectedSlot(null)
     setCurrentStep('practitioners')
     setNotes('')
     setDuration(60)
     setConsultationType('video')
-  }
+    setError(null)
+  }, [])
 
-  const formatPrice = (price: number) => `KES ${price.toLocaleString()}`
+  const formatPrice = useCallback((price: number) => formatCurrency(price), [])
+
+  const totalPrice = useMemo(() => {
+    if (!selectedPractitioner) return 0
+    return (selectedPractitioner.hourly_rate * duration) / 60
+  }, [selectedPractitioner, duration])
+
+  const stepTitles = {
+    practitioners: 'Choose your practitioner',
+    datetime: 'Select date and time',
+    details: 'Add consultation details',
+    confirmation: 'Review and confirm',
+    success: 'Booking confirmed!'
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
@@ -180,18 +203,14 @@ export default function NewBookingPage() {
             <div>
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Book Consultation</h1>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                {currentStep === 'practitioners' && 'Choose your practitioner'}
-                {currentStep === 'datetime' && 'Select date and time'}
-                {currentStep === 'details' && 'Add consultation details'}
-                {currentStep === 'confirmation' && 'Review and confirm'}
-                {currentStep === 'success' && 'Booking confirmed!'}
+                {stepTitles[currentStep]}
               </p>
             </div>
           </div>
           
           {/* Step Indicator */}
           <div className="flex items-center gap-2">
-            {['practitioners', 'datetime', 'details', 'confirmation'].map((step, index) => {
+            {(['practitioners', 'datetime', 'details', 'confirmation'] as const).map((step, index) => {
               const stepNumber = index + 1
               const isActive = currentStep === step
               const isPast = ['practitioners', 'datetime', 'details', 'confirmation'].indexOf(currentStep) > index
@@ -263,6 +282,7 @@ export default function NewBookingPage() {
               duration={duration}
               notes={notes}
               consultationType={consultationType}
+              totalPrice={totalPrice}
               onDurationChange={setDuration}
               onNotesChange={setNotes}
               onTypeChange={setConsultationType}
@@ -279,6 +299,7 @@ export default function NewBookingPage() {
               duration={duration}
               notes={notes}
               consultationType={consultationType}
+              totalPrice={totalPrice}
               loading={loading}
               onBack={handleBack}
               onConfirm={handleConfirmBooking}
@@ -315,17 +336,24 @@ function PractitionerGrid({
   const [selectedSpecialty, setSelectedSpecialty] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
-  const specialties = [...new Set(
-    practitioners.flatMap((p: Practitioner) => p.specialties?.map(s => s.name) || [])
-  )]
+  const specialties = useMemo(() => 
+    [...new Set(
+      practitioners.flatMap((p: Practitioner) => p.specialties?.map(s => s.name) || [])
+    )],
+    [practitioners]
+  )
 
-  const filtered = practitioners.filter((p: Practitioner) => {
-    const matchesSearch = p.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      p.specialties?.some(s => s.name.toLowerCase().includes(search.toLowerCase()))
-    const matchesSpecialty = !selectedSpecialty ||
-      p.specialties?.some(s => s.name === selectedSpecialty)
-    return matchesSearch && matchesSpecialty
-  })
+  const filtered = useMemo(() => 
+    practitioners.filter((p: Practitioner) => {
+      const matchesSearch = !search || 
+        p.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+        p.specialties?.some(s => s.name.toLowerCase().includes(search.toLowerCase()))
+      const matchesSpecialty = !selectedSpecialty ||
+        p.specialties?.some(s => s.name === selectedSpecialty)
+      return matchesSearch && matchesSpecialty
+    }),
+    [practitioners, search, selectedSpecialty]
+  )
 
   if (loading) {
     return (
@@ -429,7 +457,7 @@ function PractitionerGrid({
                   <div className="flex items-center gap-2 mb-3">
                     <CurrencyDollarIcon className="h-4 w-4 text-slate-400" />
                     <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                      KES {p.hourly_rate}/hr
+                      {formatCurrency(p.hourly_rate)}/hr
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1">
@@ -450,7 +478,7 @@ function PractitionerGrid({
 }
 
 // ============================================================================
-// DateTimeSelector Component
+// DateTimeSelector Component - FIXED
 // ============================================================================
 
 function DateTimeSelector({ 
@@ -468,9 +496,9 @@ function DateTimeSelector({
 }) {
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [selectedTime, setSelectedTime] = useState<string>('')
-  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 1, 1)) // February 2026
+  const [currentMonth, setCurrentMonth] = useState(new Date()) // ✅ FIXED: Use current date
 
-  const getBackendDay = (jsDay: number): number => {
+  const getBackendDay = useCallback((jsDay: number): number => {
     const mapping: Record<number, number> = {
       0: 6, // Sunday -> 6
       1: 0, // Monday -> 0
@@ -481,9 +509,9 @@ function DateTimeSelector({
       6: 5, // Saturday -> 5
     };
     return mapping[jsDay];
-  }
+  }, []);
 
-  const dateHasAvailability = (dateStr: string): boolean => {
+  const dateHasAvailability = useCallback((dateStr: string): boolean => {
     const date = new Date(dateStr);
     const jsDay = date.getDay();
     const backendDay = getBackendDay(jsDay);
@@ -498,9 +526,9 @@ function DateTimeSelector({
       }
       return false;
     });
-  };
+  }, [availability, getBackendDay]);
 
-  const getTimeSlotsForDate = (dateStr: string): string[] => {
+  const getTimeSlotsForDate = useCallback((dateStr: string): string[] => {
     if (!dateStr) return [];
     
     const date = new Date(dateStr);
@@ -520,19 +548,24 @@ function DateTimeSelector({
       })
       .map(slot => slot.start_time.slice(0,5))
       .sort();
-  };
+  }, [availability, getBackendDay]);
 
-  const generateCalendarDays = () => {
+  const calendarDays = useMemo(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const days = [];
+    const days: (DayCell | null)[] = [];
     
-    for (let i = 0; i < firstDay.getDay(); i++) {
+    // Add empty cells for days before month starts (Monday first)
+    let firstDayOfWeek = firstDay.getDay();
+    const emptyDays = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+    
+    for (let i = 0; i < emptyDays; i++) {
       days.push(null);
     }
     
+    // Add days of current month
     for (let d = 1; d <= lastDay.getDate(); d++) {
       const date = new Date(year, month, d);
       const dateStr = date.toISOString().split('T')[0];
@@ -546,20 +579,62 @@ function DateTimeSelector({
     }
     
     return days;
-  };
+  }, [currentMonth, dateHasAvailability]);
 
-  const days = generateCalendarDays();
-  const timeSlots = getTimeSlotsForDate(selectedDate);
+  const timeSlots = useMemo(() => 
+    getTimeSlotsForDate(selectedDate),
+    [selectedDate, getTimeSlotsForDate]
+  );
   
   const weekDays = [
-    { key: 'sun', label: 'S' },
     { key: 'mon', label: 'M' },
     { key: 'tue', label: 'T' },
     { key: 'wed', label: 'W' },
     { key: 'thu', label: 'T' },
     { key: 'fri', label: 'F' },
-    { key: 'sat', label: 'S' }
+    { key: 'sat', label: 'S' },
+    { key: 'sun', label: 'S' }
   ];
+
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const canGoPrev = useMemo(() => 
+    currentMonth > new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    [currentMonth]
+  );
+
+  if (loading) {
+    return (
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-emerald-200 border-t-emerald-600 mx-auto"></div>
+        <p className="text-sm text-gray-500 mt-4">Loading availability...</p>
+      </div>
+    );
+  }
+
+  if (availability.length === 0) {
+    return (
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 text-center">
+        <CalendarDaysIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          No Availability
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          This practitioner hasn't set their availability yet.
+        </p>
+        <button
+          onClick={onBack}
+          className="mt-4 px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg"
+        >
+          Go Back
+        </button>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -584,7 +659,10 @@ function DateTimeSelector({
           <div className="flex items-center justify-between mb-4">
             <button 
               onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+              className={`p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition ${
+                !canGoPrev ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              disabled={!canGoPrev}
             >
               <ChevronLeftIcon className="h-5 w-5" />
             </button>
@@ -593,7 +671,7 @@ function DateTimeSelector({
             </span>
             <button 
               onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
             >
               <ChevronRightIcon className="h-5 w-5" />
             </button>
@@ -608,13 +686,13 @@ function DateTimeSelector({
           </div>
 
           <div className="grid grid-cols-7 gap-1">
-            {days.map((day, index) => {
+            {calendarDays.map((day, index) => {
               if (!day) {
                 return <div key={`empty-${index}`} className="aspect-square p-1" />;
               }
 
               const isSelected = selectedDate === day.dateStr;
-              const isPast = day.date < new Date(new Date().setHours(0,0,0,0));
+              const isPast = day.date < today;
               const isToday = day.dateStr === new Date().toISOString().split('T')[0];
 
               return (
@@ -666,11 +744,7 @@ function DateTimeSelector({
             <>
               <h3 className="font-medium mb-4 flex items-center gap-2">
                 <ClockIcon className="h-5 w-5 text-slate-400" />
-                Available Times for {new Date(selectedDate).toLocaleDateString(undefined, { 
-                  weekday: 'short', 
-                  month: 'short', 
-                  day: 'numeric' 
-                })}
+                Available Times for {formatDate(selectedDate, { weekday: 'short', month: 'short', day: 'numeric' })}
               </h3>
               
               {timeSlots.length > 0 ? (
@@ -730,6 +804,7 @@ function DateTimeSelector({
     </motion.div>
   );
 }
+
 // ============================================================================
 // DetailsForm Component
 // ============================================================================
@@ -740,13 +815,27 @@ function DetailsForm({
   duration, 
   notes, 
   consultationType,
+  totalPrice,
   onDurationChange, 
   onNotesChange, 
   onTypeChange, 
   onBack, 
   onContinue,
   formatPrice
-}: any) {
+}: {
+  practitioner: Practitioner
+  slot: SelectedSlot
+  duration: number
+  notes: string
+  consultationType: 'video' | 'in-person' | 'phone'
+  totalPrice: number
+  onDurationChange: (duration: number) => void
+  onNotesChange: (notes: string) => void
+  onTypeChange: (type: 'video' | 'in-person' | 'phone') => void
+  onBack: () => void
+  onContinue: () => void
+  formatPrice: (price: number) => string
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -771,9 +860,7 @@ function DetailsForm({
             <div>
               <p className="font-medium">{slot.practitionerName}</p>
               <p className="text-xs text-slate-500">
-                {new Date(slot.date).toLocaleDateString('en-US', { 
-                  weekday: 'short', month: 'short', day: 'numeric' 
-                })} at {slot.time}
+                {formatDate(slot.date, { weekday: 'short', month: 'short', day: 'numeric' })} at {slot.time}
               </p>
             </div>
           </div>
@@ -823,7 +910,7 @@ function DetailsForm({
               >
                 <span className="block text-sm font-medium">{d} min</span>
                 <span className="text-xs text-slate-500">
-                  +{formatPrice(practitioner.hourly_rate * d / 60)}
+                  +{formatPrice((practitioner.hourly_rate * d) / 60)}
                 </span>
               </button>
             ))}
@@ -842,6 +929,16 @@ function DetailsForm({
             rows={4}
             className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-0 focus:ring-2 focus:ring-emerald-500/20 text-sm resize-none"
           />
+        </div>
+
+        {/* Total Price */}
+        <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl p-4">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Total</span>
+            <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+              {formatPrice(totalPrice)}
+            </span>
+          </div>
         </div>
 
         {/* Continue Button */}
@@ -867,13 +964,23 @@ function ConfirmationCard({
   duration, 
   notes, 
   consultationType, 
+  totalPrice,
   loading, 
   onBack, 
   onConfirm,
   formatPrice
-}: any) {
-  const total = practitioner.hourly_rate * duration / 60
-
+}: {
+  practitioner: Practitioner
+  slot: SelectedSlot
+  duration: number
+  notes: string
+  consultationType: 'video' | 'in-person' | 'phone'
+  totalPrice: number
+  loading: boolean
+  onBack: () => void
+  onConfirm: () => Promise<void>
+  formatPrice: (price: number) => string
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -907,7 +1014,7 @@ function ConfirmationCard({
             <div className="grid grid-cols-2 gap-3 pt-2 text-sm">
               <div className="flex items-center gap-2">
                 <CalendarDaysIcon className="h-4 w-4 text-slate-400" />
-                <span>{new Date(slot.date).toLocaleDateString()}</span>
+                <span>{formatDate(slot.date)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <ClockIcon className="h-4 w-4 text-slate-400" />
@@ -919,7 +1026,7 @@ function ConfirmationCard({
               </div>
               <div className="flex items-center gap-2">
                 <CurrencyDollarIcon className="h-4 w-4 text-slate-400" />
-                <span className="font-medium text-emerald-600">{formatPrice(total)}</span>
+                <span className="font-medium text-emerald-600">{formatPrice(totalPrice)}</span>
               </div>
             </div>
 

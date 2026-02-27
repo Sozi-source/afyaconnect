@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { XMarkIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
-import { useAvailability } from '@/app/hooks/useAvailability'
-import type { DayOfWeek, BulkAvailabilityData } from '@/app/types'
+import { apiClient } from '@/app/lib/api'
+import type { DayOfWeek, CreateAvailabilityData } from '@/app/types'
 
 const DAYS_OF_WEEK = [
   { value: 0 as DayOfWeek, label: 'Monday' },
@@ -24,6 +24,12 @@ interface BulkAvailabilityFormProps {
   onCancel: () => void
 }
 
+interface SlotResult {
+  day: DayOfWeek
+  success: boolean
+  error?: string
+}
+
 export function BulkAvailabilityForm({ 
   practitionerId, 
   onSuccess, 
@@ -36,8 +42,9 @@ export function BulkAvailabilityForm({
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const { bulkCreateSlots } = useAvailability(practitionerId)
+  const [progress, setProgress] = useState({ current: 0, total: 0 })
+  const [results, setResults] = useState<SlotResult[]>([])
+  const [showResults, setShowResults] = useState(false)
 
   const handleDayToggle = (day: DayOfWeek) => {
     setSelectedDays(prev =>
@@ -46,16 +53,19 @@ export function BulkAvailabilityForm({
         : [...prev, day]
     )
     setError(null)
+    setShowResults(false)
   }
 
   const handleSelectAll = () => {
     setSelectedDays(DAYS_OF_WEEK.map(d => d.value))
     setError(null)
+    setShowResults(false)
   }
 
   const handleClearAll = () => {
     setSelectedDays([])
     setError(null)
+    setShowResults(false)
   }
 
   const validateForm = (): boolean => {
@@ -72,6 +82,29 @@ export function BulkAvailabilityForm({
     return true
   }
 
+  const createSingleSlot = async (day: DayOfWeek): Promise<SlotResult> => {
+    try {
+      const slotData: CreateAvailabilityData = {
+        recurrence_type: 'weekly',
+        day_of_week: day,
+        start_time: startTime,
+        end_time: endTime,
+        is_available: isAvailable,
+        notes: notes.trim() || undefined
+      }
+      
+      await apiClient.availability.create(slotData)
+      return { day, success: true }
+    } catch (err: any) {
+      console.error(`Failed to create slot for day ${day}:`, err)
+      return { 
+        day, 
+        success: false, 
+        error: err.response?.data?.detail || err.message || 'Failed to create slot'
+      }
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -79,27 +112,47 @@ export function BulkAvailabilityForm({
 
     setIsSubmitting(true)
     setError(null)
+    setResults([])
+    setShowResults(false)
+    setProgress({ current: 0, total: selectedDays.length })
     
-    try {
-      // Prepare data in the format expected by BulkAvailabilityData
-      // Note: practitioner_id is not needed as it's determined from the auth token
-      const bulkData: BulkAvailabilityData = {
-        days: selectedDays,
-        start_time: startTime,
-        end_time: endTime,
-        is_available: isAvailable,
-        notes: notes.trim() || undefined
-      }
+    const slotResults: SlotResult[] = []
+
+    // Create slots one by one
+    for (let i = 0; i < selectedDays.length; i++) {
+      const day = selectedDays[i]
+      const result = await createSingleSlot(day)
+      slotResults.push(result)
       
-      await bulkCreateSlots(bulkData)
-      onSuccess()
-    } catch (err: any) {
-      setError(err.message || 'Failed to create availability slots')
-      console.error('Failed to create bulk slots:', err)
-    } finally {
-      setIsSubmitting(false)
+      // Update progress
+      setProgress({ current: i + 1, total: selectedDays.length })
+      setResults([...slotResults])
+      
+      // Small delay to prevent overwhelming the server
+      if (i < selectedDays.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
     }
+
+    setShowResults(true)
+    
+    // Check if all succeeded
+    const allSucceeded = slotResults.every(r => r.success)
+    const successCount = slotResults.filter(r => r.success).length
+
+    if (allSucceeded) {
+      // All succeeded - auto close after 1.5 seconds
+      setTimeout(() => {
+        onSuccess()
+      }, 1500)
+    }
+
+    setIsSubmitting(false)
   }
+
+  const successCount = results.filter(r => r.success).length
+  const failedCount = results.filter(r => !r.success).length
+  const allSucceeded = results.length > 0 && results.every(r => r.success)
 
   return (
     <motion.div
@@ -119,6 +172,7 @@ export function BulkAvailabilityForm({
               onClick={onCancel}
               className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
               disabled={isSubmitting}
+              aria-label="Close"
             >
               <XMarkIcon className="h-5 w-5 text-gray-500" />
             </button>
@@ -126,9 +180,79 @@ export function BulkAvailabilityForm({
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Error Message */}
-            {error && (
+            {error && !showResults && (
               <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                <div className="flex items-start gap-2">
+                  <ExclamationCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Progress Bar */}
+            {isSubmitting && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Creating slots...
+                  </span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                    {progress.current}/{progress.total}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                  <div 
+                    className="bg-emerald-600 h-2.5 rounded-full transition-all duration-300"
+                    style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Results Summary */}
+            {showResults && !isSubmitting && (
+              <div className={`p-4 rounded-lg ${
+                allSucceeded 
+                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                  : failedCount > 0 && successCount > 0
+                    ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
+                    : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+              }`}>
+                <div className="flex items-start gap-3">
+                  {allSucceeded ? (
+                    <CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  ) : (
+                    <ExclamationCircleIcon className="h-6 w-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                  )}
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {allSucceeded 
+                        ? 'All slots created successfully!' 
+                        : `Created ${successCount} of ${results.length} slots`
+                      }
+                    </p>
+                    {failedCount > 0 && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        Failed to create {failedCount} slot{failedCount !== 1 ? 's' : ''}. You can try again individually.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Failed Slots Details */}
+                {failedCount > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {results.filter(r => !r.success).map((result, idx) => {
+                      const dayName = DAYS_OF_WEEK.find(d => d.value === result.day)?.label
+                      return (
+                        <div key={idx} className="text-sm bg-white dark:bg-gray-800 p-2 rounded border border-red-200 dark:border-red-800">
+                          <span className="font-medium text-red-600 dark:text-red-400">{dayName}:</span>{' '}
+                          <span className="text-gray-600 dark:text-gray-400">{result.error}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
@@ -140,8 +264,8 @@ export function BulkAvailabilityForm({
               <div className="flex flex-wrap gap-2 mb-2">
                 <Button
                   type="button"
-                  className='font-sm'
                   variant="outline"
+                  size="sm"
                   onClick={handleSelectAll}
                   disabled={isSubmitting}
                 >
@@ -149,8 +273,8 @@ export function BulkAvailabilityForm({
                 </Button>
                 <Button
                   type="button"
-                  className='font-sm'
                   variant="outline"
+                  size="sm"
                   onClick={handleClearAll}
                   disabled={isSubmitting}
                 >
@@ -261,7 +385,7 @@ export function BulkAvailabilityForm({
             </div>
 
             {/* Preview */}
-            {selectedDays.length > 0 && (
+            {selectedDays.length > 0 && !isSubmitting && !showResults && (
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Will create {selectedDays.length} weekly slot{selectedDays.length !== 1 ? 's' : ''}:
@@ -299,11 +423,18 @@ export function BulkAvailabilityForm({
                 isLoading={isSubmitting}
               >
                 {isSubmitting 
-                  ? 'Creating...' 
+                  ? `Creating ${progress.current}/${progress.total}...` 
                   : `Create ${selectedDays.length} Slot${selectedDays.length !== 1 ? 's' : ''}`
                 }
               </Button>
             </div>
+
+            {/* Auto-close message */}
+            {showResults && allSucceeded && !isSubmitting && (
+              <p className="text-center text-sm text-emerald-600 dark:text-emerald-400 mt-2">
+                ✓ Closing automatically...
+              </p>
+            )}
           </form>
         </CardBody>
       </Card>

@@ -17,7 +17,15 @@ import {
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import { apiClient } from '@/app/lib/api'
-import type { PractitionerMetrics, Consultation, Notification } from '@/app/types'
+import type { PractitionerMetrics, Consultation, Notification, PaginatedResponse } from '@/app/types'
+
+function extractResults<T>(data: T[] | PaginatedResponse<T> | any): T[] {
+  if (Array.isArray(data)) return data as T[]
+  if (data && typeof data === 'object' && 'results' in data && Array.isArray(data.results)) {
+    return data.results as T[]
+  }
+  return []
+}
 
 export default function PractitionerDashboardPage() {
   const { user, isAuthenticated, isLoading } = useAuth()
@@ -46,26 +54,24 @@ export default function PractitionerDashboardPage() {
     try {
       setLoading(true)
       
-      // Fetch metrics
       const metricsData = await apiClient.consultations.getMetrics()
-      if ('total_earnings' in metricsData) {
+      if (metricsData && 'total_earnings' in metricsData) {
         setMetrics(metricsData as PractitionerMetrics)
       }
       
-      // Fetch recent consultations
-      const consultations = await apiClient.consultations.getMyPractitionerConsultations({
+      const consultationsData = await apiClient.consultations.getMyPractitionerConsultations({
         ordering: '-date,-time',
         page_size: 5
       })
-      setRecentConsultations(Array.isArray(consultations) ? consultations.slice(0, 5) : [])
+      const consultationsList = extractResults<Consultation>(consultationsData)
+      setRecentConsultations(consultationsList.slice(0, 5))
       
-      // Fetch notifications
-      const notifs = await apiClient.notifications.getAll()
-      setNotifications(notifs.slice(0, 5))
+      const notifsData = await apiClient.notifications.getAll()
+      const notificationsList = extractResults<Notification>(notifsData)
+      setNotifications(notificationsList.slice(0, 5))
       
-      // Get unread count
-      const unread = await apiClient.notifications.getUnreadCount()
-      setUnreadCount(unread.unread_count)
+      const unreadData = await apiClient.notifications.getUnreadCount()
+      setUnreadCount(unreadData.unread_count)
       
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
@@ -77,18 +83,19 @@ export default function PractitionerDashboardPage() {
   if (isLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600" />
       </div>
     )
   }
 
-  if (!isAuthenticated || user?.role !== 'practitioner') {
-    return null
-  }
+  if (!isAuthenticated || user?.role !== 'practitioner') return null
+
+  const completionRate = metrics && metrics.total_consultations > 0
+    ? Math.round((metrics.completed_consultations / metrics.total_consultations) * 100)
+    : 0
 
   return (
     <div className="space-y-6 p-6">
-      {/* Welcome Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -99,7 +106,6 @@ export default function PractitionerDashboardPage() {
           </p>
         </div>
         
-        {/* Notification Bell */}
         <Link href="/practitioner/dashboard/notifications">
           <button className="relative p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
             <BellIcon className="h-6 w-6" />
@@ -112,7 +118,6 @@ export default function PractitionerDashboardPage() {
         </Link>
       </div>
 
-      {/* Quick Stats */}
       {metrics && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
@@ -137,16 +142,14 @@ export default function PractitionerDashboardPage() {
           />
           <StatCard
             title="Completion Rate"
-            value={`${Math.round((metrics.completed_consultations / metrics.total_consultations) * 100)}%`}
+            value={`${completionRate}%`}
             icon={UserGroupIcon}
             color="purple"
           />
         </div>
       )}
 
-      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Consultations */}
         <div className="lg:col-span-2">
           <Card>
             <CardBody className="p-6">
@@ -186,7 +189,6 @@ export default function PractitionerDashboardPage() {
           </Card>
         </div>
 
-        {/* Notifications & Quick Actions */}
         <div>
           <Card>
             <CardBody className="p-6">
@@ -217,22 +219,10 @@ export default function PractitionerDashboardPage() {
               <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <h3 className="text-sm font-medium mb-3">Quick Actions</h3>
                 <div className="grid grid-cols-2 gap-2">
-                  <QuickAction
-                    label="Add Slot"
-                    href="/practitioner/dashboard/availability"
-                  />
-                  <QuickAction
-                    label="View Schedule"
-                    href="/practitioner/dashboard/consultations"
-                  />
-                  <QuickAction
-                    label="Edit Profile"
-                    href="/practitioner/dashboard/profile"
-                  />
-                  <QuickAction
-                    label="View Metrics"
-                    href="/practitioner/dashboard/metrics"
-                  />
+                  <QuickAction label="Add Slot" href="/practitioner/dashboard/availability" />
+                  <QuickAction label="View Schedule" href="/practitioner/dashboard/consultations" />
+                  <QuickAction label="Edit Profile" href="/practitioner/dashboard/profile" />
+                  <QuickAction label="View Metrics" href="/practitioner/dashboard/metrics" />
                 </div>
               </div>
             </CardBody>
@@ -240,7 +230,6 @@ export default function PractitionerDashboardPage() {
         </div>
       </div>
 
-      {/* Application Status Banner (if applicable) */}
       {user?.is_verified === false && (
         <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
           <CardBody className="p-4">
@@ -260,10 +249,10 @@ export default function PractitionerDashboardPage() {
               </div>
               
               <Link href="/practitioner/dashboard/application">
-                  <Button variant="outline" size="sm" className="border-yellow-600 text-yellow-600">
-                    Check Status
-                  </Button>
-                </Link>
+                <Button variant="outline" size="sm" className="border-yellow-600 text-yellow-600">
+                  Check Status
+                </Button>
+              </Link>
             </div>
           </CardBody>
         </Card>
@@ -271,8 +260,6 @@ export default function PractitionerDashboardPage() {
     </div>
   )
 }
-
-// Helper Components
 
 interface StatCardProps {
   title: string
@@ -298,13 +285,9 @@ function StatCard({ title, value, icon: Icon, color, subtitle }: StatCardProps) 
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-              {value}
-            </p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
             {subtitle && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {subtitle}
-              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{subtitle}</p>
             )}
           </div>
           <div className={`p-3 rounded-xl ${colorClasses[color]}`}>
@@ -324,6 +307,8 @@ function RecentConsultationItem({ consultation }: { consultation: Consultation }
     no_show: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
   }
 
+  const status = consultation.status || 'booked'
+
   return (
     <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
       <div className="flex items-center gap-3">
@@ -331,16 +316,14 @@ function RecentConsultationItem({ consultation }: { consultation: Consultation }
           {consultation.client_name?.[0] || 'C'}
         </div>
         <div>
-          <p className="font-medium text-sm">
-            {consultation.client_name || 'Client'}
-          </p>
+          <p className="font-medium text-sm">{consultation.client_name || 'Client'}</p>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {new Date(consultation.date).toLocaleDateString()} at {consultation.time.slice(0,5)}
+            {new Date(consultation.date).toLocaleDateString()} at {consultation.time?.slice(0,5) || '--:--'}
           </p>
         </div>
       </div>
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[consultation.status]}`}>
-        {consultation.status}
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[status]}`}>
+        {status}
       </span>
     </div>
   )
@@ -350,12 +333,8 @@ function NotificationItem({ notification }: { notification: Notification }) {
   return (
     <div className={`p-3 rounded-lg ${!notification.is_read ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
       <p className="font-medium text-sm">{notification.title}</p>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-        {notification.message}
-      </p>
-      <p className="text-xs text-gray-400 mt-1">
-        {notification.time_ago}
-      </p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{notification.message}</p>
+      <p className="text-xs text-gray-400 mt-1">{notification.time_ago}</p>
     </div>
   )
 }

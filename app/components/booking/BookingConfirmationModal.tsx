@@ -7,7 +7,8 @@ import {
   CalendarIcon,
   ClockIcon,
   UserIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  ExclamationCircleIcon
 } from '@heroicons/react/24/outline'
 import { Button } from '@/app/components/ui/Buttons'
 import type { TimeSlot } from '@/app/types'
@@ -18,7 +19,41 @@ interface BookingConfirmationModalProps {
   onConfirm: () => Promise<void>
   slot: TimeSlot | null
   practitionerName: string
-  isLoading?: boolean  // Changed from loading to isLoading
+  isLoading?: boolean
+  error?: string | null
+}
+
+// Helper function to format date
+const formatDate = (dateStr: string): string => {
+  try {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  } catch (e) {
+    return dateStr || 'Invalid date'
+  }
+}
+
+// Helper function to format time range
+const formatTimeRange = (start: string, end: string): string => {
+  if (!start || !end) return 'Time not specified'
+  return `${start.slice(0,5)} - ${end.slice(0,5)}`
+}
+
+// Helper function to calculate duration in minutes
+const calculateDuration = (start: string, end: string): number => {
+  if (!start || !end) return 60
+  
+  const [startHour, startMin] = start.split(':').map(Number)
+  const [endHour, endMin] = end.split(':').map(Number)
+  
+  const startMinutes = startHour * 60 + startMin
+  const endMinutes = endHour * 60 + endMin
+  
+  return endMinutes - startMinutes
 }
 
 export function BookingConfirmationModal({
@@ -27,17 +62,19 @@ export function BookingConfirmationModal({
   onConfirm,
   slot,
   practitionerName,
-  isLoading = false  // Changed from loading to isLoading
+  isLoading = false,
+  error = null
 }: BookingConfirmationModalProps) {
   if (!slot) return null
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    })
+  const duration = calculateDuration(slot.start_time, slot.end_time)
+
+  const handleConfirm = async () => {
+    try {
+      await onConfirm()
+    } catch (e) {
+      // Error is handled by parent component
+    }
   }
 
   return (
@@ -66,6 +103,7 @@ export function BookingConfirmationModal({
                 onClick={onClose}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
                 disabled={isLoading}
+                aria-label="Close"
               >
                 <XMarkIcon className="h-5 w-5 text-gray-500" />
               </button>
@@ -73,13 +111,29 @@ export function BookingConfirmationModal({
 
             {/* Content */}
             <div className="p-6 space-y-4">
+              {/* Error Message */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+                >
+                  <div className="flex items-start gap-2">
+                    <ExclamationCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                  </div>
+                </motion.div>
+              )}
+
               {/* Success Preview */}
-              <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                <CheckCircleIcon className="h-8 w-8 text-emerald-600 dark:text-emerald-400 mx-auto mb-2" />
-                <p className="text-center text-emerald-700 dark:text-emerald-300 font-medium">
-                  Almost there! Review your booking details
-                </p>
-              </div>
+              {!error && (
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                  <CheckCircleIcon className="h-8 w-8 text-emerald-600 dark:text-emerald-400 mx-auto mb-2" />
+                  <p className="text-center text-emerald-700 dark:text-emerald-300 font-medium">
+                    Almost there! Review your booking details
+                  </p>
+                </div>
+              )}
 
               {/* Booking Details */}
               <div className="space-y-3">
@@ -96,12 +150,12 @@ export function BookingConfirmationModal({
                 <DetailItem
                   icon={ClockIcon}
                   label="Time"
-                  value={`${slot.start_time.slice(0,5)} - ${slot.end_time.slice(0,5)}`}
+                  value={formatTimeRange(slot.start_time, slot.end_time)}
                 />
                 <DetailItem
                   icon={DocumentTextIcon}
                   label="Duration"
-                  value="60 minutes"
+                  value={`${duration} minutes`}
                 />
               </div>
 
@@ -127,11 +181,11 @@ export function BookingConfirmationModal({
                 Cancel
               </Button>
               <Button
-                onClick={onConfirm}
-                disabled={isLoading}
-                isLoading={isLoading}  // Changed from loading to isLoading
+                onClick={handleConfirm}
+                disabled={isLoading || !!error}
+                isLoading={isLoading}
                 fullWidth
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Confirming...' : 'Confirm Booking'}
               </Button>
@@ -143,15 +197,23 @@ export function BookingConfirmationModal({
   )
 }
 
-function DetailItem({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+interface DetailItemProps {
+  icon: React.ElementType
+  label: string
+  value: string
+}
+
+function DetailItem({ icon: Icon, label, value }: DetailItemProps) {
   return (
     <div className="flex items-start gap-3">
       <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
         <Icon className="h-4 w-4 text-gray-600 dark:text-gray-400" />
       </div>
-      <div>
+      <div className="flex-1">
         <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-        <p className="text-sm font-medium text-gray-900 dark:text-white">{value}</p>
+        <p className="text-sm font-medium text-gray-900 dark:text-white break-words">
+          {value || 'Not specified'}
+        </p>
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -24,17 +24,6 @@ interface DashboardHeaderProps {
   onMenuClick: () => void
 }
 
-interface ExtendedUser {
-  id: number
-  email: string
-  first_name?: string
-  last_name?: string
-  username?: string
-  role?: string
-  is_verified?: boolean
-}
-
-// Update the Notification interface to match API response
 interface Notification {
   id: number
   notification_type: string
@@ -43,11 +32,13 @@ interface Notification {
   data: any
   is_read: boolean
   created_at: string
-  // time_ago is optional since it might not come from API
   time_ago?: string
 }
 
 export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
+  // ============================================================================
+  // 1. ALL useState HOOKS FIRST
+  // ============================================================================
   const [isScrolled, setIsScrolled] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
@@ -58,11 +49,139 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
   
+  // ============================================================================
+  // 2. ALL useMemo & useContext HOOKS NEXT
+  // ============================================================================
   const pathname = usePathname()
   const { user, logout } = useAuth()
-  const extendedUser = user as ExtendedUser | null
   const { theme, setTheme } = useTheme()
 
+  const userInfo = useMemo(() => ({
+    displayName: user?.first_name 
+      ? `${user.first_name} ${user.last_name || ''}`.trim()
+      : user?.username || 'User',
+    initials: user?.first_name?.[0] || user?.username?.[0]?.toUpperCase() || 'U',
+    role: user?.role || 'client',
+    email: user?.email || '',
+    isVerified: user?.is_verified || false
+  }), [user])
+
+  const dashboardBasePath = useMemo(() => 
+    `/${userInfo.role}/dashboard`, [userInfo.role]
+  )
+
+  // ============================================================================
+  // 3. ALL useCallback HOOKS NEXT
+  // ============================================================================
+  const formatTimeAgo = useCallback((dateString: string): string => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`
+    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`
+    if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }, [])
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const [notifs, countData] = await Promise.all([
+        apiClient.notifications.getAll(),
+        apiClient.notifications.getUnreadCount()
+      ])
+      
+      const processedNotifs = notifs.map((notif: any) => ({
+        ...notif,
+        time_ago: formatTimeAgo(notif.created_at)
+      }))
+      
+      setNotifications(processedNotifs)
+      setUnreadCount(countData.unread_count)
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [formatTimeAgo])
+
+  const markAsRead = useCallback(async (id: number) => {
+    try {
+      await apiClient.notifications.markAsRead(id)
+      setNotifications(prev =>
+        prev.map(n =>
+          n.id === id ? { ...n, is_read: true } : n
+        )
+      )
+      setUnreadCount(prev => Math.max(0, prev - 1))
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error)
+    }
+  }, [])
+
+  const markAllAsRead = useCallback(async () => {
+    try {
+      await apiClient.notifications.markAllAsRead()
+      setNotifications(prev =>
+        prev.map(n => ({ ...n, is_read: true }))
+      )
+      setUnreadCount(0)
+    } catch (error) {
+      console.error('Failed to mark all as read:', error)
+    }
+  }, [])
+
+  const getPageTitle = useCallback(() => {
+    if (!pathname) return 'Dashboard'
+    const path = pathname.split('/')[2] || 'dashboard'
+    return path.charAt(0).toUpperCase() + path.slice(1)
+  }, [pathname])
+
+  const handleSearch = useCallback((e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      window.location.href = `${dashboardBasePath}/search?q=${encodeURIComponent(searchQuery)}`
+      setIsSearchOpen(false)
+    }
+  }, [searchQuery, dashboardBasePath])
+
+  const getNotificationIcon = useCallback((type: string) => {
+    switch(type) {
+      case 'consultation_request':
+      case 'consultation_confirmed':
+        return '📅'
+      case 'review_received':
+        return '⭐'
+      case 'payment_received':
+        return '💰'
+      case 'practitioner_verified':
+        return '✅'
+      default:
+        return '🔔'
+    }
+  }, [])
+
+  const handleNotificationClick = useCallback((notification: Notification) => {
+    if (!notification.is_read) {
+      markAsRead(notification.id)
+    }
+    
+    if (notification.data?.consultation_id) {
+      window.location.href = `${dashboardBasePath}/consultations/${notification.data.consultation_id}`
+    } else if (notification.data?.review_id) {
+      window.location.href = `${dashboardBasePath}/reviews/${notification.data.review_id}`
+    }
+    
+    setIsNotificationsOpen(false)
+  }, [markAsRead, dashboardBasePath])
+
+  // ============================================================================
+  // 4. ALL useEffect HOOKS NEXT
+  // ============================================================================
   useEffect(() => {
     setMounted(true)
     const handleScroll = () => {
@@ -84,128 +203,22 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
     return () => document.removeEventListener('click', handleClickOutside)
   }, [])
 
-  const fetchNotifications = async () => {
-    try {
-      const [notifs, countData] = await Promise.all([
-        apiClient.notifications.getAll(),
-        apiClient.notifications.getUnreadCount()
-      ])
-      
-      // Process notifications to add time_ago client-side if needed
-      const processedNotifs = notifs.map((notif: any) => ({
-        ...notif,
-        time_ago: formatTimeAgo(notif.created_at)
-      }))
-      
-      setNotifications(processedNotifs)
-      setUnreadCount(countData.unread_count)
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const markAsRead = async (id: number) => {
-    try {
-      await apiClient.notifications.markAsRead(id)
-      setNotifications(prev =>
-        prev.map(n =>
-          n.id === id ? { ...n, is_read: true } : n
-        )
-      )
-      setUnreadCount(prev => Math.max(0, prev - 1))
-    } catch (error) {
-      console.error('Failed to mark notification as read:', error)
-    }
-  }
-
-  const markAllAsRead = async () => {
-    try {
-      await apiClient.notifications.markAllAsRead()
-      setNotifications(prev =>
-        prev.map(n => ({ ...n, is_read: true }))
-      )
-      setUnreadCount(0)
-    } catch (error) {
-      console.error('Failed to mark all as read:', error)
-    }
-  }
-
-  const formatTimeAgo = (dateString: string): string => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
-
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`
-    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`
-    if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  }
-
   useEffect(() => {
-    fetchNotifications()
-    const interval = setInterval(fetchNotifications, 30000)
-    return () => clearInterval(interval)
-  }, [])
+    if (user) {
+      fetchNotifications()
+      const interval = setInterval(fetchNotifications, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [user, fetchNotifications])
 
+  // ============================================================================
+  // 5. CONDITIONAL RETURN AFTER ALL HOOKS
+  // ============================================================================
   if (!mounted) return null
 
-  const getPageTitle = () => {
-    if (!pathname) return 'Dashboard'
-    const path = pathname.split('/')[2] || 'dashboard'
-    return path.charAt(0).toUpperCase() + path.slice(1)
-  }
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (searchQuery.trim()) {
-      window.location.href = `/dashboard/search?q=${encodeURIComponent(searchQuery)}`
-      setIsSearchOpen(false)
-    }
-  }
-
-  const displayName = extendedUser?.first_name 
-    ? `${extendedUser.first_name} ${extendedUser.last_name || ''}`.trim()
-    : extendedUser?.username || 'User'
-
-  const getNotificationIcon = (type: string) => {
-    switch(type) {
-      case 'consultation_request':
-      case 'consultation_confirmed':
-        return '📅'
-      case 'review_received':
-        return '⭐'
-      case 'payment_received':
-        return '💰'
-      case 'practitioner_verified':
-        return '✅'
-      default:
-        return '🔔'
-    }
-  }
-
-  const handleNotificationClick = (notification: Notification) => {
-    if (!notification.is_read) {
-      markAsRead(notification.id)
-    }
-    
-    if (notification.data?.consultation_id) {
-      const basePath = extendedUser?.role === 'practitioner' 
-        ? '/practitioner/dashboard/consultations'
-        : '/client/dashboard/consultations'
-      window.location.href = `${basePath}/${notification.data.consultation_id}`
-    } else if (notification.data?.review_id) {
-      window.location.href = `/client/dashboard/reviews/${notification.data.review_id}`
-    }
-    
-    setIsNotificationsOpen(false)
-  }
-
+  // ============================================================================
+  // 6. RENDER COMPONENT
+  // ============================================================================
   return (
     <>
       <header
@@ -366,15 +379,15 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                   aria-label="Profile menu"
                 >
                   <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center text-white font-medium text-sm sm:text-base shadow-md">
-                    {extendedUser?.first_name?.[0] || extendedUser?.username?.[0]?.toUpperCase() || 'U'}
+                    {userInfo.initials}
                   </div>
                   <div className="hidden lg:block text-left">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[150px]">
-                      {displayName}
+                      {userInfo.displayName}
                     </p>
                     <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center">
-                      {extendedUser?.role || 'client'}
-                      {extendedUser?.is_verified && (
+                      {userInfo.role}
+                      {userInfo.isVerified && (
                         <span className="ml-1 text-emerald-600 dark:text-emerald-400">✓</span>
                       )}
                     </p>
@@ -391,14 +404,14 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                       className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden z-50"
                     >
                       <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{displayName}</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{userInfo.displayName}</p>
                         <p className="text-xs text-gray-600 dark:text-gray-400 truncate mt-0.5">
-                          {extendedUser?.email}
+                          {userInfo.email}
                         </p>
                       </div>
                       
                       <Link
-                        href={`/${extendedUser?.role || 'client'}/dashboard/profile`}
+                        href={`/${userInfo.role}/dashboard/profile`}
                         className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                         onClick={() => setIsProfileOpen(false)}
                       >
@@ -407,7 +420,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                       </Link>
                       
                       <Link
-                        href={`/${extendedUser?.role || 'client'}/dashboard/settings`}
+                        href={`/${userInfo.role}/dashboard/settings`}
                         className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                         onClick={() => setIsProfileOpen(false)}
                       >

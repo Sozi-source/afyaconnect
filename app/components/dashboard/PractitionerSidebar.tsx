@@ -166,7 +166,7 @@ export function PractitionerSidebar({ isOpen, onClose }: PractitionerSidebarProp
 
   // Desktop Sidebar
   const desktopSidebar = (
-    <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
+    <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-70 lg:flex-col">
       <div className="flex flex-col flex-1 min-h-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 shadow-xl">
         {/* Logo */}
         <div className="h-20 flex items-center px-6 border-b border-gray-200 dark:border-gray-800">

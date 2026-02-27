@@ -1,16 +1,19 @@
+// app/components/booking/ClientBookingCalendar.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ClockIcon,
-  CalendarDaysIcon
+  CalendarDaysIcon,
+  ExclamationCircleIcon
 } from '@heroicons/react/24/outline'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
-import { availabilityApi } from '@/app/lib/api/availability'
+import { apiClient } from '@/app/lib/api'
+import { extractResults } from '@/app/lib/utils'
 import type { Availability } from '@/app/types'
 
 interface ClientBookingCalendarProps {
@@ -25,6 +28,16 @@ interface DayCell {
   slots: string[]
 }
 
+const weekDays = [
+  { key: 'mon', label: 'M' },
+  { key: 'tue', label: 'T' },
+  { key: 'wed', label: 'W' },
+  { key: 'thu', label: 'T' },
+  { key: 'fri', label: 'F' },
+  { key: 'sat', label: 'S' },
+  { key: 'sun', label: 'S' }
+]
+
 export function ClientBookingCalendar({ practitionerId, onSelectSlot }: ClientBookingCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<string>('')
@@ -33,38 +46,34 @@ export function ClientBookingCalendar({ practitionerId, onSelectSlot }: ClientBo
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const weekDays = [
-    { key: 'sun', label: 'S' },
-    { key: 'mon', label: 'M' },
-    { key: 'tue', label: 'T' },
-    { key: 'wed', label: 'W' },
-    { key: 'thu', label: 'T' },
-    { key: 'fri', label: 'F' },
-    { key: 'sat', label: 'S' }
-  ]
+  useEffect(() => {
+    if (practitionerId) {
+      fetchAvailability()
+    }
+  }, [practitionerId])
 
   useEffect(() => {
-    fetchAvailability()
-  }, [practitionerId, currentMonth])
+    setSelectedDate('')
+    setSelectedTime('')
+  }, [currentMonth])
 
   const fetchAvailability = async () => {
     try {
       setLoading(true)
       setError(null)
       
-      // Fetch all availability for this practitioner
-      const data = await availabilityApi.getAll(practitionerId)
-      setAvailability(data)
-      
-    } catch (error) {
+      const data = await apiClient.practitioners.getAvailability(practitionerId)
+      const availabilityList = extractResults<Availability>(data)
+      setAvailability(availabilityList)
+    } catch (error: any) {
       console.error('Failed to fetch availability:', error)
-      setError('Failed to load availability')
+      setError(error.message || 'Failed to load availability')
     } finally {
       setLoading(false)
     }
   }
 
-  const getBackendDay = (jsDay: number): number => {
+  const getBackendDay = useCallback((jsDay: number): number => {
     const mapping: Record<number, number> = {
       0: 6, // Sunday -> 6
       1: 0, // Monday -> 0
@@ -73,16 +82,17 @@ export function ClientBookingCalendar({ practitionerId, onSelectSlot }: ClientBo
       4: 3, // Thursday -> 3
       5: 4, // Friday -> 4
       6: 5, // Saturday -> 5
-    }
-    return mapping[jsDay]
-  }
+    };
+    return mapping[jsDay];
+  }, []);
 
-  const getDaysInMonth = (): DayCell[] => {
+  const getDaysInMonth = useCallback((): DayCell[] => {
     const year = currentMonth.getFullYear()
     const month = currentMonth.getMonth()
-    const firstDay = new Date(year, month, 1)
     const lastDay = new Date(year, month + 1, 0)
     const days: DayCell[] = []
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
 
     for (let d = 1; d <= lastDay.getDate(); d++) {
       const date = new Date(year, month, d)
@@ -90,7 +100,6 @@ export function ClientBookingCalendar({ practitionerId, onSelectSlot }: ClientBo
       const jsDay = date.getDay()
       const backendDay = getBackendDay(jsDay)
 
-      // Find slots for this day
       const slots = availability
         .filter(slot => {
           if (!slot.is_available) return false
@@ -114,28 +123,43 @@ export function ClientBookingCalendar({ practitionerId, onSelectSlot }: ClientBo
     }
 
     return days
-  }
+  }, [currentMonth, availability, getBackendDay])
 
-  const days = getDaysInMonth()
+  const days = useMemo(() => getDaysInMonth(), [getDaysInMonth])
+  
   const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay()
-  const emptyDays = Array(firstDayOfMonth).fill(null)
+  const emptyDays = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1
+  
+  const today = useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
 
-  const handleDateSelect = (dateStr: string) => {
+  const handleDateSelect = useCallback((dateStr: string) => {
     setSelectedDate(dateStr)
     setSelectedTime('')
-  }
+  }, [])
 
-  const handleTimeSelect = (time: string) => {
+  const handleTimeSelect = useCallback((time: string) => {
     setSelectedTime(time)
-  }
+  }, [])
 
-  const handleContinue = () => {
+  const handleContinue = useCallback(() => {
     if (selectedDate && selectedTime) {
       onSelectSlot(selectedDate, selectedTime)
     }
-  }
+  }, [selectedDate, selectedTime, onSelectSlot])
 
-  const selectedDaySlots = days.find(d => d.dateStr === selectedDate)?.slots || []
+  const selectedDaySlots = useMemo(() => 
+    days.find(d => d.dateStr === selectedDate)?.slots || [],
+    [days, selectedDate]
+  )
+
+  const canGoPrev = useMemo(() => 
+    currentMonth > new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    [currentMonth]
+  )
 
   if (loading) {
     return (
@@ -152,11 +176,27 @@ export function ClientBookingCalendar({ practitionerId, onSelectSlot }: ClientBo
     return (
       <Card>
         <CardBody className="p-8 text-center">
-          <div className="text-red-500 mb-4">⚠️</div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">{error}</p>
-          <Button onClick={fetchAvailability} className="mt-4">
+          <ExclamationCircleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+          <Button onClick={fetchAvailability} variant="outline" size="sm">
             Try Again
           </Button>
+        </CardBody>
+      </Card>
+    )
+  }
+
+  if (availability.length === 0) {
+    return (
+      <Card>
+        <CardBody className="p-8 text-center">
+          <CalendarDaysIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            No Availability Yet
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+            This practitioner hasn't set their availability yet. Please check back later or contact them directly.
+          </p>
         </CardBody>
       </Card>
     )
@@ -169,7 +209,11 @@ export function ClientBookingCalendar({ practitionerId, onSelectSlot }: ClientBo
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
+            className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition ${
+              !canGoPrev ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            disabled={!canGoPrev}
+            aria-label="Previous month"
           >
             <ChevronLeftIcon className="h-5 w-5" />
           </button>
@@ -179,6 +223,7 @@ export function ClientBookingCalendar({ practitionerId, onSelectSlot }: ClientBo
           <button
             onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
+            aria-label="Next month"
           >
             <ChevronRightIcon className="h-5 w-5" />
           </button>
@@ -195,13 +240,13 @@ export function ClientBookingCalendar({ practitionerId, onSelectSlot }: ClientBo
 
         {/* Calendar Grid */}
         <div className="grid grid-cols-7 gap-1 mb-6">
-          {emptyDays.map((_, i) => (
+          {Array.from({ length: emptyDays }).map((_, i) => (
             <div key={`empty-${i}`} className="aspect-square p-1" />
           ))}
           
           {days.map((day) => {
             const isSelected = selectedDate === day.dateStr
-            const isPast = day.date < new Date(new Date().setHours(0,0,0,0))
+            const isPast = day.date < today
             const isToday = day.dateStr === new Date().toISOString().split('T')[0]
 
             return (
@@ -219,6 +264,7 @@ export function ClientBookingCalendar({ practitionerId, onSelectSlot }: ClientBo
                     }
                     ${isToday && !isSelected ? 'ring-2 ring-emerald-200 dark:ring-emerald-800' : ''}
                   `}
+                  aria-label={`${day.dateStr} ${day.hasSlots ? 'has available slots' : 'no slots'}`}
                 >
                   <span>{day.date.getDate()}</span>
                   {day.hasSlots && !isPast && !isSelected && (
