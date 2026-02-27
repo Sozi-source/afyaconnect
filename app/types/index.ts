@@ -10,6 +10,9 @@ export interface User {
   role?: 'client' | 'practitioner' | 'admin'
   is_verified?: boolean
   profile?: UserProfile
+  practitioner?: {  // Add this
+    id: number
+  }
 }
 
 export interface UserProfile {
