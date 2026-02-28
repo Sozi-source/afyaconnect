@@ -1,7 +1,7 @@
 // app/practitioner/dashboard/layout.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { LazyDashboardSidebar } from '@/app/components/dashboard/LazyDashboardSidebar'
 import { LazyDashboardHeader } from '@/app/components/dashboard/LazyDashboardHeader'
 import { DashboardMobileNav } from '@/app/components/dashboard/DashboardMobileNav'
@@ -14,37 +14,46 @@ export default function PractitionerDashboardLayout({
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const { isLoading } = useAuth()
 
-  if (isLoading) {
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-200 border-t-primary-600"></div>
-          <p className="text-sm text-neutral-500">Loading dashboard...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
+          <p className="text-sm text-gray-500">Loading dashboard...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50">
       <LazyDashboardSidebar 
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)} 
       />
       
-      <div className="lg:pl-72 flex flex-col min-h-screen">
+      <div className="lg:pl-72 flex flex-col min-h-screen transition-all duration-300">
         <LazyDashboardHeader onMenuClick={() => setSidebarOpen(true)} />
         
         <main className="flex-1 pt-16 lg:pt-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
             <ProtectedRoute allowedRoles={['practitioner', 'admin']}>
               {children}
             </ProtectedRoute>
           </div>
         </main>
-        
+      </div>
+
+      {/* Mobile Navigation - Only visible on mobile */}
+      <div className="lg:hidden">
         <DashboardMobileNav />
       </div>
     </div>

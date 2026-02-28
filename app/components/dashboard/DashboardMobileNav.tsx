@@ -34,10 +34,11 @@ export function DashboardMobileNav() {
   if (!mounted || !extendedUser) return null
 
   const userRole = extendedUser.role || 'client'
-  const isPractitioner = userRole === 'practitioner' && extendedUser.is_verified
+  const isPractitioner = userRole === 'practitioner'
 
   const getNavItems = () => {
-    const baseItems = [
+    // Base items that everyone gets (max 4 total)
+    const items = [
       {
         name: 'Home',
         href: userRole === 'practitioner' ? '/practitioner/dashboard' : '/client/dashboard',
@@ -52,51 +53,47 @@ export function DashboardMobileNav() {
       },
     ]
 
+    // Add role-specific items (keep total at 4)
     if (isPractitioner) {
-      return [
-        ...baseItems,
-        {
-          name: 'Practice',
-          href: '/dashboard/practitioner',
-          icon: ClockIcon,
-          activeIcon: ClockIcon,
-        },
-        {
-          name: 'Profile',
-          href: '/dashboard/profile',
-          icon: UserIcon,
-          activeIcon: UserIcon,
-        },
-      ]
+      items.push({
+        name: 'Schedule',
+        href: '/practitioner/dashboard/availability',
+        icon: ClockIcon,
+        activeIcon: ClockIcon,
+      })
+      items.push({
+        name: 'Profile',
+        href: '/practitioner/dashboard/profile',
+        icon: UserIcon,
+        activeIcon: UserIcon,
+      })
     } else {
-      return [
-        ...baseItems,
-        {
-          name: 'Experts',
-          href: '/client/dashboard/practitioners',
-          icon: UserGroupIcon,
-          activeIcon: UserGroupIcon,
-        },
-        {
-          name: 'Favorites',
-          href: '/client/dashboard/favorites',
-          icon: HeartIcon,
-          activeIcon: HeartIcon,
-        },
-      ]
+      items.push({
+        name: 'Experts',
+        href: '/client/dashboard/practitioners',
+        icon: UserGroupIcon,
+        activeIcon: UserGroupIcon,
+      })
+      items.push({
+        name: 'Profile',
+        href: '/client/dashboard/profile',
+        icon: UserIcon,
+        activeIcon: UserIcon,
+      })
     }
+
+    return items // Always returns exactly 4 items
   }
 
   const navItems = getNavItems()
 
   const isActive = (href: string) => {
-    if (href === '/dashboard') return pathname === '/dashboard'
-    return pathname?.startsWith(href) || false
+    return pathname === href || pathname?.startsWith(href + '/')
   }
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 z-30">
-      <div className="flex items-center justify-around px-2 py-2">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 z-30 shadow-lg">
+      <div className="flex items-center justify-around px-2 py-1">
         {navItems.map((item) => {
           const active = isActive(item.href)
           const Icon = active ? item.activeIcon : item.icon
@@ -105,20 +102,20 @@ export function DashboardMobileNav() {
             <Link
               key={item.name}
               href={item.href}
-              className="flex flex-col items-center p-2"
+              className="flex flex-col items-center p-2 min-w-[64px]"
             >
               <Icon 
-                className={`h-6 w-6 ${
+                className={`h-5 w-5 sm:h-6 sm:w-6 ${
                   active 
                     ? 'text-emerald-600 dark:text-emerald-400' 
-                    : 'text-gray-600 dark:text-gray-400'
+                    : 'text-gray-500 dark:text-gray-400'
                 }`} 
               />
               <span 
-                className={`text-xs mt-1 ${
+                className={`text-[10px] sm:text-xs mt-0.5 ${
                   active 
                     ? 'text-emerald-600 dark:text-emerald-400 font-medium' 
-                    : 'text-gray-600 dark:text-gray-400'
+                    : 'text-gray-500 dark:text-gray-400'
                 }`}
               >
                 {item.name}
