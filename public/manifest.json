@@ -1,0 +1,106 @@
+{
+  "name": "NutriConnect",
+  "short_name": "NutriConnect",
+  "description": "Connect with top health practitioners for nutrition consultations and wellness advice",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#10b981",
+  "orientation": "portrait",
+  "scope": "/",
+  "categories": ["health", "fitness", "medical", "lifestyle"],
+  "lang": "en",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/images/icons/ac-72x72.webp",
+      "sizes": "72x72",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icons/ac-96x96.webp",
+      "sizes": "96x96",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icons/ac-128x128.webp",
+      "sizes": "128x128",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icons/ac-144x144.webp",
+      "sizes": "144x144",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icons/ac-152x152.webp",
+      "sizes": "152x152",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icons/ac-192x192.webp",
+      "sizes": "192x192",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icons/ac-384x384.webp",
+      "sizes": "384x384",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icons/ac-512x512.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Find Practitioners",
+      "short_name": "Find",
+      "description": "Browse and search for health practitioners",
+      "url": "/client/dashboard/practitioners",
+      "icons": [
+        {
+          "src": "/images/icons/ac-find.webp",
+          "sizes": "96x96",
+          "type": "image/webp"
+        }
+      ]
+    },
+    {
+      "name": "My Consultations",
+      "short_name": "Bookings",
+      "description": "View your upcoming consultations",
+      "url": "/client/dashboard/consultations",
+      "icons": [
+        {
+          "src": "/images/icons/ac-bookings.webp",
+          "sizes": "96x96",
+          "type": "image/webp"
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Home",
+      "description": "Go to your dashboard",
+      "url": "/client/dashboard",
+      "icons": [
+        {
+          "src": "/images/icons/ac-home.webp",
+          "sizes": "96x96",
+          "type": "image/webp"
+        }
+      ]
+    }
+  ]
+}

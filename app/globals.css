@@ -1,55 +1,137 @@
-/* app/globals.css */
 @import "tailwindcss";
 
-@theme {
-  /* Primary - Teal */
-  --color-primary-50: #f0fdfa;
-  --color-primary-100: #ccfbf1;
-  --color-primary-200: #99f6e4;
-  --color-primary-300: #5eead4;
-  --color-primary-400: #2dd4bf;
-  --color-primary-500: #14b8a6;
-  --color-primary-600: #0d9488;
-  --color-primary-700: #0f766e;
-  --color-primary-800: #115e59;
-  --color-primary-900: #134e4a;
+/* Force light mode with high contrast colors */
+:root {
+  color-scheme: light;
   
-  /* Neutral - Professional Grays */
-  --color-neutral-50: #fafafa;
-  --color-neutral-100: #f5f5f5;
-  --color-neutral-200: #e5e5e5;
-  --color-neutral-300: #d4d4d4;
-  --color-neutral-400: #a3a3a3;
-  --color-neutral-500: #737373;
-  --color-neutral-600: #525252;
-  --color-neutral-700: #404040;
-  --color-neutral-800: #262626;
-  --color-neutral-900: #171717;
+  /* Primary colors - bright emerald */
+  --color-primary-50: #ecfdf5;
+  --color-primary-100: #d1fae5;
+  --color-primary-200: #a7f3d0;
+  --color-primary-300: #6ee7b7;
+  --color-primary-400: #34d399;
+  --color-primary-500: #10b981;
+  --color-primary-600: #059669;
+  --color-primary-700: #047857;
+  --color-primary-800: #065f46;
+  --color-primary-900: #064e3b;
   
-  /* Status Colors */
-  --color-success-50: #f0fdf4;
-  --color-success-500: #22c55e;
-  --color-success-700: #15803d;
+  /* Bright text colors - maximum contrast */
+  --color-text-primary: #000000;
+  --color-text-secondary: #1f2937;
+  --color-text-muted: #4b5563;
+  --color-text-inverse: #ffffff;
   
-  --color-warning-50: #fefce8;
-  --color-warning-500: #eab308;
-  --color-warning-700: #a16207;
+  /* Background colors - bright and clean */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f9fafb;
+  --color-bg-tertiary: #f3f4f6;
+  --color-bg-card: #ffffff;
   
-  --color-error-50: #fef2f2;
-  --color-error-500: #ef4444;
-  --color-error-700: #b91c1c;
-  
-  --color-info-50: #eff6ff;
-  --color-info-500: #3b82f6;
-  --color-info-700: #1d4ed8;
-  
-  /* Background */
-  --color-background: #f8fafc;
+  /* Border colors */
+  --color-border: #e5e7eb;
 }
 
+/* Disable dark mode completely */
+.dark, [data-theme="dark"] {
+  /* Force light mode colors even if dark mode is attempted */
+  --color-text-primary: #000000;
+  --color-text-secondary: #1f2937;
+  --color-text-muted: #4b5563;
+  --color-text-inverse: #ffffff;
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f9fafb;
+  --color-bg-tertiary: #f3f4f6;
+  --color-bg-card: #ffffff;
+  --color-border: #e5e7eb;
+}
+
+/* Base styles with maximum readability */
 @layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    background-color: var(--color-bg-primary);
+  }
+  
   body {
-    background-color: var(--color-background);
-    color: var(--color-neutral-900);
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Force all text to be dark on light background */
+  h1, h2, h3, h4, h5, h6, p, span, a, button, li, div {
+    color: var(--color-text-primary);
+  }
+  
+  /* Muted text only where explicitly specified */
+  .text-muted, .text-gray-500, .text-gray-400, .text-neutral-500 {
+    color: var(--color-text-muted) !important;
+  }
+}
+
+/* Mobile-specific enhancements */
+@media (max-width: 640px) {
+  body {
+    font-weight: 400;
+  }
+  
+  /* Increase font sizes on mobile for better readability */
+  .text-xs { font-size: 0.8125rem !important; }
+  .text-sm { font-size: 0.9375rem !important; }
+  .text-base { font-size: 1rem !important; }
+  .text-lg { font-size: 1.125rem !important; }
+  .text-xl { font-size: 1.25rem !important; }
+  
+  /* Add slight weight to all text on mobile */
+  p, span, a, button, li {
+    font-weight: 450 !important;
+  }
+  
+  /* Increase contrast for buttons */
+  button, .btn {
+    font-weight: 500 !important;
+    letter-spacing: 0.01em;
+  }
+}
+
+/* Card styles for better visibility */
+.card, [class*="card"] {
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Ensure all interactive elements are visible */
+a, button, [role="button"] {
+  color: var(--color-primary-600);
+  font-weight: 500;
+}
+
+a:hover, button:hover {
+  color: var(--color-primary-700);
+}
+
+/* Fix any potential dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Force light mode colors regardless of system preference */
+    --color-text-primary: #000000;
+    --color-text-secondary: #1f2937;
+    --color-text-muted: #4b5563;
+    --color-text-inverse: #ffffff;
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #f9fafb;
+    --color-bg-tertiary: #f3f4f6;
+    --color-bg-card: #ffffff;
+    --color-border: #e5e7eb;
   }
 }

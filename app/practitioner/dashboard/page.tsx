@@ -297,7 +297,7 @@ export default function PractitionerDashboardPage() {
             {safeConsultations.map((consultation) => (
               <Link
                 key={consultation.id}
-                href={`/practitioner/consultations/${consultation.id}`}
+                href={`/practitioner/dashboard/consultations/${consultation.id}`}
                 className="block p-3 sm:p-4 md:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               >
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-0">
@@ -346,7 +346,7 @@ export default function PractitionerDashboardPage() {
         </Link>
 
         <Link
-          href="/practitioner/reviews"
+          href="/practitioner/dashboard/reviews"
           className="p-4 sm:p-5 md:p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800 hover:shadow-md transition-shadow"
         >
           <h3 className="text-sm sm:text-base font-semibold text-blue-900 dark:text-blue-300">View Reviews</h3>
