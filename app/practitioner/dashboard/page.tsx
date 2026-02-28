@@ -1,373 +1,360 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useAuth } from '@/app/contexts/AuthContext'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { motion } from 'framer-motion'
-import {
-  CalendarIcon,
-  ClockIcon,
-  CurrencyDollarIcon,
-  UserGroupIcon,
-  StarIcon,
-  ArrowRightIcon,
-  BellIcon
-} from '@heroicons/react/24/outline'
-import { Card, CardBody } from '@/app/components/ui/Card'
-import { Button } from '@/app/components/ui/Buttons'
+import { useAuth } from '@/app/contexts/AuthContext'
 import { apiClient } from '@/app/lib/api'
-import type { PractitionerMetrics, Consultation, Notification, PaginatedResponse } from '@/app/types'
+import type { Consultation, ConsultationStatus, PaginatedResponse } from '@/app/types'
+import Link from 'next/link'
 
-function extractResults<T>(data: T[] | PaginatedResponse<T> | any): T[] {
-  if (Array.isArray(data)) return data as T[]
-  if (data && typeof data === 'object' && 'results' in data && Array.isArray(data.results)) {
-    return data.results as T[]
+// Status badge component with proper typing and mobile-optimized sizing
+const StatusBadge = ({ status }: { status: ConsultationStatus }) => {
+  const colors: Record<ConsultationStatus, string> = {
+    booked: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+    completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+    cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+    no_show: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
   }
-  return []
+
+  const color = colors[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+
+  // Format status for display
+  const displayStatus = status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+
+  return (
+    <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium ${color}`}>
+      {displayStatus}
+    </span>
+  )
 }
 
 export default function PractitionerDashboardPage() {
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
-  const [metrics, setMetrics] = useState<PractitionerMetrics | null>(null)
-  const [recentConsultations, setRecentConsultations] = useState<Consultation[]>([])
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [loading, setLoading] = useState(true)
 
+  const [consultations, setConsultations] = useState<Consultation[]>([])
+  const [dataLoading, setDataLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isMounted, setIsMounted] = useState(false)
+
+  // Handle mounting
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login')
-      return
-    }
-    
-    if (!isLoading && user?.role !== 'practitioner') {
-      router.push('/client/dashboard')
-      return
-    }
+    setIsMounted(true)
+  }, [])
 
-    fetchDashboardData()
-  }, [isLoading, isAuthenticated, user, router])
+  // Log auth state changes for debugging
+  useEffect(() => {
+    console.log('📊 PractitionerDashboard - Auth state:', { 
+      user, 
+      isAuthenticated, 
+      authLoading,
+      userRole: user?.role,
+      isMounted 
+    })
+  }, [user, isAuthenticated, authLoading, isMounted])
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true)
-      
-      const metricsData = await apiClient.consultations.getMetrics()
-      if (metricsData && 'total_earnings' in metricsData) {
-        setMetrics(metricsData as PractitionerMetrics)
+  // Auth and role check
+  useEffect(() => {
+    if (!authLoading && isMounted) {
+      if (!isAuthenticated) {
+        console.log('🔒 Not authenticated, redirecting to login')
+        router.replace('/login')
+        return
       }
-      
-      const consultationsData = await apiClient.consultations.getMyPractitionerConsultations({
-        ordering: '-date,-time',
-        page_size: 5
-      })
-      const consultationsList = extractResults<Consultation>(consultationsData)
-      setRecentConsultations(consultationsList.slice(0, 5))
-      
-      const notifsData = await apiClient.notifications.getAll()
-      const notificationsList = extractResults<Notification>(notifsData)
-      setNotifications(notificationsList.slice(0, 5))
-      
-      const unreadData = await apiClient.notifications.getUnreadCount()
-      setUnreadCount(unreadData.unread_count)
-      
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
-  if (isLoading || loading) {
+      if (user && user.role !== 'practitioner' && !user.is_staff) {
+        console.log('🚫 Wrong role, redirecting to:', `/${user.role}/dashboard`)
+        router.replace(`/${user.role}/dashboard`)
+        return
+      }
+    }
+  }, [authLoading, isAuthenticated, user, router, isMounted])
+
+  // Fetch data
+  useEffect(() => {
+    const fetchData = async () => {
+      // Wait for auth to be ready
+      if (authLoading || !isMounted) {
+        console.log('⏳ Waiting for auth to be ready...')
+        return
+      }
+
+      // Wait for user to be available
+      if (!user) {
+        console.log('⏳ Waiting for user data...')
+        return
+      }
+
+      // Check if user has access
+      if (user.role !== 'practitioner' && !user.is_staff) {
+        console.log('⏳ User does not have access to practitioner dashboard')
+        return
+      }
+
+      try {
+        setDataLoading(true)
+        setError(null)
+        
+        console.log('📥 Fetching consultations for practitioner:', user.id)
+        
+        const response = await apiClient.consultations.getMyPractitionerConsultations()
+        
+        // Handle different response formats
+        let consultationsArray: Consultation[] = []
+        
+        if (Array.isArray(response)) {
+          consultationsArray = response
+        } else if (response && typeof response === 'object') {
+          if ('results' in response && Array.isArray((response as any).results)) {
+            consultationsArray = (response as PaginatedResponse<Consultation>).results
+          } else if ('data' in response && Array.isArray((response as any).data)) {
+            consultationsArray = (response as any).data
+          }
+        }
+        
+        console.log('📥 Fetched consultations:', consultationsArray.length)
+        setConsultations(consultationsArray)
+      } catch (error: any) {
+        console.error('❌ Failed to fetch consultations:', error)
+        
+        // Handle timeout errors specifically
+        if (error.message?.includes('timeout')) {
+          setError('Request timed out. The server is taking too long to respond. Please try again.')
+        } else if (error.message?.includes('network')) {
+          setError('Network error. Please check your internet connection.')
+        } else {
+          setError(error.message || 'Failed to load consultations')
+        }
+      } finally {
+        setDataLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [user, authLoading, isMounted])
+
+  // Show loading while auth is initializing
+  if (authLoading || !isMounted) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
+          <p className="text-sm text-neutral-500">Loading dashboard...</p>
+        </div>
       </div>
     )
   }
 
-  if (!isAuthenticated || user?.role !== 'practitioner') return null
+  // Show loading while waiting for user data
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
+          <p className="text-sm text-neutral-500">Loading your profile...</p>
+        </div>
+      </div>
+    )
+  }
 
-  const completionRate = metrics && metrics.total_consultations > 0
-    ? Math.round((metrics.completed_consultations / metrics.total_consultations) * 100)
-    : 0
+  // Show loading while fetching data
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
+      </div>
+    )
+  }
+
+  // Safety check
+  if (!user || (user.role !== 'practitioner' && !user.is_staff)) {
+    return null
+  }
+
+  // Ensure consultations is an array before using array methods
+  const safeConsultations = Array.isArray(consultations) ? consultations : []
+  
+  // Calculate stats using valid status values
+  const totalConsultations = safeConsultations.length
+  const bookedCount = safeConsultations.filter(c => c.status === 'booked').length
+  const completedCount = safeConsultations.filter(c => c.status === 'completed').length
+  const cancelledCount = safeConsultations.filter(c => c.status === 'cancelled').length
+  const noShowCount = safeConsultations.filter(c => c.status === 'no_show').length
+
+  // Get user's display name
+  const displayName = user.first_name 
+    ? `${user.first_name} ${user.last_name || ''}`.trim()
+    : user.email?.split('@')[0] || 'User'
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5 md:space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Welcome back, Dr. {user?.first_name}
+          <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 dark:text-white">
+            Welcome {user.is_staff ? 'Admin' : 'Dr.'} {displayName}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Here's what's happening with your practice today
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1">
+            {new Date().toLocaleDateString('en-US', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}
           </p>
         </div>
-        
-        <Link href="/practitioner/dashboard/notifications">
-          <button className="relative p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
-            <BellIcon className="h-6 w-6" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {unreadCount}
-              </span>
-            )}
-          </button>
-        </Link>
+        <div className="flex gap-2 sm:gap-3">
+          <Link
+            href="/practitioner/availability"
+            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
+          >
+            Availability
+          </Link>
+          <Link
+            href="/practitioner/profile"
+            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium"
+          >
+            Profile
+          </Link>
+        </div>
       </div>
 
-      {metrics && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Total Earnings"
-            value={`KES ${metrics.total_earnings.toLocaleString()}`}
-            icon={CurrencyDollarIcon}
-            color="emerald"
-          />
-          <StatCard
-            title="Consultations"
-            value={metrics.total_consultations.toString()}
-            icon={CalendarIcon}
-            color="blue"
-            subtitle={`${metrics.upcoming_consultations} upcoming`}
-          />
-          <StatCard
-            title="Rating"
-            value={metrics.average_rating.toFixed(1)}
-            icon={StarIcon}
-            color="yellow"
-            subtitle={`${metrics.total_reviews} reviews`}
-          />
-          <StatCard
-            title="Completion Rate"
-            value={`${completionRate}%`}
-            icon={UserGroupIcon}
-            color="purple"
-          />
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          <button 
+            onClick={() => {
+              setDataLoading(true)
+              setError(null)
+              // Re-fetch data
+              apiClient.consultations.getMyPractitionerConsultations()
+                .then(response => {
+                  let consultationsArray: Consultation[] = []
+                  if (Array.isArray(response)) {
+                    consultationsArray = response
+                  } else if (response && typeof response === 'object') {
+                    if ('results' in response && Array.isArray((response as any).results)) {
+                      consultationsArray = (response as PaginatedResponse<Consultation>).results
+                    }
+                  }
+                  setConsultations(consultationsArray)
+                })
+                .catch(err => setError(err.message))
+                .finally(() => setDataLoading(false))
+            }}
+            className="mt-2 text-sm text-red-600 dark:text-red-400 hover:underline font-medium"
+          >
+            Try again
+          </button>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardBody className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5 text-emerald-600" />
-                  Recent Consultations
-                </h2>
-                <Link 
-                  href="/practitioner/dashboard/consultations"
-                  className="text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
-                >
-                  View All
-                  <ArrowRightIcon className="h-4 w-4" />
-                </Link>
-              </div>
-
-              {recentConsultations.length > 0 ? (
-                <div className="space-y-3">
-                  {recentConsultations.map((consultation) => (
-                    <RecentConsultationItem 
-                      key={consultation.id} 
-                      consultation={consultation} 
-                    />
-                  ))}
-                </div>
-              ) : (
-                <EmptyState
-                  message="No recent consultations"
-                  action={{
-                    label: "Set Availability",
-                    href: "/practitioner/dashboard/availability"
-                  }}
-                />
-              )}
-            </CardBody>
-          </Card>
+      {/* Stats Cards - Mobile optimized grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 md:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total</p>
+          <p className="text-lg sm:text-xl md:text-2xl font-semibold mt-1 sm:mt-2 text-gray-900 dark:text-white">{totalConsultations}</p>
         </div>
-
-        <div>
-          <Card>
-            <CardBody className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <BellIcon className="h-5 w-5 text-emerald-600" />
-                  Notifications
-                </h2>
-                {unreadCount > 0 && (
-                  <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
-                    {unreadCount} new
-                  </span>
-                )}
-              </div>
-
-              {notifications.length > 0 ? (
-                <div className="space-y-3">
-                  {notifications.map((notification) => (
-                    <NotificationItem key={notification.id} notification={notification} />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                  No notifications
-                </p>
-              )}
-
-              <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <h3 className="text-sm font-medium mb-3">Quick Actions</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <QuickAction label="Add Slot" href="/practitioner/dashboard/availability" />
-                  <QuickAction label="View Schedule" href="/practitioner/dashboard/consultations" />
-                  <QuickAction label="Edit Profile" href="/practitioner/dashboard/profile" />
-                  <QuickAction label="View Metrics" href="/practitioner/dashboard/metrics" />
-                </div>
-              </div>
-            </CardBody>
-          </Card>
+        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 md:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Booked</p>
+          <p className="text-lg sm:text-xl md:text-2xl font-semibold mt-1 sm:mt-2 text-blue-600 dark:text-blue-400">{bookedCount}</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 md:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Completed</p>
+          <p className="text-lg sm:text-xl md:text-2xl font-semibold mt-1 sm:mt-2 text-green-600 dark:text-green-400">{completedCount}</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 md:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Cancelled</p>
+          <p className="text-lg sm:text-xl md:text-2xl font-semibold mt-1 sm:mt-2 text-red-600 dark:text-red-400">{cancelledCount}</p>
         </div>
       </div>
 
-      {user?.is_verified === false && (
-        <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
-          <CardBody className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-yellow-100 dark:bg-yellow-800 rounded-full">
-                  <ClockIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+      {/* Consultations Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+          <h2 className="text-sm sm:text-base md:text-lg font-medium text-gray-900 dark:text-white">Your Consultations</h2>
+          {noShowCount > 0 && (
+            <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+              {noShowCount} no-show{noShowCount > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+
+        {error ? (
+          <div className="p-6 sm:p-8 md:p-12 text-center text-red-600 dark:text-red-400">
+            <p className="text-sm sm:text-base">{error}</p>
+          </div>
+        ) : safeConsultations.length === 0 ? (
+          <div className="p-8 sm:p-10 md:p-12 text-center">
+            <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">No consultations found.</p>
+            <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 mt-2">
+              When clients book appointments, they will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {safeConsultations.map((consultation) => (
+              <Link
+                key={consultation.id}
+                href={`/practitioner/consultations/${consultation.id}`}
+                className="block p-3 sm:p-4 md:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+              >
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-0">
+                  <div className="space-y-1 sm:space-y-2">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
+                        Consultation with {consultation.client_name || 'Client'}
+                      </h3>
+                      <StatusBadge status={consultation.status} />
+                    </div>
+                    
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 space-y-0.5 sm:space-y-1">
+                      {consultation.date && (
+                        <p>
+                          📅 {new Date(consultation.date).toLocaleDateString()} 
+                          {consultation.time && ` at ${consultation.time}`}
+                        </p>
+                      )}
+                      
+                      {consultation.duration_minutes && (
+                        <p>⏱️ Duration: {consultation.duration_minutes} minutes</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500 sm:text-right">
+                    {new Date(consultation.created_at).toLocaleDateString()}
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-yellow-800 dark:text-yellow-300">
-                    Your account is pending verification
-                  </p>
-                  <p className="text-sm text-yellow-700 dark:text-yellow-400">
-                    You'll be able to accept bookings once verified
-                  </p>
-                </div>
-              </div>
-              
-              <Link href="/practitioner/dashboard/application">
-                <Button variant="outline" size="sm" className="border-yellow-600 text-yellow-600">
-                  Check Status
-                </Button>
               </Link>
-            </div>
-          </CardBody>
-        </Card>
-      )}
-    </div>
-  )
-}
-
-interface StatCardProps {
-  title: string
-  value: string
-  icon: React.ElementType
-  color: 'emerald' | 'blue' | 'yellow' | 'purple' | 'red' | 'green'
-  subtitle?: string
-}
-
-function StatCard({ title, value, icon: Icon, color, subtitle }: StatCardProps) {
-  const colorClasses = {
-    emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
-    blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-    yellow: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
-    purple: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
-    red: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
-    green: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
-  }
-
-  return (
-    <Card>
-      <CardBody className="p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
-            {subtitle && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{subtitle}</p>
-            )}
+            ))}
           </div>
-          <div className={`p-3 rounded-xl ${colorClasses[color]}`}>
-            <Icon className="h-5 w-5" />
-          </div>
-        </div>
-      </CardBody>
-    </Card>
-  )
-}
-
-function RecentConsultationItem({ consultation }: { consultation: Consultation }) {
-  const statusColors = {
-    booked: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-    completed: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-    cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
-    no_show: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
-  }
-
-  const status = consultation.status || 'booked'
-
-  return (
-    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white font-bold">
-          {consultation.client_name?.[0] || 'C'}
-        </div>
-        <div>
-          <p className="font-medium text-sm">{consultation.client_name || 'Client'}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {new Date(consultation.date).toLocaleDateString()} at {consultation.time?.slice(0,5) || '--:--'}
-          </p>
-        </div>
+        )}
       </div>
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[status]}`}>
-        {status}
-      </span>
-    </div>
-  )
-}
 
-function NotificationItem({ notification }: { notification: Notification }) {
-  return (
-    <div className={`p-3 rounded-lg ${!notification.is_read ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
-      <p className="font-medium text-sm">{notification.title}</p>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{notification.message}</p>
-      <p className="text-xs text-gray-400 mt-1">{notification.time_ago}</p>
-    </div>
-  )
-}
-
-function QuickAction({ label, href }: { label: string; href: string }) {
-  return (
-    <Link href={href}>
-      <button className="w-full p-2 text-sm bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition">
-        {label}
-      </button>
-    </Link>
-  )
-}
-
-interface EmptyStateProps {
-  message: string
-  action?: {
-    label: string
-    href: string
-  }
-}
-
-function EmptyState({ message, action }: EmptyStateProps) {
-  return (
-    <div className="text-center py-6">
-      <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
-      {action && (
-        <Link href={action.href}>
-          <button className="mt-3 text-sm text-emerald-600 hover:text-emerald-700 font-medium">
-            {action.label}
-          </button>
+      {/* Quick Actions - Mobile optimized */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
+        <Link
+          href="/practitioner/availability"
+          className="p-4 sm:p-5 md:p-6 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800 hover:shadow-md transition-shadow"
+        >
+          <h3 className="text-sm sm:text-base font-semibold text-emerald-900 dark:text-emerald-300">Set Your Availability</h3>
+          <p className="text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 mt-1">
+            Manage your working hours
+          </p>
         </Link>
-      )}
+
+        <Link
+          href="/practitioner/reviews"
+          className="p-4 sm:p-5 md:p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800 hover:shadow-md transition-shadow"
+        >
+          <h3 className="text-sm sm:text-base font-semibold text-blue-900 dark:text-blue-300">View Reviews</h3>
+          <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-400 mt-1">
+            See what clients say
+          </p>
+        </Link>
+      </div>
     </div>
   )
 }

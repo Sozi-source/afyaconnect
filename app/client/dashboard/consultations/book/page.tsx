@@ -18,7 +18,11 @@ import {
   XMarkIcon,
   ArrowLeftIcon,
   MagnifyingGlassIcon,
-  FunnelIcon
+  FunnelIcon,
+  SparklesIcon,
+  ShieldCheckIcon,
+  VideoCameraIcon,
+  PhoneIcon
 } from '@heroicons/react/24/outline'
 import { useAuth } from '@/app/contexts/AuthContext'
 import { apiClient } from '@/app/lib/api'
@@ -189,27 +193,33 @@ export default function NewBookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
-      <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      <div className="max-w-6xl mx-auto px-4 py-8 sm:py-10 lg:py-12">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-8 lg:mb-10">
           <div className="flex items-center gap-4">
             <Link
               href="/client/dashboard/consultations"
-              className="p-2 hover:bg-white/50 dark:hover:bg-slate-800 rounded-xl transition"
+              className="p-2 hover:bg-slate-100 rounded-xl transition-colors border border-slate-200 bg-white shadow-sm"
             >
-              <ArrowLeftIcon className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+              <ArrowLeftIcon className="h-5 w-5 text-slate-600" />
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Book Consultation</h1>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              <div className="flex items-center gap-2 text-teal-600 mb-1">
+                <SparklesIcon className="h-4 w-4" />
+                <span className="text-xs font-medium uppercase tracking-wider">New Booking</span>
+              </div>
+              <h1 className="text-2xl lg:text-3xl font-light text-slate-800">
+                Book <span className="font-semibold text-teal-600">Consultation</span>
+              </h1>
+              <p className="text-sm text-slate-500 mt-1">
                 {stepTitles[currentStep]}
               </p>
             </div>
           </div>
           
-          {/* Step Indicator */}
-          <div className="flex items-center gap-2">
+          {/* Step Indicator - Desktop */}
+          <div className="hidden sm:flex items-center gap-2">
             {(['practitioners', 'datetime', 'details', 'confirmation'] as const).map((step, index) => {
               const stepNumber = index + 1
               const isActive = currentStep === step
@@ -218,25 +228,35 @@ export default function NewBookingPage() {
               return (
                 <div key={step} className="flex items-center">
                   <div className={`
-                    w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
+                    w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all
                     ${isActive 
-                      ? 'bg-emerald-600 text-white ring-4 ring-emerald-100 dark:ring-emerald-900/30' 
+                      ? 'bg-teal-600 text-white ring-4 ring-teal-100' 
                       : isPast
-                        ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
-                        : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-500'
+                        ? 'bg-teal-100 text-teal-600'
+                        : 'bg-slate-100 text-slate-400'
                     }
                   `}>
-                    {isPast ? <CheckCircleIcon className="h-4 w-4" /> : stepNumber}
+                    {isPast ? <CheckCircleIcon className="h-5 w-5" /> : stepNumber}
                   </div>
                   {index < 3 && (
                     <div className={`
-                      w-12 h-0.5 mx-1
-                      ${isPast ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-800'}
+                      w-16 h-0.5 mx-2
+                      ${index < ['practitioners', 'datetime', 'details', 'confirmation'].indexOf(currentStep) 
+                        ? 'bg-teal-500' 
+                        : 'bg-slate-200'
+                      }
                     `} />
                   )}
                 </div>
               )
             })}
+          </div>
+
+          {/* Mobile Step Indicator - Simplified */}
+          <div className="sm:hidden flex items-center gap-2">
+            <span className="text-sm font-medium text-teal-600">
+              Step {['practitioners', 'datetime', 'details', 'confirmation'].indexOf(currentStep) + 1} of 4
+            </span>
           </div>
         </div>
 
@@ -247,10 +267,10 @@ export default function NewBookingPage() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="mb-6 p-4 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-2xl flex items-center gap-3"
+              className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 shadow-sm"
             >
-              <XMarkIcon className="h-5 w-5 text-rose-600 dark:text-rose-400 flex-shrink-0" />
-              <p className="text-sm text-rose-700 dark:text-rose-300">{error}</p>
+              <XMarkIcon className="h-5 w-5 text-rose-600 flex-shrink-0" />
+              <p className="text-sm text-rose-700">{error}</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -320,7 +340,7 @@ export default function NewBookingPage() {
 }
 
 // ============================================================================
-// Practitioner Grid Component
+// Practitioner Grid Component - Refined Design
 // ============================================================================
 
 function PractitionerGrid({ 
@@ -357,14 +377,14 @@ function PractitionerGrid({
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {[1,2,3,4,5,6].map(i => (
-          <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 animate-pulse">
+          <div key={i} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm animate-pulse">
             <div className="flex items-start gap-4">
-              <div className="w-16 h-16 bg-slate-200 dark:bg-slate-800 rounded-full" />
+              <div className="w-16 h-16 bg-slate-200 rounded-full" />
               <div className="flex-1 space-y-2">
-                <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
-                <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/2" />
+                <div className="h-4 bg-slate-200 rounded w-3/4" />
+                <div className="h-3 bg-slate-200 rounded w-1/2" />
               </div>
             </div>
           </div>
@@ -380,7 +400,7 @@ function PractitionerGrid({
       exit={{ opacity: 0, y: -20 }}
     >
       {/* Search Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 mb-6 shadow-sm border border-slate-200 dark:border-slate-800">
+      <div className="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-slate-200">
         <div className="flex gap-3">
           <div className="flex-1 relative">
             <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -389,80 +409,82 @@ function PractitionerGrid({
               placeholder="Search by name or specialty..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-0 focus:ring-2 focus:ring-emerald-500/20 text-sm"
+              className="w-full pl-12 pr-4 py-3.5 bg-slate-50 rounded-xl border-0 focus:ring-2 focus:ring-teal-500/30 text-sm"
             />
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`px-4 py-2 rounded-xl border transition ${
+            className={`px-4 py-2 rounded-xl border transition-all ${
               showFilters 
-                ? 'bg-emerald-600 text-white border-emerald-600' 
-                : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                ? 'bg-teal-600 text-white border-teal-600 shadow-sm shadow-teal-200/50' 
+                : 'border-slate-200 hover:bg-slate-50'
             }`}
           >
             <FunnelIcon className="h-5 w-5" />
           </button>
         </div>
 
-        {showFilters && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800"
-          >
-            <select
-              value={selectedSpecialty}
-              onChange={(e) => setSelectedSpecialty(e.target.value)}
-              className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-0 focus:ring-2 focus:ring-emerald-500/20 text-sm"
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 pt-4 border-t border-slate-200"
             >
-              <option value="">All Specialties</option>
-              {specialties.map((s: string) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </motion.div>
-        )}
+              <select
+                value={selectedSpecialty}
+                onChange={(e) => setSelectedSpecialty(e.target.value)}
+                className="w-full p-3.5 bg-slate-50 rounded-xl border-0 focus:ring-2 focus:ring-teal-500/30 text-sm"
+              >
+                <option value="">All Specialties</option>
+                {specialties.map((s: string) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Practitioner Grid */}
       {filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-          <UserCircleIcon className="h-16 w-16 mx-auto text-slate-400 mb-4" />
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No practitioners found</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Try adjusting your search</p>
+        <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 shadow-sm">
+          <UserCircleIcon className="h-16 w-16 mx-auto text-slate-300 mb-4" />
+          <h3 className="text-lg font-semibold text-slate-800 mb-2">No practitioners found</h3>
+          <p className="text-sm text-slate-500">Try adjusting your search</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((p: Practitioner) => (
             <motion.button
               key={p.id}
-              whileHover={{ scale: 1.02 }}
+              whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => onSelect(p)}
-              className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 transition text-left"
+              className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:border-teal-200 hover:shadow-md transition-all text-left group"
             >
               <div className="flex items-start gap-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-sm">
                   {p.first_name?.[0]}{p.last_name?.[0]}
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-slate-900 dark:text-white mb-1">
+                  <h3 className="font-semibold text-slate-800 mb-1 group-hover:text-teal-700 transition-colors">
                     Dr. {p.first_name} {p.last_name}
                   </h3>
                   <div className="flex items-center gap-2 mb-2">
                     <MapPinIcon className="h-4 w-4 text-slate-400" />
-                    <span className="text-sm text-slate-600 dark:text-slate-400">{p.city || 'Remote'}</span>
+                    <span className="text-sm text-slate-500">{p.city || 'Remote'}</span>
                   </div>
                   <div className="flex items-center gap-2 mb-3">
                     <CurrencyDollarIcon className="h-4 w-4 text-slate-400" />
-                    <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                    <span className="text-sm font-medium text-teal-600">
                       {formatCurrency(p.hourly_rate)}/hr
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {p.specialties?.slice(0, 2).map(s => (
-                      <span key={s.id} className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-xs">
+                      <span key={s.id} className="px-2 py-1 bg-teal-50 text-teal-700 rounded-lg text-xs font-medium">
                         {s.name}
                       </span>
                     ))}
@@ -478,7 +500,7 @@ function PractitionerGrid({
 }
 
 // ============================================================================
-// DateTimeSelector Component - FIXED
+// DateTimeSelector Component - Refined Design
 // ============================================================================
 
 function DateTimeSelector({ 
@@ -496,7 +518,7 @@ function DateTimeSelector({
 }) {
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [selectedTime, setSelectedTime] = useState<string>('')
-  const [currentMonth, setCurrentMonth] = useState(new Date()) // ✅ FIXED: Use current date
+  const [currentMonth, setCurrentMonth] = useState(new Date())
 
   const getBackendDay = useCallback((jsDay: number): number => {
     const mapping: Record<number, number> = {
@@ -557,7 +579,6 @@ function DateTimeSelector({
     const lastDay = new Date(year, month + 1, 0);
     const days: (DayCell | null)[] = [];
     
-    // Add empty cells for days before month starts (Monday first)
     let firstDayOfWeek = firstDay.getDay();
     const emptyDays = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
     
@@ -565,7 +586,6 @@ function DateTimeSelector({
       days.push(null);
     }
     
-    // Add days of current month
     for (let d = 1; d <= lastDay.getDate(); d++) {
       const date = new Date(year, month, d);
       const dateStr = date.toISOString().split('T')[0];
@@ -609,26 +629,26 @@ function DateTimeSelector({
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-4 border-emerald-200 border-t-emerald-600 mx-auto"></div>
-        <p className="text-sm text-gray-500 mt-4">Loading availability...</p>
+      <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-teal-200 border-t-teal-600 mx-auto"></div>
+        <p className="text-sm text-slate-500 mt-4">Loading availability...</p>
       </div>
     );
   }
 
   if (availability.length === 0) {
     return (
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 text-center">
-        <CalendarDaysIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+      <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm">
+        <CalendarDaysIcon className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+        <h3 className="text-xl font-semibold text-slate-800 mb-2">
           No Availability
         </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">
           This practitioner hasn't set their availability yet.
         </p>
         <button
           onClick={onBack}
-          className="mt-4 px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg"
+          className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-medium shadow-sm shadow-teal-200/50"
         >
           Go Back
         </button>
@@ -641,43 +661,43 @@ function DateTimeSelector({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800"
+      className="bg-white rounded-2xl p-6 lg:p-8 shadow-sm border border-slate-200"
     >
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition">
-          <ChevronLeftIcon className="h-5 w-5" />
+        <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+          <ChevronLeftIcon className="h-5 w-5 text-slate-600" />
         </button>
         <div>
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Select Date & Time</h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Dr. {practitioner.first_name} {practitioner.last_name}</p>
+          <h2 className="text-xl font-semibold text-slate-800">Select Date & Time</h2>
+          <p className="text-sm text-slate-500">Dr. {practitioner.first_name} {practitioner.last_name}</p>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8">
+      <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
         {/* Calendar */}
         <div>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <button 
               onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-              className={`p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition ${
+              className={`p-2 hover:bg-slate-100 rounded-xl transition-colors ${
                 !canGoPrev ? 'opacity-50 cursor-not-allowed' : ''
               }`}
               disabled={!canGoPrev}
             >
-              <ChevronLeftIcon className="h-5 w-5" />
+              <ChevronLeftIcon className="h-5 w-5 text-slate-600" />
             </button>
-            <span className="font-medium">
+            <span className="font-medium text-slate-800">
               {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
             </span>
             <button 
               onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
+              className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
             >
-              <ChevronRightIcon className="h-5 w-5" />
+              <ChevronRightIcon className="h-5 w-5 text-slate-600" />
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 mb-2">
+          <div className="grid grid-cols-7 gap-1 mb-3">
             {weekDays.map((day) => (
               <div key={day.key} className="text-center text-xs font-medium text-slate-500 py-2">
                 {day.label}
@@ -706,19 +726,19 @@ function DateTimeSelector({
                     }}
                     disabled={!day.hasSlot || isPast}
                     className={`
-                      w-full h-full rounded-xl flex flex-col items-center justify-center text-sm transition
+                      w-full h-full rounded-xl flex flex-col items-center justify-center text-sm transition-all
                       ${isSelected 
-                        ? 'bg-emerald-600 text-white' 
+                        ? 'bg-teal-600 text-white shadow-sm' 
                         : day.hasSlot && !isPast
-                          ? 'hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-slate-700 dark:text-slate-300 cursor-pointer'
-                          : 'text-slate-300 dark:text-slate-700 cursor-not-allowed'
+                          ? 'hover:bg-teal-50 text-slate-700 cursor-pointer border border-transparent hover:border-teal-200'
+                          : 'text-slate-300 cursor-not-allowed'
                       }
-                      ${isToday && !isSelected ? 'ring-2 ring-emerald-200 dark:ring-emerald-800' : ''}
+                      ${isToday && !isSelected ? 'ring-2 ring-teal-200' : ''}
                     `}
                   >
-                    <span>{day.date.getDate()}</span>
+                    <span className={isSelected ? 'font-medium' : ''}>{day.date.getDate()}</span>
                     {day.hasSlot && !isPast && !isSelected && (
-                      <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1" />
+                      <div className="w-1 h-1 rounded-full bg-teal-500 mt-1" />
                     )}
                   </button>
                 </div>
@@ -726,14 +746,18 @@ function DateTimeSelector({
             })}
           </div>
 
-          <div className="flex items-center gap-4 mt-4 text-xs text-slate-500">
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+          <div className="flex items-center gap-4 mt-6 text-xs text-slate-500">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-teal-500"></div>
               <span>Available</span>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-emerald-600"></div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-teal-600"></div>
               <span>Selected</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-slate-300"></div>
+              <span>Past</span>
             </div>
           </div>
         </div>
@@ -742,27 +766,31 @@ function DateTimeSelector({
         <div>
           {selectedDate ? (
             <>
-              <h3 className="font-medium mb-4 flex items-center gap-2">
-                <ClockIcon className="h-5 w-5 text-slate-400" />
+              <h3 className="font-medium text-slate-800 mb-4 flex items-center gap-2">
+                <ClockIcon className="h-5 w-5 text-teal-600" />
                 Available Times for {formatDate(selectedDate, { weekday: 'short', month: 'short', day: 'numeric' })}
               </h3>
               
               {timeSlots.length > 0 ? (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     {timeSlots.map((time) => (
                       <button
                         key={time}
                         onClick={() => setSelectedTime(time)}
                         className={`
-                          p-3 rounded-xl border-2 transition text-center
+                          p-4 rounded-xl border-2 transition-all text-center
                           ${selectedTime === time
-                            ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30'
-                            : 'border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-800'
+                            ? 'border-teal-600 bg-teal-50 shadow-sm'
+                            : 'border-slate-200 hover:border-teal-200 hover:bg-teal-50/50'
                           }
                         `}
                       >
-                        <span className="text-sm font-medium">{time}</span>
+                        <span className={`text-sm font-medium ${
+                          selectedTime === time ? 'text-teal-700' : 'text-slate-700'
+                        }`}>
+                          {time}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -774,7 +802,7 @@ function DateTimeSelector({
                     >
                       <button
                         onClick={() => onSelect(selectedDate, selectedTime)}
-                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition flex items-center justify-center gap-2"
+                        className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-medium transition-all shadow-sm shadow-teal-200/50 flex items-center justify-center gap-2"
                       >
                         Continue to Details
                         <ChevronRightIcon className="h-5 w-5" />
@@ -783,9 +811,9 @@ function DateTimeSelector({
                   )}
                 </div>
               ) : (
-                <div className="text-center py-8 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                  <ClockIcon className="h-8 w-8 mx-auto text-slate-400 mb-2" />
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                <div className="text-center py-12 bg-slate-50 rounded-xl">
+                  <ClockIcon className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                  <p className="text-sm text-slate-500">
                     No available slots for this date
                   </p>
                 </div>
@@ -793,8 +821,8 @@ function DateTimeSelector({
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center py-12">
-              <CalendarDaysIcon className="h-12 w-12 text-slate-300 dark:text-slate-700 mb-4" />
-              <p className="text-slate-600 dark:text-slate-400">
+              <CalendarDaysIcon className="h-16 w-16 text-slate-300 mb-4" />
+              <p className="text-slate-500">
                 Select a date to see available times
               </p>
             </div>
@@ -806,7 +834,7 @@ function DateTimeSelector({
 }
 
 // ============================================================================
-// DetailsForm Component
+// DetailsForm Component - Refined Design
 // ============================================================================
 
 function DetailsForm({ 
@@ -841,121 +869,159 @@ function DetailsForm({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800"
+      className="bg-white rounded-2xl p-6 lg:p-8 shadow-sm border border-slate-200"
     >
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition">
-          <ChevronLeftIcon className="h-5 w-5" />
+        <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+          <ChevronLeftIcon className="h-5 w-5 text-slate-600" />
         </button>
-        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Consultation Details</h2>
+        <h2 className="text-xl font-semibold text-slate-800">Consultation Details</h2>
       </div>
 
-      <div className="space-y-6">
-        {/* Summary Card */}
-        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4">
-          <div className="flex items-start gap-3 mb-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
-              {slot.practitionerName[0]}
+      <div className="grid lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-6">
+          {/* Summary Card */}
+          <div className="bg-gradient-to-br from-teal-50 to-white rounded-xl p-5 border border-teal-100">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                {slot.practitionerName[0]}
+              </div>
+              <div>
+                <p className="font-semibold text-slate-800">{slot.practitionerName}</p>
+                <p className="text-sm text-teal-600 mt-1">
+                  {formatDate(slot.date, { weekday: 'short', month: 'short', day: 'numeric' })} at {slot.time}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="font-medium">{slot.practitionerName}</p>
-              <p className="text-xs text-slate-500">
-                {formatDate(slot.date, { weekday: 'short', month: 'short', day: 'numeric' })} at {slot.time}
-              </p>
+          </div>
+
+          {/* Consultation Type */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-3">
+              Consultation Type
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { type: 'video', icon: VideoCameraIcon, label: 'Video' },
+                { type: 'in-person', icon: MapPinIcon, label: 'In Person' },
+                { type: 'phone', icon: PhoneIcon, label: 'Phone' }
+              ].map(({ type, icon: Icon, label }) => (
+                <button
+                  key={type}
+                  onClick={() => onTypeChange(type as any)}
+                  className={`
+                    p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2
+                    ${consultationType === type
+                      ? 'border-teal-600 bg-teal-50 shadow-sm'
+                      : 'border-slate-200 hover:border-teal-200 hover:bg-teal-50/50'
+                    }
+                  `}
+                >
+                  <Icon className={`h-5 w-5 ${
+                    consultationType === type ? 'text-teal-600' : 'text-slate-400'
+                  }`} />
+                  <span className={`text-xs font-medium ${
+                    consultationType === type ? 'text-teal-700' : 'text-slate-600'
+                  }`}>
+                    {label}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
-        </div>
 
-        {/* Consultation Type */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-            Consultation Type
-          </label>
-          <div className="grid grid-cols-3 gap-3">
-            {(['video', 'in-person', 'phone'] as const).map(type => (
-              <button
-                key={type}
-                onClick={() => onTypeChange(type)}
-                className={`
-                  p-3 rounded-xl border-2 capitalize transition
-                  ${consultationType === type
-                    ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30'
-                    : 'border-slate-200 dark:border-slate-800 hover:border-emerald-300'
-                  }
-                `}
-              >
-                {type}
-              </button>
-            ))}
+          {/* Duration */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-3">
+              Duration
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {[30, 60, 90, 120].map(d => (
+                <button
+                  key={d}
+                  onClick={() => onDurationChange(d)}
+                  className={`
+                    p-4 rounded-xl border-2 transition-all text-center
+                    ${duration === d
+                      ? 'border-teal-600 bg-teal-50 shadow-sm'
+                      : 'border-slate-200 hover:border-teal-200 hover:bg-teal-50/50'
+                    }
+                  `}
+                >
+                  <span className={`block text-sm font-medium ${
+                    duration === d ? 'text-teal-700' : 'text-slate-700'
+                  }`}>
+                    {d} min
+                  </span>
+                  <span className={`text-xs mt-1 block ${
+                    duration === d ? 'text-teal-600' : 'text-slate-500'
+                  }`}>
+                    +{formatPrice((practitioner.hourly_rate * d) / 60)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-3">
+              Additional Notes
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => onNotesChange(e.target.value)}
+              placeholder="Any specific concerns or information to share?"
+              rows={4}
+              className="w-full p-4 bg-slate-50 rounded-xl border-0 focus:ring-2 focus:ring-teal-500/30 text-sm resize-none"
+            />
           </div>
         </div>
 
-        {/* Duration */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-            Duration
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            {[30, 60, 90, 120].map(d => (
-              <button
-                key={d}
-                onClick={() => onDurationChange(d)}
-                className={`
-                  p-3 rounded-xl border-2 transition
-                  ${duration === d
-                    ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30'
-                    : 'border-slate-200 dark:border-slate-800 hover:border-emerald-300'
-                  }
-                `}
-              >
-                <span className="block text-sm font-medium">{d} min</span>
-                <span className="text-xs text-slate-500">
-                  +{formatPrice((practitioner.hourly_rate * d) / 60)}
-                </span>
-              </button>
-            ))}
+        {/* Price Summary Sidebar */}
+        <div className="lg:col-span-1">
+          <div className="bg-gradient-to-br from-slate-50 to-white rounded-xl p-6 border border-slate-200 sticky top-24">
+            <h3 className="font-medium text-slate-800 mb-4">Price Summary</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">Consultation fee</span>
+                <span className="font-medium text-slate-800">{formatPrice(practitioner.hourly_rate)}/hr</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">Duration</span>
+                <span className="font-medium text-slate-800">{duration} min</span>
+              </div>
+              <div className="border-t border-slate-200 pt-3 mt-3">
+                <div className="flex justify-between font-semibold">
+                  <span className="text-slate-800">Total</span>
+                  <span className="text-teal-600 text-lg">{formatPrice(totalPrice)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-200">
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <ShieldCheckIcon className="h-4 w-4 text-teal-600" />
+                <span>Secure payment</span>
+              </div>
+            </div>
+
+            <button
+              onClick={onContinue}
+              className="w-full mt-6 py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-medium transition-all shadow-sm shadow-teal-200/50 flex items-center justify-center gap-2"
+            >
+              Continue to Review
+              <ChevronRightIcon className="h-5 w-5" />
+            </button>
           </div>
         </div>
-
-        {/* Notes */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-            Additional Notes
-          </label>
-          <textarea
-            value={notes}
-            onChange={(e) => onNotesChange(e.target.value)}
-            placeholder="Any specific concerns or information to share?"
-            rows={4}
-            className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-0 focus:ring-2 focus:ring-emerald-500/20 text-sm resize-none"
-          />
-        </div>
-
-        {/* Total Price */}
-        <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl p-4">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Total</span>
-            <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-              {formatPrice(totalPrice)}
-            </span>
-          </div>
-        </div>
-
-        {/* Continue Button */}
-        <button
-          onClick={onContinue}
-          className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition"
-        >
-          Continue to Review
-          <ChevronRightIcon className="h-5 w-5 inline ml-2" />
-        </button>
       </div>
     </motion.div>
   )
 }
 
 // ============================================================================
-// ConfirmationCard Component
+// ConfirmationCard Component - Refined Design
 // ============================================================================
 
 function ConfirmationCard({ 
@@ -986,93 +1052,125 @@ function ConfirmationCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800"
+      className="bg-white rounded-2xl p-6 lg:p-8 shadow-sm border border-slate-200"
     >
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition">
-          <ChevronLeftIcon className="h-5 w-5" />
+        <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+          <ChevronLeftIcon className="h-5 w-5 text-slate-600" />
         </button>
-        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Review Booking</h2>
+        <h2 className="text-xl font-semibold text-slate-800">Review Your Booking</h2>
       </div>
 
-      <div className="space-y-6">
-        {/* Booking Summary */}
-        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4">
-          <h3 className="font-medium mb-4">Booking Summary</h3>
-          
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
+      <div className="grid lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-6">
+          {/* Practitioner Card */}
+          <div className="bg-gradient-to-br from-teal-50 to-white rounded-xl p-5 border border-teal-100">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-sm">
                 {slot.practitionerName[0]}
               </div>
               <div>
-                <p className="font-medium">{slot.practitionerName}</p>
-                <p className="text-xs text-slate-500">{practitioner.specialties?.[0]?.name || 'Specialist'}</p>
+                <h3 className="font-semibold text-slate-800 text-lg">{slot.practitionerName}</h3>
+                <p className="text-sm text-teal-600 mt-1">{practitioner.specialties?.[0]?.name || 'Specialist'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Appointment Details */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5">
+            <h4 className="font-medium text-slate-800 mb-4">Appointment Details</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Date</p>
+                <p className="text-sm font-medium text-slate-800">{formatDate(slot.date)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Time</p>
+                <p className="text-sm font-medium text-slate-800">{slot.time}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Duration</p>
+                <p className="text-sm font-medium text-slate-800">{duration} minutes</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Type</p>
+                <p className="text-sm font-medium text-slate-800 capitalize">{consultationType}</p>
+              </div>
+            </div>
+          </div>
+
+          {notes && (
+            <div className="bg-white border border-slate-200 rounded-xl p-5">
+              <h4 className="font-medium text-slate-800 mb-2">Your Notes</h4>
+              <p className="text-sm text-slate-600">{notes}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Payment Summary */}
+        <div className="lg:col-span-1">
+          <div className="bg-gradient-to-br from-slate-50 to-white rounded-xl p-6 border border-slate-200 sticky top-24">
+            <h4 className="font-medium text-slate-800 mb-4">Payment Summary</h4>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">Consultation</span>
+                <span className="font-medium text-slate-800">{formatPrice(totalPrice)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">Platform fee</span>
+                <span className="font-medium text-teal-600">Free</span>
+              </div>
+              <div className="border-t border-slate-200 pt-3 mt-3">
+                <div className="flex justify-between font-semibold">
+                  <span className="text-slate-800">Total</span>
+                  <span className="text-teal-600 text-lg">{formatPrice(totalPrice)}</span>
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-2 text-sm">
-              <div className="flex items-center gap-2">
-                <CalendarDaysIcon className="h-4 w-4 text-slate-400" />
-                <span>{formatDate(slot.date)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <ClockIcon className="h-4 w-4 text-slate-400" />
-                <span>{slot.time} ({duration} min)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <BriefcaseIcon className="h-4 w-4 text-slate-400" />
-                <span className="capitalize">{consultationType}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CurrencyDollarIcon className="h-4 w-4 text-slate-400" />
-                <span className="font-medium text-emerald-600">{formatPrice(totalPrice)}</span>
+            <div className="mt-6 pt-4 border-t border-slate-200">
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <ShieldCheckIcon className="h-4 w-4 text-teal-600" />
+                <span>Your payment info is secure</span>
               </div>
             </div>
-
-            {notes && (
-              <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-700">
-                <p className="text-xs text-slate-500 mb-1">Notes:</p>
-                <p className="text-sm">{notes}</p>
-              </div>
-            )}
           </div>
         </div>
+      </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-3">
-          <button
-            onClick={onBack}
-            disabled={loading}
-            className="flex-1 py-3 border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition disabled:opacity-50"
-          >
-            Back
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                <span>Booking...</span>
-              </>
-            ) : (
-              <>
-                <CheckCircleIcon className="h-5 w-5" />
-                <span>Confirm Booking</span>
-              </>
-            )}
-          </button>
-        </div>
+      {/* Action Buttons */}
+      <div className="flex gap-3 mt-8 pt-6 border-t border-slate-200">
+        <button
+          onClick={onBack}
+          disabled={loading}
+          className="flex-1 py-4 border-2 border-slate-200 hover:bg-slate-50 rounded-xl font-medium transition disabled:opacity-50"
+        >
+          Back
+        </button>
+        <button
+          onClick={onConfirm}
+          disabled={loading}
+          className="flex-1 py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-medium transition disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm shadow-teal-200/50"
+        >
+          {loading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              <span>Booking...</span>
+            </>
+          ) : (
+            <>
+              <CheckCircleIcon className="h-5 w-5" />
+              <span>Confirm Booking</span>
+            </>
+          )}
+        </button>
       </div>
     </motion.div>
   )
 }
 
 // ============================================================================
-// SuccessScreen Component
+// SuccessScreen Component - Refined Design
 // ============================================================================
 
 function SuccessScreen({ onNewBooking, onViewBookings }: { onNewBooking: () => void; onViewBookings: () => void }) {
@@ -1080,32 +1178,32 @@ function SuccessScreen({ onNewBooking, onViewBookings }: { onNewBooking: () => v
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white dark:bg-slate-900 rounded-2xl p-12 shadow-sm border border-slate-200 dark:border-slate-800 text-center max-w-md mx-auto"
+      className="bg-white rounded-2xl p-12 shadow-sm border border-slate-200 text-center max-w-lg mx-auto"
     >
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.2, type: 'spring' }}
-        className="w-20 h-20 bg-emerald-100 dark:bg-emerald-950/30 rounded-full flex items-center justify-center mx-auto mb-6"
+        className="w-24 h-24 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-6"
       >
-        <CheckCircleIcon className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+        <CheckCircleIcon className="h-12 w-12 text-teal-600" />
       </motion.div>
 
-      <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Booking Confirmed!</h2>
-      <p className="text-slate-600 dark:text-slate-400 mb-8">
-        Your consultation has been scheduled. Check your email for details.
+      <h2 className="text-2xl font-bold text-slate-800 mb-3">Booking Confirmed!</h2>
+      <p className="text-slate-500 mb-8 max-w-sm mx-auto">
+        Your consultation has been scheduled. You'll receive a confirmation email with all the details.
       </p>
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
         <button
           onClick={onNewBooking}
-          className="px-6 py-3 border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition"
+          className="px-6 py-3 border-2 border-slate-200 hover:bg-slate-50 rounded-xl font-medium transition"
         >
           Book Another
         </button>
         <button
           onClick={onViewBookings}
-          className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition"
+          className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-medium transition shadow-sm shadow-teal-200/50"
         >
           View My Consultations
         </button>

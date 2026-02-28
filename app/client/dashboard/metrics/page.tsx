@@ -1,3 +1,4 @@
+// app/client/dashboard/metrics/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -20,7 +21,7 @@ import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import { apiClient } from '@/app/lib/api'
 import type { Consultation, ClientMetrics } from '@/app/types'
-import { TrendingDownIcon, TrendingUpDown, TrendingUpIcon } from 'lucide-react'
+import { TrendingDownIcon, TrendingUpIcon } from 'lucide-react'
 
 export default function ClientMetricsPage() {
   const { user, isAuthenticated, isLoading } = useAuth()
@@ -48,10 +49,8 @@ export default function ClientMetricsPage() {
   const fetchMetrics = async () => {
     setLoading(true)
     try {
-      // Get consultations for this client
       const consultations = await apiClient.consultations.getMyClientConsultations()
       
-      // Calculate client metrics
       const completed = consultations.filter(c => c.status === 'completed')
       const upcoming = consultations.filter(c => c.status === 'booked')
       const cancelled = consultations.filter(c => c.status === 'cancelled')
@@ -69,8 +68,6 @@ export default function ClientMetricsPage() {
       }
 
       setMetrics(clientMetrics)
-      
-      // Get recent activity (last 5 consultations)
       setRecentActivity(consultations.slice(0, 5))
       
     } catch (error) {
@@ -82,17 +79,17 @@ export default function ClientMetricsPage() {
 
   const getStatusColor = (status: string) => {
     switch(status) {
-      case 'booked': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-      case 'completed': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-      case 'cancelled': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-      default: return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+      case 'booked': return 'bg-blue-50 text-blue-700'
+      case 'completed': return 'bg-green-50 text-green-700'
+      case 'cancelled': return 'bg-red-50 text-red-700'
+      default: return 'bg-neutral-100 text-neutral-700'
     }
   }
 
   if (isLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-200 border-t-primary-600"></div>
       </div>
     )
   }
@@ -102,26 +99,26 @@ export default function ClientMetricsPage() {
   }
 
   const completionRate = metrics?.total_consultations 
-    ? ((metrics.completed_consultations / metrics.total_consultations) * 100).toFixed(1) 
-    : '0'
+    ? Math.round((metrics.completed_consultations / metrics.total_consultations) * 100)
+    : 0
 
   return (
     <div className="space-y-6">
-      {/* Header with Back Button */}
+      {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/client/dashboard">
-          <Button variant="outline" size="sm" className="!p-2">
-            <ArrowLeftIcon className="h-5 w-5" />
+          <Button variant="outline" size="sm" className="!p-2 border-neutral-200">
+            <ArrowLeftIcon className="h-5 w-5 text-neutral-600" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">Your Health Metrics</h1>
-          <p className="text-gray-600 dark:text-gray-400">Track your consultation history and progress</p>
+          <h1 className="text-2xl font-bold text-neutral-900">Your Health Metrics</h1>
+          <p className="text-neutral-500 mt-1">Track your consultation history and progress</p>
         </div>
       </div>
 
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Total Consultations"
           value={metrics?.total_consultations || 0}
@@ -150,43 +147,43 @@ export default function ClientMetricsPage() {
 
       {/* Secondary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardBody className="p-4">
+        <Card className="border-neutral-200">
+          <CardBody className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Completion Rate</p>
-                <p className="text-2xl font-bold mt-1">{completionRate}%</p>
+                <p className="text-sm text-neutral-500">Completion Rate</p>
+                <p className="text-3xl font-bold text-neutral-900 mt-2">{completionRate}%</p>
               </div>
-              <div className="p-3 bg-emerald-100 rounded-xl">
-                <TrendingUpIcon className="h-5 w-5 text-emerald-600" />
+              <div className="p-3 bg-emerald-50 rounded-xl">
+                <TrendingUpIcon className="h-6 w-6 text-emerald-600" />
               </div>
             </div>
           </CardBody>
         </Card>
 
-        <Card>
-          <CardBody className="p-4">
+        <Card className="border-neutral-200">
+          <CardBody className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Cancelled</p>
-                <p className="text-2xl font-bold mt-1">{metrics?.cancelled_consultations || 0}</p>
+                <p className="text-sm text-neutral-500">Cancelled</p>
+                <p className="text-3xl font-bold text-neutral-900 mt-2">{metrics?.cancelled_consultations || 0}</p>
               </div>
-              <div className="p-3 bg-red-100 rounded-xl">
-                <TrendingDownIcon className="h-5 w-5 text-red-600" />
+              <div className="p-3 bg-red-50 rounded-xl">
+                <TrendingDownIcon className="h-6 w-6 text-red-600" />
               </div>
             </div>
           </CardBody>
         </Card>
 
-        <Card>
-          <CardBody className="p-4">
+        <Card className="border-neutral-200">
+          <CardBody className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Pending Reviews</p>
-                <p className="text-2xl font-bold mt-1">{metrics?.pending_reviews || 0}</p>
+                <p className="text-sm text-neutral-500">Pending Reviews</p>
+                <p className="text-3xl font-bold text-neutral-900 mt-2">{metrics?.pending_reviews || 0}</p>
               </div>
-              <div className="p-3 bg-yellow-100 rounded-xl">
-                <StarIcon className="h-5 w-5 text-yellow-600" />
+              <div className="p-3 bg-amber-50 rounded-xl">
+                <StarIcon className="h-6 w-6 text-amber-600" />
               </div>
             </div>
           </CardBody>
@@ -194,13 +191,15 @@ export default function ClientMetricsPage() {
       </div>
 
       {/* Recent Activity */}
-      <Card>
+      <Card className="border-neutral-200">
         <CardHeader>
-          <h3 className="text-lg font-semibold">Recent Activity</h3>
+          <h3 className="text-lg font-semibold text-neutral-900">Recent Activity</h3>
         </CardHeader>
         <CardBody className="p-4">
           {recentActivity.length === 0 ? (
-            <p className="text-center text-gray-500 py-4">No recent activity</p>
+            <div className="text-center py-8">
+              <p className="text-neutral-500">No recent activity</p>
+            </div>
           ) : (
             <div className="space-y-3">
               {recentActivity.map((activity, index) => (
@@ -208,8 +207,8 @@ export default function ClientMetricsPage() {
                   key={activity.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                  transition={{ delay: index * 0.05 }}
+                  className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl hover:bg-neutral-100 transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-2 h-2 rounded-full ${
@@ -217,15 +216,18 @@ export default function ClientMetricsPage() {
                       activity.status === 'booked' ? 'bg-blue-500' : 'bg-red-500'
                     }`} />
                     <div>
-                      <p className="text-sm font-medium">
-                        Dr. {activity.practitioner_name || 'Unknown'}
+                      <p className="text-sm font-medium text-neutral-900">
+                        Dr. {activity.practitioner_name || 'Consultation'}
                       </p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(activity.date).toLocaleDateString()} at {activity.time?.slice(0,5)}
+                      <p className="text-xs text-neutral-500 mt-1">
+                        {new Date(activity.date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric'
+                        })} at {activity.time?.slice(0,5)}
                       </p>
                     </div>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(activity.status)}`}>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(activity.status)}`}>
                     {activity.status}
                   </span>
                 </motion.div>
@@ -238,28 +240,28 @@ export default function ClientMetricsPage() {
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link href="/client/dashboard/consultations/book">
-          <Card hoverable>
-            <CardBody className="p-4 flex items-center gap-3">
-              <div className="p-3 bg-emerald-100 rounded-xl">
-                <CalendarIcon className="h-6 w-6 text-emerald-600" />
+          <Card hoverable className="border-neutral-200 hover:border-primary-200 transition-all">
+            <CardBody className="p-6 flex items-center gap-4">
+              <div className="p-3 bg-primary-50 rounded-xl">
+                <CalendarIcon className="h-6 w-6 text-primary-600" />
               </div>
               <div>
-                <h3 className="font-semibold">Book a Consultation</h3>
-                <p className="text-sm text-gray-500">Schedule a session with a practitioner</p>
+                <h3 className="font-semibold text-neutral-900">Book a Consultation</h3>
+                <p className="text-sm text-neutral-500 mt-1">Schedule a session with a practitioner</p>
               </div>
             </CardBody>
           </Card>
         </Link>
 
         <Link href="/client/dashboard/reviews/create">
-          <Card hoverable>
-            <CardBody className="p-4 flex items-center gap-3">
-              <div className="p-3 bg-purple-100 rounded-xl">
+          <Card hoverable className="border-neutral-200 hover:border-primary-200 transition-all">
+            <CardBody className="p-6 flex items-center gap-4">
+              <div className="p-3 bg-purple-50 rounded-xl">
                 <StarIcon className="h-6 w-6 text-purple-600" />
               </div>
               <div>
-                <h3 className="font-semibold">Write a Review</h3>
-                <p className="text-sm text-gray-500">Share your experience</p>
+                <h3 className="font-semibold text-neutral-900">Write a Review</h3>
+                <p className="text-sm text-neutral-500 mt-1">Share your experience</p>
               </div>
             </CardBody>
           </Card>
@@ -273,28 +275,28 @@ interface MetricCardProps {
   title: string
   value: string | number
   icon: React.ElementType
-  color: 'blue' | 'green' | 'purple' | 'emerald' | 'red' | 'yellow'
+  color: 'blue' | 'green' | 'purple' | 'emerald' | 'red' | 'amber'
 }
 
 function MetricCard({ title, value, icon: Icon, color }: MetricCardProps) {
   const colorClasses: Record<string, string> = {
-    blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-    green: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
-    purple: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
-    emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
-    red: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
-    yellow: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
+    blue: 'bg-blue-50 text-blue-600',
+    green: 'bg-green-50 text-green-600',
+    purple: 'bg-purple-50 text-purple-600',
+    emerald: 'bg-emerald-50 text-emerald-600',
+    red: 'bg-red-50 text-red-600',
+    amber: 'bg-amber-50 text-amber-600',
   }
 
   return (
-    <Card>
-      <CardBody className="p-4">
+    <Card className="border-neutral-200">
+      <CardBody className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
+            <p className="text-sm text-neutral-500">{title}</p>
+            <p className="text-2xl font-bold text-neutral-900 mt-2">{value}</p>
           </div>
-          <div className={`p-3 rounded-xl ${colorClasses[color] || colorClasses.blue}`}>
+          <div className={`p-3 rounded-xl ${colorClasses[color]}`}>
             <Icon className="h-5 w-5" />
           </div>
         </div>

@@ -9,42 +9,58 @@ interface ProtectedRouteProps {
   allowedRoles?: Array<'client' | 'practitioner' | 'admin'>
 }
 
-export default function ProtectedRoute({ children, allowedRoles = ['client', 'practitioner', 'admin'] }: ProtectedRouteProps) {
+export default function ProtectedRoute({ 
+  children, 
+  allowedRoles = ['client', 'practitioner', 'admin'] 
+}: ProtectedRouteProps) {
   const { user, isLoading, isAuthenticated } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
-    if (!isLoading) {
-      // Not authenticated - redirect to login
-      if (!isAuthenticated) {
-        console.log(`🔒 Not authenticated, redirecting from ${pathname} to /login`)
-        router.push('/login')
-        return
-      }
+    // Log state for debugging
+    console.log('🛡️ ProtectedRoute - State:', {
+      isLoading,
+      isAuthenticated,
+      user: user ? { role: user.role, is_staff: user.is_staff } : null,
+      pathname,
+      allowedRoles
+    })
 
-      // Check role-based access
-      if (user) {
-        const userRole = user.is_staff ? 'admin' : user.role || 'client'
+    // Don't do anything while loading
+    if (isLoading) return
+
+    // Not authenticated - redirect to login
+    if (!isAuthenticated) {
+      console.log(`🔒 Not authenticated, redirecting from ${pathname} to /login`)
+      router.replace('/login')
+      return
+    }
+
+    // If we have user, check role access
+    if (user) {
+      const userRole = user.is_staff ? 'admin' : (user.role || 'client')
+      
+      // Admin can access everything
+      if (userRole === 'admin') return
+
+      // Check if user's role is allowed for this route
+      if (!allowedRoles.includes(userRole as any)) {
+        console.log(`🚫 Role ${userRole} not allowed on ${pathname}`)
         
-        // Admin can access everything
-        if (userRole === 'admin') return
-
-        // Check if user's role is allowed for this route
-        if (!allowedRoles.includes(userRole as any)) {
-          console.log(`🚫 Role ${userRole} not allowed on ${pathname}`)
-          
-          // Redirect to appropriate dashboard
-          if (userRole === 'client') {
-            router.push('/client/dashboard')
-          } else if (userRole === 'practitioner') {
-            router.push('/practitioner/dashboard')
-          }
-        }
+        // Redirect to appropriate dashboard
+        const redirectPath = userRole === 'client' 
+          ? '/client/dashboard' 
+          : userRole === 'practitioner' 
+            ? '/practitioner/dashboard' 
+            : '/login'
+        
+        router.replace(redirectPath)
       }
     }
   }, [isLoading, isAuthenticated, user, router, pathname, allowedRoles])
 
+  // Show loading spinner while checking auth
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -53,9 +69,24 @@ export default function ProtectedRoute({ children, allowedRoles = ['client', 'pr
     )
   }
 
+  // If not authenticated, don't render anything (redirect will happen)
   if (!isAuthenticated) {
     return null
   }
 
-  return <>{children}</>
+  // If we have user, check role access before rendering
+  if (user) {
+    const userRole = user.is_staff ? 'admin' : user.role
+    
+    // Allow access if role is in allowedRoles OR user is admin
+    if (allowedRoles.includes(userRole as any) || user.is_staff) {
+      return <>{children}</>
+    }
+    
+    // Don't render if role not allowed (redirect will happen in useEffect)
+    return null
+  }
+
+  // If we get here, user is null but authenticated? This shouldn't happen
+  return null
 }

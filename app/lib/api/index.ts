@@ -773,3 +773,29 @@ export const createApiCall = <T>(
     return response.data
   }, `Custom ${method.toUpperCase()} ${url}`)
 }
+
+// functions export
+export const getMyClientConsultations = apiClient.consultations.getMyClientConsultations
+export const getMyPractitionerConsultations = apiClient.consultations.getMyPractitionerConsultations
+export const getPractitioners = apiClient.practitioners.getAll
+export const getPractitioner = apiClient.practitioners.getOne
+export const getSpecialties = apiClient.specialties.getAll
+export const createConsultation = apiClient.consultations.create
+export const getMyApplications = apiClient.practitioners.applications.getMine
+export const createApplication = apiClient.practitioners.applications.create
+export const submitApplication = apiClient.practitioners.applications.submit
+export const uploadDocuments = apiClient.practitioners.applications.uploadDocuments
+export const getAvailability = apiClient.availability.getAll
+export const createBulkAvailability = apiClient.availability.createBulk
+export const deleteAvailability = apiClient.availability.delete
+export const getReviews = apiClient.reviews.getByPractitioner
+export const createReview = apiClient.reviews.create
+export const getNotifications = apiClient.notifications.getAll
+export const markNotificationAsRead = apiClient.notifications.markAsRead
+export const getAdminStats = apiClient.admin.getStats
+export const getAdminApplications = apiClient.admin.applications.getAll
+export const approveApplication = apiClient.admin.applications.approve
+export const rejectApplication = apiClient.admin.applications.reject
+
+// Also export the entire apiClient as default
+export default apiClient

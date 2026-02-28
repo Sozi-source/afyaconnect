@@ -24,6 +24,8 @@ interface CalendarDay {
   dateStr: string
   slots: TimeSlot[]
   hasSlots: boolean
+  isPast: boolean
+  isToday: boolean
 }
 
 export function TimeSlotPicker({ 
@@ -88,10 +90,9 @@ export function TimeSlotPicker({
         return false
       })
 
-      // Create time slots from availability with all required fields
+      // Create time slots from availability
       dayAvailability.forEach((item: Availability) => {
         slots.push({
-          id: item.id,
           date: dateStr,
           start_time: item.start_time.slice(0,5),
           end_time: item.end_time.slice(0,5),
@@ -119,6 +120,9 @@ export function TimeSlotPicker({
     const year = currentMonth.getFullYear()
     const month = currentMonth.getMonth()
     const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
     const days: CalendarDay[] = []
 
     for (let d = 1; d <= daysInMonth; d++) {
@@ -126,12 +130,16 @@ export function TimeSlotPicker({
       const dateStr = date.toISOString().split('T')[0]
       
       const slotsForDay = availableSlots.filter((slot: TimeSlot) => slot.date === dateStr)
+      const isPast = date < today
+      const isToday = dateStr === today.toISOString().split('T')[0]
 
       days.push({
         date,
         dateStr,
         slots: slotsForDay,
-        hasSlots: slotsForDay.length > 0
+        hasSlots: slotsForDay.length > 0,
+        isPast,
+        isToday
       })
     }
 
@@ -140,7 +148,7 @@ export function TimeSlotPicker({
 
   const days = getDaysInMonth()
   const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay()
-  const emptyDays = Array(firstDayOfMonth).fill(null)
+  const emptyDays = Array(firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1).fill(null)
 
   const handleDateSelect = (dateStr: string) => {
     setSelectedDate(dateStr)
@@ -172,6 +180,7 @@ export function TimeSlotPicker({
           <button
             onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
+            aria-label="Previous month"
           >
             <ChevronLeftIcon className="h-5 w-5" />
           </button>
@@ -181,6 +190,7 @@ export function TimeSlotPicker({
           <button
             onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
+            aria-label="Next month"
           >
             <ChevronRightIcon className="h-5 w-5" />
           </button>
@@ -203,27 +213,25 @@ export function TimeSlotPicker({
           
           {days.map((day: CalendarDay) => {
             const isSelected = selectedDate === day.dateStr
-            const isPast = day.date < new Date(new Date().setHours(0,0,0,0))
-            const isToday = day.dateStr === new Date().toISOString().split('T')[0]
 
             return (
               <div key={day.dateStr} className="aspect-square p-1">
                 <button
-                  onClick={() => day.hasSlots && !isPast && handleDateSelect(day.dateStr)}
-                  disabled={!day.hasSlots || isPast}
+                  onClick={() => day.hasSlots && !day.isPast && handleDateSelect(day.dateStr)}
+                  disabled={!day.hasSlots || day.isPast}
                   className={`
-                    w-full h-full rounded-lg flex flex-col items-center justify-center text-sm transition
+                    w-full h-full rounded-lg flex flex-col items-center justify-center text-sm transition-all
                     ${isSelected
-                      ? 'bg-emerald-600 text-white'
-                      : day.hasSlots && !isPast
-                        ? 'hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-gray-700 dark:text-gray-300 cursor-pointer'
-                        : 'text-gray-300 dark:text-gray-700 cursor-not-allowed'
+                      ? 'bg-emerald-600 text-white shadow-md scale-105'
+                      : day.hasSlots && !day.isPast
+                        ? 'hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-gray-700 dark:text-gray-300 cursor-pointer hover:scale-105'
+                        : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                     }
-                    ${isToday && !isSelected ? 'ring-2 ring-emerald-200 dark:ring-emerald-800' : ''}
+                    ${day.isToday && !isSelected ? 'ring-2 ring-emerald-200 dark:ring-emerald-800' : ''}
                   `}
                 >
-                  <span>{day.date.getDate()}</span>
-                  {day.hasSlots && !isPast && !isSelected && (
+                  <span className={day.isToday ? 'font-bold' : ''}>{day.date.getDate()}</span>
+                  {day.hasSlots && !day.isPast && !isSelected && (
                     <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1" />
                   )}
                 </button>
@@ -252,10 +260,10 @@ export function TimeSlotPicker({
                       key={time}
                       onClick={() => handleTimeSelect(time)}
                       className={`
-                        p-3 rounded-lg border-2 transition text-center
+                        p-3 rounded-lg border-2 transition-all text-center
                         ${selectedTime === time
-                          ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-900/30'
-                          : 'border-gray-200 hover:border-emerald-300 dark:border-gray-700 dark:hover:border-emerald-800'
+                          ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 scale-105 shadow-md'
+                          : 'border-gray-200 hover:border-emerald-300 dark:border-gray-700 dark:hover:border-emerald-800 hover:scale-105'
                         }
                       `}
                     >
@@ -268,11 +276,12 @@ export function TimeSlotPicker({
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
                   >
                     <Button
                       onClick={handleContinue}
                       fullWidth
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white mt-4"
                     >
                       Continue to Booking
                     </Button>

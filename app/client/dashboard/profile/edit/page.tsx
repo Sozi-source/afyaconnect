@@ -1,3 +1,4 @@
+// app/client/dashboard/profile/edit/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -12,7 +13,9 @@ import {
   MapPinIcon,
   BriefcaseIcon,
   CameraIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  CheckCircleIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline'
 import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
@@ -21,12 +24,13 @@ import { toast } from 'react-hot-toast'
 import type { UserProfile } from '@/app/types'
 
 export default function EditProfilePage() {
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated, isLoading, refreshUserProfile } = useAuth()
   const router = useRouter()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -93,19 +97,24 @@ export default function EditProfilePage() {
     try {
       setSaving(true)
       setError(null)
+      setSuccess(null)
 
-      // Prepare update data
       const updateData = {
         phone: formData.phone,
         city: formData.city,
         bio: formData.bio,
       }
 
-      // Update profile using the correct method
       await apiClient.profiles.updateMyProfile(updateData)
+      await refreshUserProfile()
       
+      setSuccess('Profile updated successfully!')
       toast.success('Profile updated successfully!')
-      router.push('/client/dashboard/profile')
+      
+      setTimeout(() => {
+        router.push('/client/dashboard/profile')
+      }, 1500)
+      
     } catch (error: any) {
       console.error('Error updating profile:', error)
       setError(error.message || 'Failed to update profile')
@@ -118,60 +127,84 @@ export default function EditProfilePage() {
   if (isLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-200 border-t-primary-600"></div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6 px-4 py-4 sm:py-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <Link
           href="/client/dashboard/profile"
-          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
+          className="p-2 hover:bg-neutral-100 rounded-lg transition"
         >
-          <ArrowLeftIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+          <ArrowLeftIcon className="h-5 w-5 text-neutral-500" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">Edit Profile</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-neutral-900">Edit Profile</h1>
+          <p className="text-xs sm:text-sm text-neutral-500 mt-1">
             Update your personal information
           </p>
         </div>
       </div>
 
+      {/* Success Message */}
+      {success && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3"
+        >
+          <CheckCircleIcon className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-green-700">{success}</p>
+        </motion.div>
+      )}
+
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3"
+        >
+          <XCircleIcon className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-700">{error}</p>
+        </motion.div>
       )}
 
       {/* Profile Form */}
-      <Card>
-        <CardBody className="p-6">
+      <Card className="border-neutral-200">
+        <CardBody className="p-4 sm:p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Profile Picture (Optional) */}
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
+            {/* Profile Picture */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 pb-6 border-b border-neutral-200">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white text-xl sm:text-2xl font-bold mx-auto sm:mx-0 shadow-sm">
                 {formData.first_name?.[0]}{formData.last_name?.[0]}
+              </div>
+              <div className="flex-1 text-center sm:text-left">
+                <p className="text-sm font-medium text-neutral-900">Profile Photo</p>
+                <p className="text-xs text-neutral-500 mt-1">
+                  This is generated from your initials
+                </p>
               </div>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="border-gray-300 dark:border-gray-700"
+                disabled
+                className="w-full sm:w-auto border-neutral-200 text-neutral-400 cursor-not-allowed"
               >
                 <CameraIcon className="h-4 w-4 mr-2" />
-                Change Photo
+                Coming Soon
               </Button>
             </div>
 
             {/* Personal Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
                   First Name
                 </label>
                 <input
@@ -180,13 +213,13 @@ export default function EditProfilePage() {
                   value={formData.first_name}
                   onChange={handleInputChange}
                   disabled
-                  className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-400 cursor-not-allowed"
                 />
-                <p className="text-xs text-gray-500 mt-1">Contact support to change name</p>
+                <p className="text-xs text-neutral-400 mt-1">Contact support to change name</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
                   Last Name
                 </label>
                 <input
@@ -195,97 +228,98 @@ export default function EditProfilePage() {
                   value={formData.last_name}
                   onChange={handleInputChange}
                   disabled
-                  className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-400 cursor-not-allowed"
                 />
               </div>
             </div>
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
                 Email Address
               </label>
               <div className="relative">
-                <EnvelopeIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <EnvelopeIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400" />
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
                   disabled
-                  className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                  className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-400 cursor-not-allowed"
                 />
               </div>
             </div>
 
             {/* Phone */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
                 Phone Number
               </label>
               <div className="relative">
-                <PhoneIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <PhoneIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400" />
                 <input
                   type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleInputChange}
                   placeholder="+254 712 345 678"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  className="w-full pl-10 pr-4 py-2.5 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white text-neutral-900 placeholder-neutral-400"
                 />
               </div>
             </div>
 
             {/* City */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
                 City
               </label>
               <div className="relative">
-                <MapPinIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <MapPinIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400" />
                 <input
                   type="text"
                   name="city"
                   value={formData.city}
                   onChange={handleInputChange}
                   placeholder="Nairobi"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  className="w-full pl-10 pr-4 py-2.5 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white text-neutral-900 placeholder-neutral-400"
                 />
               </div>
             </div>
 
             {/* Bio */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
                 Bio
               </label>
               <div className="relative">
-                <BriefcaseIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                <BriefcaseIcon className="absolute left-3 top-3 h-5 w-5 text-neutral-400" />
                 <textarea
                   name="bio"
                   value={formData.bio}
                   onChange={handleInputChange}
                   rows={4}
                   placeholder="Tell us a little about yourself..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white resize-none"
+                  className="w-full pl-10 pr-4 py-2.5 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white text-neutral-900 placeholder-neutral-400 resize-none"
                 />
               </div>
             </div>
 
             {/* Form Actions */}
-            <div className="flex justify-end gap-3 pt-4">
-              <Link href="/client/dashboard/profile">
-                <Button variant="outline" type="button">
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 border-t border-neutral-200">
+              <Link href="/client/dashboard/profile" className="w-full sm:w-auto">
+                <Button variant="outline" type="button" fullWidth className="sm:w-auto border-neutral-200">
                   Cancel
                 </Button>
               </Link>
               <Button
                 type="submit"
                 disabled={saving}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[120px]"
+                fullWidth
+                className="sm:w-auto bg-primary-600 hover:bg-primary-700 text-white min-w-[120px] shadow-sm"
               >
                 {saving ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mx-auto" />
                 ) : (
                   'Save Changes'
                 )}

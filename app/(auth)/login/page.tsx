@@ -12,7 +12,8 @@ import {
   EyeSlashIcon,
   ArrowRightIcon,
   ShieldCheckIcon,
-  SparklesIcon
+  SparklesIcon,
+  WifiIcon
 } from '@heroicons/react/24/outline'
 
 export default function LoginPage() {
@@ -23,22 +24,50 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<{email?: string; password?: string}>({})
   const [rememberMe, setRememberMe] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'online' | 'offline'>('checking')
   
   const router = useRouter()
   const { login, isAuthenticated, user } = useAuth()
+
+  // Test connection on mount
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        const response = await fetch('https://osozi.pythonanywhere.com/health/', {
+          method: 'GET',
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          setConnectionStatus('online');
+          console.log('🌐 Server is online');
+        } else {
+          setConnectionStatus('offline');
+          console.warn('🌐 Server returned error');
+        }
+      } catch (error) {
+        console.error('🌐 Server connection failed:', error);
+        setConnectionStatus('offline');
+      }
+    };
+
+    testConnection();
+  }, []);
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
       console.log('🔍 User already authenticated:', user)
       if (user.is_staff) {
-        console.log('👑 Redirecting to admin dashboard')
         router.push('/admin')
       } else if (user.role === 'practitioner') {
-        console.log('👨‍⚕️ Redirecting to practitioner dashboard')
         router.push('/practitioner/dashboard')
       } else {
-        console.log('👤 Redirecting to client dashboard')
         router.push('/client/dashboard')
       }
     }
@@ -75,6 +104,11 @@ export default function LoginPage() {
     e.preventDefault()
     if (!validateForm()) return
 
+    if (connectionStatus === 'offline') {
+      setError('Cannot connect to server. Please check your internet connection.')
+      return
+    }
+
     setIsLoading(true)
     setError('')
     setFieldErrors({})
@@ -85,25 +119,32 @@ export default function LoginPage() {
       localStorage.removeItem('rememberedEmail')
     }
 
+    // Set a timeout to show a message if login is taking too long
+    const timeoutId = setTimeout(() => {
+      setError('Login is taking longer than expected. The server might be slow, but we\'re still trying...')
+    }, 10000) // Show message after 10 seconds
+
     try {
-      // Login with credentials object (username = email)
       await login({ 
         username: email, 
         password 
       })
       
-      // No need to redirect here - the useEffect will handle it
-      console.log('✅ Login successful, waiting for auth state update...')
+      clearTimeout(timeoutId) // Clear timeout if login succeeds
+      console.log('✅ Login successful, redirecting...')
       
     } catch (err: any) {
+      clearTimeout(timeoutId) // Clear timeout on error
       console.error('❌ Login error:', err)
       
-      if (err.message?.includes('Invalid') || err.message?.includes('credentials')) {
+      if (err.message?.includes('timeout')) {
+        setError('Connection timeout. The server is taking too long to respond. Please try again.')
+      } else if (err.message?.includes('network') || err.code === 'ERR_NETWORK') {
+        setError('Cannot connect to server. Please check your internet connection.')
+      } else if (err.message?.includes('Invalid') || err.message?.includes('credentials')) {
         setError('Invalid email or password')
       } else if (err.message?.includes('active')) {
         setError('Account is not active. Please check your email.')
-      } else if (err.message?.includes('network') || err.code === 'ERR_NETWORK') {
-        setError('Cannot connect to server. Please check your connection.')
       } else {
         setError(err.message || 'Login failed. Please try again.')
       }
@@ -131,6 +172,18 @@ export default function LoginPage() {
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-200 dark:bg-emerald-900/20 rounded-full blur-3xl opacity-30"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-teal-200 dark:bg-teal-900/20 rounded-full blur-3xl opacity-30"></div>
       </div>
+
+      {/* Connection Status Indicator */}
+      {connectionStatus !== 'checking' && (
+        <div className={`absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs ${
+          connectionStatus === 'online' 
+            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+        }`}>
+          <WifiIcon className="h-3 w-3" />
+          <span>{connectionStatus === 'online' ? 'Connected' : 'Offline'}</span>
+        </div>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -283,7 +336,7 @@ export default function LoginPage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || connectionStatus === 'offline'}
                 className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-3.5 px-4 rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-emerald-500/20"
               >
                 {isLoading ? (
@@ -332,6 +385,7 @@ export default function LoginPage() {
               <button
                 onClick={() => fillTestCredentials('client')}
                 className="group relative overflow-hidden text-xs bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-700 dark:to-gray-600 hover:from-emerald-100 hover:to-teal-100 dark:hover:from-gray-600 dark:hover:to-gray-500 rounded-xl p-3 transition-all border border-emerald-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-medium"
+                disabled={connectionStatus === 'offline'}
               >
                 <span className="relative z-10">Client</span>
                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
@@ -339,6 +393,7 @@ export default function LoginPage() {
               <button
                 onClick={() => fillTestCredentials('practitioner')}
                 className="group relative overflow-hidden text-xs bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-700 dark:to-gray-600 hover:from-emerald-100 hover:to-teal-100 dark:hover:from-gray-600 dark:hover:to-gray-500 rounded-xl p-3 transition-all border border-emerald-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-medium"
+                disabled={connectionStatus === 'offline'}
               >
                 <span className="relative z-10">Practitioner</span>
                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>

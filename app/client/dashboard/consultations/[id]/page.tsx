@@ -1,10 +1,11 @@
+// app/client/dashboard/consultations/[id]/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/app/contexts/AuthContext'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ArrowLeftIcon,
   CalendarIcon,
@@ -16,7 +17,9 @@ import {
   DocumentTextIcon,
   CheckCircleIcon,
   XCircleIcon,
-  PencilIcon
+  PencilIcon,
+  ChevronRightIcon,
+  EnvelopeIcon
 } from '@heroicons/react/24/outline'
 import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
@@ -85,21 +88,34 @@ export default function ConsultationDetailPage() {
     window.open(`/call/${id}`, '_blank')
   }
 
+  const handleWriteReview = () => {
+    router.push(`/client/dashboard/reviews/create?consultation=${id}`)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-200 border-t-primary-600"></div>
       </div>
     )
   }
 
   if (!consultation) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-bold">Consultation not found</h2>
-        <Link href="/client/dashboard/consultations" className="mt-4 inline-block">
-          <Button variant="outline">Back to Consultations</Button>
-        </Link>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="border-neutral-200 max-w-md w-full">
+          <CardBody className="p-8 text-center">
+            <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <UserIcon className="h-8 w-8 text-neutral-400" />
+            </div>
+            <h2 className="text-xl font-bold text-neutral-900 mb-2">Consultation not found</h2>
+            <Link href="/client/dashboard/consultations" className="inline-block">
+              <Button variant="outline" className="border-neutral-200 mt-2">
+                Back to Consultations
+              </Button>
+            </Link>
+          </CardBody>
+        </Card>
       </div>
     )
   }
@@ -109,45 +125,61 @@ export default function ConsultationDetailPage() {
   const isCompleted = consultation.status === 'completed'
   const isCancelled = consultation.status === 'cancelled'
 
+  const getStatusStyles = () => {
+    if (isUpcoming) return {
+      bg: 'bg-blue-50',
+      border: 'border-blue-200',
+      text: 'text-blue-800',
+      icon: 'text-blue-600',
+      light: 'text-blue-600'
+    }
+    if (isCompleted) return {
+      bg: 'bg-green-50',
+      border: 'border-green-200',
+      text: 'text-green-800',
+      icon: 'text-green-600',
+      light: 'text-green-600'
+    }
+    return {
+      bg: 'bg-red-50',
+      border: 'border-red-200',
+      text: 'text-red-800',
+      icon: 'text-red-600',
+      light: 'text-red-600'
+    }
+  }
+
+  const statusStyles = getStatusStyles()
+
   return (
     <div className="space-y-6">
-      {/* Back Button */}
-      <Link href="/client/dashboard/consultations">
-        <Button variant="outline" size="sm">
-          <ArrowLeftIcon className="h-4 w-4 mr-2" />
-          Back to Consultations
-        </Button>
-      </Link>
+      {/* Header with Back Button */}
+      <div className="flex items-center gap-4">
+        <Link href="/client/dashboard/consultations">
+          <Button variant="outline" size="sm" className="!p-2 border-neutral-200">
+            <ArrowLeftIcon className="h-5 w-5 text-neutral-600" />
+          </Button>
+        </Link>
+        <h1 className="text-xl font-semibold text-neutral-900">Consultation Details</h1>
+      </div>
 
       {/* Status Banner */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-xl p-4 ${
-          isUpcoming ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' :
-          isCompleted ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' :
-          'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-        }`}
+        className={`rounded-xl p-4 ${statusStyles.bg} border ${statusStyles.border}`}
       >
         <div className="flex items-center gap-3">
-          {isUpcoming && <ClockIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
-          {isCompleted && <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400" />}
-          {isCancelled && <XCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400" />}
+          {isUpcoming && <ClockIcon className={`h-5 w-5 ${statusStyles.icon}`} />}
+          {isCompleted && <CheckCircleIcon className={`h-5 w-5 ${statusStyles.icon}`} />}
+          {isCancelled && <XCircleIcon className={`h-5 w-5 ${statusStyles.icon}`} />}
           <div>
-            <p className={`font-medium ${
-              isUpcoming ? 'text-blue-800 dark:text-blue-300' :
-              isCompleted ? 'text-green-800 dark:text-green-300' :
-              'text-red-800 dark:text-red-300'
-            }`}>
+            <p className={`font-medium ${statusStyles.text}`}>
               {isUpcoming && 'Upcoming Consultation'}
               {isCompleted && 'Consultation Completed'}
               {isCancelled && 'Consultation Cancelled'}
             </p>
-            <p className={`text-sm ${
-              isUpcoming ? 'text-blue-600 dark:text-blue-400' :
-              isCompleted ? 'text-green-600 dark:text-green-400' :
-              'text-red-600 dark:text-red-400'
-            }`}>
+            <p className={`text-sm ${statusStyles.light}`}>
               {isUpcoming && 'Please be ready 5 minutes before the scheduled time'}
               {isCompleted && 'Thank you for your consultation'}
               {isCancelled && 'This consultation has been cancelled'}
@@ -161,28 +193,38 @@ export default function ConsultationDetailPage() {
         {/* Left Column - Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Consultation Details */}
-          <Card>
+          <Card className="border-neutral-200">
+            <CardHeader>
+              <h2 className="text-lg font-semibold text-neutral-900">Consultation Details</h2>
+            </CardHeader>
             <CardBody className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Consultation Details</h2>
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                    {isPractitioner ? consultation.client_name?.[0] : consultation.practitioner_name?.[0]}
+              <div className="space-y-6">
+                {/* Participant */}
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                    {isPractitioner ? consultation.client_name?.[0] : consultation.practitioner_name?.[0] || 'U'}
                   </div>
                   <div>
-                    <p className="font-semibold">
-                      {isPractitioner ? consultation.client_name : consultation.practitioner_name}
+                    <p className="font-semibold text-neutral-900">
+                      {isPractitioner ? consultation.client_name : consultation.practitioner_name || 'Unknown'}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-neutral-500">
                       {isPractitioner ? 'Client' : 'Practitioner'}
                     </p>
+                    {consultation.client_email && (
+                      <p className="text-xs text-neutral-400 mt-1 flex items-center">
+                        <EnvelopeIcon className="h-3 w-3 mr-1" />
+                        {consultation.client_email}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <div>
-                    <p className="text-xs text-gray-500">Date</p>
-                    <p className="text-sm font-medium">
+                {/* Date and Time */}
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-neutral-200">
+                  <div className="bg-neutral-50 p-3 rounded-xl">
+                    <p className="text-xs text-neutral-500 mb-1">Date</p>
+                    <p className="text-sm font-medium text-neutral-900">
                       {new Date(consultation.date).toLocaleDateString('en-US', {
                         weekday: 'long',
                         month: 'long',
@@ -191,34 +233,31 @@ export default function ConsultationDetailPage() {
                       })}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Time</p>
-                    <p className="text-sm font-medium">
-                      {consultation.time.slice(0,5)} ({consultation.duration_minutes} min)
+                  <div className="bg-neutral-50 p-3 rounded-xl">
+                    <p className="text-xs text-neutral-500 mb-1">Time</p>
+                    <p className="text-sm font-medium text-neutral-900">
+                      {consultation.time?.slice(0,5)} • {consultation.duration_minutes} min
                     </p>
                   </div>
                 </div>
 
                 {/* Notes */}
-                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <p className="text-xs text-gray-500 mb-2">Notes</p>
-                  <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                    <p className="text-sm">
+                <div className="pt-4 border-t border-neutral-200">
+                  <p className="text-xs text-neutral-500 mb-2">Notes</p>
+                  <div className="bg-neutral-50 p-4 rounded-xl">
+                    <p className="text-sm text-neutral-700">
                       {consultation.client_notes || 'No notes provided'}
                     </p>
                   </div>
                 </div>
 
-                {isPractitioner && isUpcoming && (
-                  <div className="pt-4">
-                    <Button
-                      variant="outline"
-                      fullWidth
-                      onClick={() => router.push(`/practitioner/dashboard/consultations/${id}/notes`)}
-                    >
-                      <PencilIcon className="h-4 w-4 mr-2" />
-                      Add Consultation Notes
-                    </Button>
+                {/* Price if available */}
+                {consultation.price && (
+                  <div className="pt-4 border-t border-neutral-200">
+                    <p className="text-xs text-neutral-500 mb-2">Price</p>
+                    <p className="text-lg font-semibold text-primary-600">
+                      KES {consultation.price.toLocaleString()}
+                    </p>
                   </div>
                 )}
               </div>
@@ -226,29 +265,39 @@ export default function ConsultationDetailPage() {
           </Card>
 
           {/* Messages Preview */}
-          <Card>
-            <CardBody className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">Messages</h2>
-                <Link href={`/dashboard/messages?consultation=${id}`} className="text-sm text-emerald-600 hover:underline">
+          <Card className="border-neutral-200">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <h2 className="text-lg font-semibold text-neutral-900">Messages</h2>
+                <Link 
+                  href={`/dashboard/messages?consultation=${id}`} 
+                  className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                >
                   View all
+                  <ChevronRightIcon className="h-4 w-4" />
                 </Link>
               </div>
-              <div className="space-y-3">
+            </CardHeader>
+            <CardBody className="p-6">
+              <div className="space-y-4">
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-xs font-bold">
+                  <div className="w-8 h-8 bg-neutral-200 rounded-full flex items-center justify-center text-xs font-bold text-neutral-700 flex-shrink-0">
                     {isPractitioner ? 'MW' : 'JO'}
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium">
+                    <p className="text-sm font-medium text-neutral-900">
                       {isPractitioner ? 'Mary Wanjiku' : 'Dr. James Omondi'}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-neutral-500 mt-1">
                       Looking forward to our session!
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">2 hours ago</p>
+                    <p className="text-xs text-neutral-400 mt-1">2 hours ago</p>
                   </div>
                 </div>
+                <Button variant="outline" fullWidth className="border-neutral-200 text-neutral-700 hover:bg-neutral-50">
+                  <ChatBubbleLeftIcon className="h-4 w-4 mr-2" />
+                  Send a Message
+                </Button>
               </div>
             </CardBody>
           </Card>
@@ -258,90 +307,97 @@ export default function ConsultationDetailPage() {
         <div className="space-y-4">
           {/* Action Buttons */}
           {isUpcoming && (
-            <Card>
-              <CardBody className="p-6">
-                <h2 className="text-lg font-semibold mb-4">Join Session</h2>
-                <div className="space-y-3">
-                  <Button
-                    fullWidth
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={handleJoinCall}
-                  >
-                    <VideoCameraIcon className="h-4 w-4 mr-2" />
-                    Join Video Call
-                  </Button>
-                  <Button
-                    fullWidth
-                    variant="outline"
-                    onClick={handleJoinCall}
-                  >
-                    <PhoneIcon className="h-4 w-4 mr-2" />
-                    Join Audio Call
-                  </Button>
-                  <Button
-                    fullWidth
-                    variant="outline"
-                    onClick={() => router.push(`/dashboard/messages/new?consultation=${id}`)}
-                  >
-                    <ChatBubbleLeftIcon className="h-4 w-4 mr-2" />
-                    Send Message
-                  </Button>
-                </div>
+            <Card className="border-neutral-200">
+              <CardHeader>
+                <h2 className="text-lg font-semibold text-neutral-900">Join Session</h2>
+              </CardHeader>
+              <CardBody className="p-6 space-y-3">
+                <Button
+                  fullWidth
+                  className="bg-primary-600 hover:bg-primary-700 text-white shadow-sm"
+                  onClick={handleJoinCall}
+                >
+                  <VideoCameraIcon className="h-4 w-4 mr-2" />
+                  Join Video Call
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outline"
+                  onClick={handleJoinCall}
+                  className="border-neutral-200 hover:bg-neutral-50"
+                >
+                  <PhoneIcon className="h-4 w-4 mr-2" />
+                  Join Audio Call
+                </Button>
               </CardBody>
             </Card>
           )}
 
           {/* Management Actions */}
-          <Card>
-            <CardBody className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Manage</h2>
-              <div className="space-y-3">
-                {isUpcoming && (
-                  <>
-                    <Button
-                      fullWidth
-                      variant="outline"
-                      onClick={handleReschedule}
-                    >
-                      <CalendarIcon className="h-4 w-4 mr-2" />
-                      Reschedule
-                    </Button>
-                    <Button
-                      fullWidth
-                      variant="danger"
-                      onClick={() => setShowCancelModal(true)}
-                    >
-                      <XCircleIcon className="h-4 w-4 mr-2" />
-                      Cancel Consultation
-                    </Button>
-                  </>
-                )}
-                {isCompleted && (
+          <Card className="border-neutral-200">
+            <CardHeader>
+              <h2 className="text-lg font-semibold text-neutral-900">Manage</h2>
+            </CardHeader>
+            <CardBody className="p-6 space-y-3">
+              {isUpcoming && (
+                <>
                   <Button
                     fullWidth
                     variant="outline"
-                    onClick={() => router.push(`/client/dashboard/reviews/create?consultation=${id}`)}
+                    onClick={handleReschedule}
+                    className="border-neutral-200 hover:bg-neutral-50"
                   >
-                    <DocumentTextIcon className="h-4 w-4 mr-2" />
-                    Leave a Review
+                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    Reschedule
                   </Button>
-                )}
-              </div>
+                  <Button
+                    fullWidth
+                    variant="danger"
+                    onClick={() => setShowCancelModal(true)}
+                    className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200"
+                  >
+                    <XCircleIcon className="h-4 w-4 mr-2" />
+                    Cancel Consultation
+                  </Button>
+                </>
+              )}
+              {isCompleted && (
+                <Button
+                  fullWidth
+                  variant="outline"
+                  onClick={handleWriteReview}
+                  className="border-neutral-200 hover:bg-neutral-50"
+                >
+                  <DocumentTextIcon className="h-4 w-4 mr-2" />
+                  Leave a Review
+                </Button>
+              )}
+              {isCompleted && !isPractitioner && (
+                <Link href={`/client/dashboard/consultations/book?practitioner=${consultation.practitioner}`}>
+                  <Button
+                    fullWidth
+                    className="bg-primary-600 hover:bg-primary-700 text-white mt-2"
+                  >
+                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    Book Again
+                  </Button>
+                </Link>
+              )}
             </CardBody>
           </Card>
 
           {/* Meeting Info */}
           {isUpcoming && (
-            <Card>
+            <Card className="border-neutral-200 bg-primary-50">
               <CardBody className="p-6">
-                <h2 className="text-lg font-semibold mb-4">Meeting Information</h2>
-                <div className="space-y-2 text-sm">
-                  <p className="flex items-center gap-2">
-                    <VideoCameraIcon className="h-4 w-4 text-gray-400" />
-                    <span>Meeting link will appear 5 minutes before start</span>
+                <h2 className="text-lg font-semibold text-primary-900 mb-4">Meeting Information</h2>
+                <div className="space-y-3 text-sm">
+                  <p className="flex items-center gap-3 text-primary-700">
+                    <VideoCameraIcon className="h-5 w-5 text-primary-500" />
+                    <span>Meeting link appears 5 minutes before start</span>
                   </p>
-                  <p className="flex items-center gap-2">
-                    <ClockIcon className="h-4 w-4 text-gray-400" />
+                  <p className="flex items-center gap-3 text-primary-700">
+                    <ClockIcon className="h-5 w-5 text-primary-500" />
                     <span>Duration: {consultation.duration_minutes} minutes</span>
                   </p>
                 </div>
@@ -352,44 +408,56 @@ export default function ConsultationDetailPage() {
       </div>
 
       {/* Cancel Modal */}
-      {showCancelModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <AnimatePresence>
+        {showCancelModal && (
           <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+            onClick={() => setShowCancelModal(false)}
           >
-            <h2 className="text-xl font-bold mb-4">Cancel Consultation</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Are you sure you want to cancel this consultation? This action cannot be undone.
-            </p>
-            <textarea
-              placeholder="Reason for cancellation (optional)"
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              className="w-full p-3 border border-gray-200 dark:border-gray-700 rounded-lg mb-4 text-sm"
-              rows={3}
-            />
-            <div className="flex gap-3">
-              <Button
-                variant="danger"
-                fullWidth
-                onClick={handleCancel}
-                disabled={isCancelling}
-              >
-                {isCancelling ? 'Cancelling...' : 'Yes, Cancel'}
-              </Button>
-              <Button
-                variant="outline"
-                fullWidth
-                onClick={() => setShowCancelModal(false)}
-              >
-                No, Keep it
-              </Button>
-            </div>
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <h2 className="text-xl font-bold text-neutral-900 mb-4">Cancel Consultation</h2>
+              <p className="text-sm text-neutral-500 mb-4">
+                Are you sure you want to cancel this consultation? This action cannot be undone.
+              </p>
+              <textarea
+                placeholder="Reason for cancellation (optional)"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="w-full p-3 border border-neutral-200 rounded-xl mb-4 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                rows={3}
+              />
+              <div className="flex gap-3">
+                <Button
+                  variant="danger"
+                  fullWidth
+                  onClick={handleCancel}
+                  disabled={isCancelling}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {isCancelling ? 'Cancelling...' : 'Yes, Cancel'}
+                </Button>
+                <Button
+                  variant="outline"
+                  fullWidth
+                  onClick={() => setShowCancelModal(false)}
+                  className="border-neutral-200"
+                >
+                  No, Keep it
+                </Button>
+              </div>
+            </motion.div>
           </motion.div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   )
 }

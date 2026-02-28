@@ -1,3 +1,4 @@
+// app/client/dashboard/reviews/create/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -9,7 +10,8 @@ import Link from 'next/link'
 import { 
   StarIcon, 
   ArrowLeftIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -45,13 +47,11 @@ export default function CreateReviewPage() {
       setLoading(true)
       const data = await apiClient.consultations.getOne(parseInt(consultationId!))
       
-      // Check if user is authorized to review this consultation
       if (data.client !== user?.id) {
         setError('You are not authorized to review this consultation')
         return
       }
       
-      // Check if consultation is completed
       if (data.status !== 'completed') {
         setError('You can only review completed consultations')
         return
@@ -84,7 +84,6 @@ export default function CreateReviewPage() {
         comment: comment.trim() || undefined
       })
 
-      // ✅ FIXED: Use correct path for client dashboard
       router.push('/client/dashboard/consultations?review=success')
       
     } catch (err: any) {
@@ -98,18 +97,18 @@ export default function CreateReviewPage() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-200 border-t-primary-600"></div>
       </div>
     )
   }
 
   if (error && !consultation) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <Card className="max-w-md w-full">
+      <div className="min-h-[60vh] flex items-center justify-center p-4">
+        <Card className="max-w-md w-full border-neutral-200">
           <CardBody className="p-8 text-center">
-            <div className="text-4xl mb-4">😕</div>
-            <p className="text-red-500 mb-4">{error}</p>
+            <XCircleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600 mb-4">{error}</p>
             <Link href="/client/dashboard/consultations">
               <Button variant="outline">Back to Consultations</Button>
             </Link>
@@ -121,11 +120,13 @@ export default function CreateReviewPage() {
 
   if (!consultation) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <Card className="max-w-md w-full">
+      <div className="min-h-[60vh] flex items-center justify-center p-4">
+        <Card className="max-w-md w-full border-neutral-200">
           <CardBody className="p-8 text-center">
-            <div className="text-4xl mb-4">👨‍⚕️</div>
-            <p className="text-gray-500 mb-4">Consultation not found</p>
+            <div className="w-20 h-20 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-4xl">👨‍⚕️</span>
+            </div>
+            <p className="text-neutral-600 mb-4">Consultation not found</p>
             <Link href="/client/dashboard/consultations">
               <Button variant="outline">Back to Consultations</Button>
             </Link>
@@ -136,36 +137,40 @@ export default function CreateReviewPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 p-4">
+    <div className="max-w-2xl mx-auto space-y-6 px-4 py-4 sm:py-6">
       {/* Header */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center gap-3">
         <Link
           href={`/client/dashboard/consultations/${consultationId}`}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
+          className="p-2 hover:bg-neutral-100 rounded-lg transition"
         >
-          <ArrowLeftIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+          <ArrowLeftIcon className="h-5 w-5 text-neutral-500" />
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Write a Review</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-neutral-900">Write a Review</h1>
       </div>
 
       {/* Review Form */}
-      <Card>
+      <Card className="border-neutral-200">
         <CardHeader>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Rate Your Experience</h2>
+          <h2 className="text-lg font-semibold text-neutral-900">Rate Your Experience</h2>
         </CardHeader>
-        <CardBody className="p-6">
+        <CardBody className="p-4 sm:p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Consultation Info */}
-            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Consultation with</p>
-              <p className="font-medium text-gray-900 dark:text-white">
-                Dr. {consultation.practitioner_name || consultation.practitioner_name || 'Unknown'}
+            <div className="bg-neutral-50 rounded-xl p-4">
+              <p className="text-xs text-neutral-500 mb-1">Consultation with</p>
+              <p className="font-medium text-neutral-900">
+                Dr. {consultation.practitioner_name || 'Unknown'}
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-                {new Date(consultation.date).toLocaleDateString()} at {consultation.time?.slice(0,5)}
+              <p className="text-xs text-neutral-400 mt-1">
+                {new Date(consultation.date).toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric'
+                })} at {consultation.time?.slice(0,5)}
               </p>
               {consultation.client === user?.id && (
-                <p className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center mt-2">
+                <p className="text-xs text-primary-600 flex items-center mt-2">
                   <CheckCircleIcon className="h-4 w-4 mr-1" />
                   You are reviewing this consultation
                 </p>
@@ -174,10 +179,10 @@ export default function CreateReviewPage() {
 
             {/* Rating Stars */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-3">
                 Rating <span className="text-red-500">*</span>
               </label>
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center gap-1 flex-wrap">
                 {[1, 2, 3, 4, 5].map((value) => (
                   <button
                     key={value}
@@ -188,13 +193,13 @@ export default function CreateReviewPage() {
                     className="p-1 focus:outline-none"
                   >
                     {value <= (hoverRating ?? rating) ? (
-                      <StarIconSolid className="h-8 w-8 text-yellow-400" />
+                      <StarIconSolid className="h-7 w-7 sm:h-8 sm:w-8 text-yellow-400" />
                     ) : (
-                      <StarIcon className="h-8 w-8 text-gray-300 dark:text-gray-600" />
+                      <StarIcon className="h-7 w-7 sm:h-8 sm:w-8 text-neutral-300" />
                     )}
                   </button>
                 ))}
-                <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                <span className="ml-2 text-sm text-neutral-400">
                   {rating > 0 ? `${rating} out of 5` : 'Select a rating'}
                 </span>
               </div>
@@ -202,7 +207,7 @@ export default function CreateReviewPage() {
 
             {/* Comment */}
             <div>
-              <label htmlFor="comment" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label htmlFor="comment" className="block text-sm font-medium text-neutral-700 mb-2">
                 Comment (Optional)
               </label>
               <textarea
@@ -211,25 +216,25 @@ export default function CreateReviewPage() {
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="Share your experience with this practitioner..."
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white text-neutral-900 placeholder-neutral-400 resize-none"
                 maxLength={500}
               />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {comment.length}/500 characters
+              <p className="mt-1 text-xs text-neutral-400 text-right">
+                {comment.length}/500
               </p>
             </div>
 
             {/* Error Message */}
             {error && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg text-sm">
+              <div className="p-3 bg-red-50 text-red-600 rounded-xl text-sm">
                 {error}
               </div>
             )}
 
             {/* Form Actions */}
-            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <Link href={`/client/dashboard/consultations/${consultationId}`}>
-                <Button variant="outline" type="button">
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 border-t border-neutral-200">
+              <Link href={`/client/dashboard/consultations/${consultationId}`} className="w-full sm:w-auto">
+                <Button variant="outline" type="button" fullWidth className="sm:w-auto">
                   Cancel
                 </Button>
               </Link>
@@ -237,6 +242,8 @@ export default function CreateReviewPage() {
                 type="submit" 
                 disabled={submitting || rating === 0}
                 isLoading={submitting}
+                fullWidth
+                className="sm:w-auto bg-primary-600 hover:bg-primary-700 text-white"
               >
                 {submitting ? 'Submitting...' : 'Submit Review'}
               </Button>

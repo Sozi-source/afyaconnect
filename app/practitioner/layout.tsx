@@ -1,52 +1,50 @@
+// app/practitioner/dashboard/layout.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useAuth } from '@/app/contexts/AuthContext'
-import { useRouter } from 'next/navigation'
-import { PractitionerSidebar } from '@/app/components/dashboard/PractitionerSidebar'
-import { DashboardHeader } from '@/app/components/dashboard/DashboardHeader'
+import { useState } from 'react'
+import { LazyDashboardSidebar } from '@/app/components/dashboard/LazyDashboardSidebar'
+import { LazyDashboardHeader } from '@/app/components/dashboard/LazyDashboardHeader'
 import { DashboardMobileNav } from '@/app/components/dashboard/DashboardMobileNav'
-import ProtectedRoute from '../components/ProtectedRoute'
+import ProtectedRoute from '@/app/components/ProtectedRoute'
+import { useAuth } from '@/app/contexts/AuthContext'
 
-export default function PractitionerLayout({
+export default function PractitionerDashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { user, isAuthenticated, isLoading } = useAuth()
-  const router = useRouter()
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login')
-    }
-    // Redirect if not practitioner
-    if (!isLoading && user && user.role !== 'practitioner') {
-      router.push(`/${user.role}/dashboard`)
-    }
-  }, [isLoading, isAuthenticated, user, router])
+  const { isLoading } = useAuth()
 
   if (isLoading) {
-    return <div>Loading...</div>
-  }
-
-  if (!isAuthenticated || user?.role !== 'practitioner') {
-    return null
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-200 border-t-primary-600"></div>
+          <p className="text-sm text-neutral-500">Loading dashboard...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <PractitionerSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="lg:pl-64">
-        <DashboardHeader onMenuClick={() => setSidebarOpen(true)} />
-        <main className="min-h-screen pt-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-            <ProtectedRoute allowedRoles={['practitioner']}>
+    <div className="min-h-screen bg-background">
+      <LazyDashboardSidebar 
+        isOpen={sidebarOpen} 
+        onClose={() => setSidebarOpen(false)} 
+      />
+      
+      <div className="lg:pl-72 flex flex-col min-h-screen">
+        <LazyDashboardHeader onMenuClick={() => setSidebarOpen(true)} />
+        
+        <main className="flex-1 pt-16 lg:pt-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <ProtectedRoute allowedRoles={['practitioner', 'admin']}>
               {children}
             </ProtectedRoute>
           </div>
         </main>
+        
         <DashboardMobileNav />
       </div>
     </div>

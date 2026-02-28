@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { Card, CardBody } from '@/app/components/ui/Card'
@@ -32,7 +32,6 @@ interface SingleSlotFormProps {
 }
 
 interface SlotFormData {
-  practitioner: number
   recurrence_type: RecurrenceType
   day_of_week?: DayOfWeek | null
   specific_date?: string | null
@@ -49,7 +48,6 @@ export function SingleSlotForm({
   initialData 
 }: SingleSlotFormProps) {
   const [formData, setFormData] = useState<SlotFormData>({
-    practitioner: practitionerId,
     recurrence_type: initialData?.recurrence_type || 'weekly',
     day_of_week: initialData?.day_of_week ?? 0,
     specific_date: initialData?.specific_date || '',
@@ -73,19 +71,34 @@ export function SingleSlotForm({
   }
 
   const validateForm = (): boolean => {
+    // Validate time range
     if (formData.start_time >= formData.end_time) {
       setError('End time must be after start time')
       return false
     }
 
+    // Validate day selection for weekly
     if (formData.recurrence_type === 'weekly' && formData.day_of_week === undefined) {
       setError('Please select a day of week')
       return false
     }
 
+    // Validate date for non-weekly
     if (formData.recurrence_type !== 'weekly' && !formData.specific_date) {
       setError('Please select a date')
       return false
+    }
+
+    // Validate date is not in past for one-time/unavailable
+    if (formData.recurrence_type !== 'weekly' && formData.specific_date) {
+      const selectedDate = new Date(formData.specific_date)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      if (selectedDate < today) {
+        setError('Cannot select a date in the past')
+        return false
+      }
     }
 
     return true
@@ -293,7 +306,13 @@ export function SingleSlotForm({
                 <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded">
                   {isWeekly 
                     ? DAYS_OF_WEEK.find(d => d.value === formData.day_of_week)?.label
-                    : formData.specific_date || 'Date TBD'
+                    : formData.specific_date 
+                      ? new Date(formData.specific_date).toLocaleDateString('en-US', { 
+                          weekday: 'short', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })
+                      : 'Date TBD'
                   }
                 </span>
                 <span className="text-gray-500">→</span>
