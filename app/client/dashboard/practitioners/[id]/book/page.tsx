@@ -21,12 +21,12 @@ import {
   PhoneIcon,
   ChatBubbleLeftIcon
 } from '@heroicons/react/24/outline'
-import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
+import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import { TimeSlotPicker } from '@/app/components/practitioners/TimeSlotPicker'
 import { apiClient } from '@/app/lib/api'
 import { toast } from 'react-hot-toast'
-import type { Practitioner, Availability, TimeSlot } from '@/app/types'
+import type { Practitioner, Availability, TimeSlot, PaginatedResponse } from '@/app/types'
 
 type BookingStep = 'datetime' | 'details' | 'confirmation' | 'success'
 
@@ -65,11 +65,25 @@ export default function BookWithPractitionerPage() {
       
       const [practitionerData, availabilityData] = await Promise.all([
         apiClient.practitioners.getOne(practitionerId!),
-        apiClient.availability.getAll(practitionerId!)
+        apiClient.practitioners.getAvailability(practitionerId!)
       ])
       
       setPractitioner(practitionerData)
-      setAvailability(availabilityData)
+      
+      // ✅ FIX: Extract availability array from paginated response
+      if (availabilityData && typeof availabilityData === 'object') {
+        if ('results' in availabilityData && Array.isArray(availabilityData.results)) {
+          // It's a paginated response with results array
+          setAvailability(availabilityData.results)
+          console.log(`📋 Loaded ${availabilityData.results.length} availability slots`)
+        } else if (Array.isArray(availabilityData)) {
+          // It's already an array
+          setAvailability(availabilityData)
+        } else {
+          // Unknown format, default to empty array
+          setAvailability([])
+        }
+      }
       
     } catch (error) {
       console.error('Error fetching data:', error)
