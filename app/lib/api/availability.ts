@@ -3,30 +3,41 @@ import type { Availability, BulkAvailabilityData, CreateAvailabilityData, TimeSl
 
 export const availabilityApi = {
   getAll: async (practitionerId?: number): Promise<Availability[]> => {
-    const url = practitionerId 
-      ? `/availability/?practitioner=${practitionerId}`
-      : '/availability/'
-    const response = await api.get<Availability[]>(url)
+    if (practitionerId) {
+      // ✅ CORRECT: Use the practitioner-specific endpoint
+      console.log(`📡 Fetching availability for practitioner ${practitionerId} from: /practitioners/${practitionerId}/availability/`)
+      const response = await api.get(`/practitioners/${practitionerId}/availability/`)
+      
+      // Handle paginated response
+      if (response.data && typeof response.data === 'object') {
+        if ('results' in response.data && Array.isArray(response.data.results)) {
+          console.log(`📡 Found ${response.data.results.length} slots in results`)
+          return response.data.results
+        }
+      }
+      return response.data
+    }
+    
+    // For admin/overview
+    const response = await api.get('/availability/')
     return response.data
   },
 
   getOne: async (id: number): Promise<Availability> => {
-    const response = await api.get<Availability>(`/availability/${id}/`)
+    const response = await api.get(`/availability/${id}/`)
     return response.data
   },
 
   create: async (data: CreateAvailabilityData): Promise<Availability> => {
-    const response = await api.post<Availability>('/availability/', data)
+    const response = await api.post('/availability/', data)
     return response.data
   },
 
   bulkCreate: async (data: BulkAvailabilityData): Promise<Availability[]> => {
-    // Since there's no bulk endpoint, create slots one by one
-    // Note: practitioner_id is not in BulkAvailabilityData, it's handled by the hook/context
     const { days, start_time, end_time, is_available, notes } = data
 
     const promises = days.map(day =>
-      api.post<Availability>('/availability/', {
+      api.post('/availability/', {
         recurrence_type: 'weekly',
         day_of_week: day,
         start_time,
@@ -41,7 +52,7 @@ export const availabilityApi = {
   },
 
   update: async (id: number, data: Partial<CreateAvailabilityData>): Promise<Availability> => {
-    const response = await api.patch<Availability>(`/availability/${id}/`, data)
+    const response = await api.patch(`/availability/${id}/`, data)
     return response.data
   },
 
@@ -50,14 +61,12 @@ export const availabilityApi = {
   },
 
   checkSlot: async (practitionerId: number, date: string, time: string): Promise<CheckSlotResponse> => {
-    const response = await api.get<CheckSlotResponse>(
-      `/availability/check/${practitionerId}/?date=${date}&time=${time}`
-    )
+    const response = await api.get(`/availability/check/${practitionerId}/?date=${date}&time=${time}`)
     return response.data
   },
 
   getSlots: async (practitionerId: number, date: string): Promise<TimeSlot[]> => {
-    const response = await api.get<TimeSlot[]>(`/availability/slots/${practitionerId}/?date=${date}`)
+    const response = await api.get(`/availability/slots/${practitionerId}/?date=${date}`)
     return response.data
   }
 }

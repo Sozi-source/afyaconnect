@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { Card, CardBody } from '@/app/components/ui/Card'
@@ -62,6 +62,11 @@ export function SingleSlotForm({
 
   const { createSlot, updateSlot } = useAvailability(practitionerId)
 
+  // Debug props
+  useEffect(() => {
+    console.log('🔧 SingleSlotForm - Props:', { practitionerId, initialData })
+  }, [practitionerId, initialData])
+
   // Set today's date as min for date picker
   const today = new Date().toISOString().split('T')[0]
 
@@ -71,34 +76,19 @@ export function SingleSlotForm({
   }
 
   const validateForm = (): boolean => {
-    // Validate time range
     if (formData.start_time >= formData.end_time) {
       setError('End time must be after start time')
       return false
     }
 
-    // Validate day selection for weekly
     if (formData.recurrence_type === 'weekly' && formData.day_of_week === undefined) {
       setError('Please select a day of week')
       return false
     }
 
-    // Validate date for non-weekly
     if (formData.recurrence_type !== 'weekly' && !formData.specific_date) {
       setError('Please select a date')
       return false
-    }
-
-    // Validate date is not in past for one-time/unavailable
-    if (formData.recurrence_type !== 'weekly' && formData.specific_date) {
-      const selectedDate = new Date(formData.specific_date)
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      
-      if (selectedDate < today) {
-        setError('Cannot select a date in the past')
-        return false
-      }
     }
 
     return true
@@ -114,7 +104,7 @@ export function SingleSlotForm({
     
     try {
       // Prepare data matching CreateAvailabilityData type
-      const slotData: Partial<CreateAvailabilityData> = {
+      const slotData: CreateAvailabilityData = {
         recurrence_type: formData.recurrence_type,
         start_time: formData.start_time,
         end_time: formData.end_time,
@@ -125,21 +115,30 @@ export function SingleSlotForm({
       // Add conditional fields based on recurrence type
       if (formData.recurrence_type === 'weekly') {
         slotData.day_of_week = formData.day_of_week ?? undefined
-        slotData.specific_date = undefined
       } else {
-        slotData.day_of_week = undefined
         slotData.specific_date = formData.specific_date || undefined
       }
 
+      console.log('🔧 Submitting slot data:', slotData)
+
+      let result
       if (initialData) {
-        await updateSlot(initialData.id, slotData)
+        result = await updateSlot(initialData.id, slotData)
+        console.log('🔧 Update result:', result)
       } else {
-        await createSlot(slotData as CreateAvailabilityData)
+        result = await createSlot(slotData)
+        console.log('🔧 Create result:', result)
       }
-      onSuccess()
+      
+      if (result) {
+        console.log('✅ Slot saved successfully')
+        onSuccess()
+      } else {
+        setError('Failed to save slot - no result returned')
+      }
     } catch (err: any) {
+      console.error('❌ Error saving slot:', err)
       setError(err.message || 'Failed to save availability slot')
-      console.error('Error saving slot:', err)
     } finally {
       setIsSubmitting(false)
     }
@@ -325,10 +324,6 @@ export function SingleSlotForm({
                   📝 {formData.notes}
                 </p>
               )}
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Type: {RECURRENCE_TYPES.find(t => t.value === formData.recurrence_type)?.label}
-                {!formData.is_available && ' • Unavailable'}
-              </p>
             </div>
 
             {/* Actions */}

@@ -216,9 +216,9 @@ export const apiClient = {
       }, `Get Practitioner ${id}`)
     },
 
-    getAvailability: async (practitionerId: number): Promise<Availability[]> => {
+    getAvailability: async (practitionerId: number): Promise<PaginatedResponse<Availability>> => {
       return measurePerformance(async () => {
-        const response = await publicApi.get<Availability[]>(`/practitioners/${practitionerId}/availability/`)
+        const response = await publicApi.get<PaginatedResponse<Availability>>(`/practitioners/${practitionerId}/availability/`)
         return response.data
       }, `Get Practitioner ${practitionerId} Availability`)
     },
@@ -432,10 +432,16 @@ export const apiClient = {
 
   // ==================== AVAILABILITY ====================
   availability: {
-    getAll: async (practitionerId?: number): Promise<Availability[]> => {
+    /**
+     * Get availability slots for a practitioner
+     * @param practitionerId - Optional practitioner ID to filter by
+     * @returns Array of availability slots or paginated response with results array
+     */
+    getAll: async (practitionerId?: number): Promise<Availability[] | PaginatedResponse<Availability>> => {
       return measurePerformance(async () => {
         if (practitionerId) {
-          const response = await publicApi.get<Availability[]>(`/practitioners/${practitionerId}/availability/`)
+          // This endpoint returns paginated results with {count, results}
+          const response = await publicApi.get<PaginatedResponse<Availability>>(`/practitioners/${practitionerId}/availability/`)
           return response.data
         }
         const response = await api.get<Availability[]>('/availability/')
@@ -452,7 +458,17 @@ export const apiClient = {
 
     create: async (data: CreateAvailabilityData): Promise<Availability> => {
       return measurePerformance(async () => {
-        const response = await api.post<Availability>('/availability/', data)
+        // Ensure time format includes seconds
+        const payload = {
+          ...data,
+          start_time: data.start_time.includes(':') && data.start_time.split(':').length === 2 
+            ? `${data.start_time}:00` 
+            : data.start_time,
+          end_time: data.end_time.includes(':') && data.end_time.split(':').length === 2 
+            ? `${data.end_time}:00` 
+            : data.end_time,
+        }
+        const response = await api.post<Availability>('/availability/', payload)
         return response.data
       }, 'Create Availability Slot')
     },
@@ -462,6 +478,7 @@ export const apiClient = {
       console.log('Payload:', data)
       
       try {
+        // First try the bulk endpoint
         try {
           const response = await api.post<Availability[]>('/availability/bulk/', data)
           console.log(`✅ Bulk endpoint successful - ${response.data.length} slots created`)
@@ -479,11 +496,19 @@ export const apiClient = {
               console.log(`Creating slot ${i + 1}/${data.days.length} for day ${day}`)
               
               try {
+                // Ensure time format includes seconds
+                const startTime = data.start_time.includes(':') && data.start_time.split(':').length === 2 
+                  ? `${data.start_time}:00` 
+                  : data.start_time
+                const endTime = data.end_time.includes(':') && data.end_time.split(':').length === 2 
+                  ? `${data.end_time}:00` 
+                  : data.end_time
+                
                 const response = await api.post<Availability>('/availability/', {
                   recurrence_type: 'weekly',
                   day_of_week: day,
-                  start_time: data.start_time,
-                  end_time: data.end_time,
+                  start_time: startTime,
+                  end_time: endTime,
                   is_available: data.is_available ?? true,
                   notes: data.notes
                 })
@@ -525,7 +550,16 @@ export const apiClient = {
 
     update: async (id: number, data: Partial<CreateAvailabilityData>): Promise<Availability> => {
       return measurePerformance(async () => {
-        const response = await api.patch<Availability>(`/availability/${id}/`, data)
+        // Ensure time format includes seconds if provided
+        const payload = { ...data }
+        if (payload.start_time && payload.start_time.includes(':') && payload.start_time.split(':').length === 2) {
+          payload.start_time = `${payload.start_time}:00`
+        }
+        if (payload.end_time && payload.end_time.includes(':') && payload.end_time.split(':').length === 2) {
+          payload.end_time = `${payload.end_time}:00`
+        }
+        
+        const response = await api.patch<Availability>(`/availability/${id}/`, payload)
         return response.data
       }, `Update Availability ${id}`)
     },

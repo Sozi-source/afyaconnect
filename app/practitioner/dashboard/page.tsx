@@ -205,13 +205,13 @@ export default function PractitionerDashboardPage() {
         </div>
         <div className="flex gap-2 sm:gap-3">
           <Link
-            href="/practitioner/availability"
+            href="/practitioner/dashboard/availability"
             className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
           >
             Availability
           </Link>
           <Link
-            href="/practitioner/profile"
+            href="/practitioner/dashboard/profile"
             className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium"
           >
             Profile
@@ -336,7 +336,7 @@ export default function PractitionerDashboardPage() {
       {/* Quick Actions - Mobile optimized */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
         <Link
-          href="/practitioner/availability"
+          href="/practitioner/dashboard/availability"
           className="p-4 sm:p-5 md:p-6 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800 hover:shadow-md transition-shadow"
         >
           <h3 className="text-sm sm:text-base font-semibold text-emerald-900 dark:text-emerald-300">Set Your Availability</h3>
