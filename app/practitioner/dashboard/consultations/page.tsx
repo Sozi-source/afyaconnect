@@ -10,15 +10,11 @@ import {
   ClockIcon,
   VideoCameraIcon,
   PhoneIcon,
-  UserIcon,
   ArrowPathIcon,
-  CurrencyDollarIcon,
   CheckCircleIcon,
   XCircleIcon,
   MagnifyingGlassIcon,
-  FunnelIcon,
-  ChevronDownIcon,
-  MapPinIcon
+  UserIcon
 } from '@heroicons/react/24/outline'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
@@ -36,14 +32,6 @@ export default function PractitionerConsultationsPage() {
   const [filter, setFilter] = useState<FilterType>('upcoming')
   const [searchTerm, setSearchTerm] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [showFilters, setShowFilters] = useState(false)
-  const [stats, setStats] = useState({
-    totalEarnings: 0,
-    completedCount: 0,
-    upcomingCount: 0,
-    cancelledCount: 0,
-    totalConsultations: 0
-  })
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -60,7 +48,6 @@ export default function PractitionerConsultationsPage() {
       setLoading(true)
       setError(null)
       
-      // Build filters
       const filters: Record<string, any> = {}
       if (filter !== 'all') {
         filters.status = filter === 'upcoming' ? 'booked' : filter
@@ -68,7 +55,6 @@ export default function PractitionerConsultationsPage() {
       
       const data = await apiClient.consultations.getMyPractitionerConsultations(filters)
       
-      // Handle paginated response
       let consultationsList: Consultation[] = []
       if (data && typeof data === 'object') {
         if ('results' in data && Array.isArray(data.results)) {
@@ -79,22 +65,6 @@ export default function PractitionerConsultationsPage() {
       }
       
       setConsultations(consultationsList)
-      
-      // Calculate stats
-      const completed = consultationsList.filter(c => c.status === 'completed').length
-      const upcoming = consultationsList.filter(c => c.status === 'booked').length
-      const cancelled = consultationsList.filter(c => c.status === 'cancelled').length
-      const totalEarnings = consultationsList
-        .filter(c => c.status === 'completed')
-        .reduce((sum, c) => sum + (c.price || 0), 0)
-      
-      setStats({
-        totalEarnings,
-        completedCount: completed,
-        upcomingCount: upcoming,
-        cancelledCount: cancelled,
-        totalConsultations: consultationsList.length
-      })
       
     } catch (error: any) {
       console.error('Error fetching consultations:', error)
@@ -119,47 +89,31 @@ export default function PractitionerConsultationsPage() {
     }
   }
 
-  const getStatusConfig = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch(status) {
       case 'booked':
-        return {
-          bg: 'bg-blue-50',
-          text: 'text-blue-700',
-          badge: 'bg-blue-100 text-blue-700',
-          label: 'Upcoming',
-          icon: CalendarIcon
-        }
+        return 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
       case 'completed':
-        return {
-          bg: 'bg-green-50',
-          text: 'text-green-700',
-          badge: 'bg-green-100 text-green-700',
-          label: 'Completed',
-          icon: CheckCircleIcon
-        }
+        return 'bg-green-50 text-green-700 ring-1 ring-green-200'
       case 'cancelled':
-        return {
-          bg: 'bg-red-50',
-          text: 'text-red-700',
-          badge: 'bg-red-100 text-red-700',
-          label: 'Cancelled',
-          icon: XCircleIcon
-        }
+        return 'bg-red-50 text-red-700 ring-1 ring-red-200'
       default:
-        return {
-          bg: 'bg-gray-50',
-          text: 'text-gray-700',
-          badge: 'bg-gray-100 text-gray-700',
-          label: status,
-          icon: ClockIcon
-        }
+        return 'bg-gray-50 text-gray-700 ring-1 ring-gray-200'
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch(status) {
+      case 'booked': return 'Upcoming'
+      case 'completed': return 'Completed'
+      case 'cancelled': return 'Cancelled'
+      default: return status
     }
   }
 
   const formatDateTime = (date: string, time: string) => {
     const dateObj = new Date(date)
     const formattedDate = dateObj.toLocaleDateString('en-US', {
-      weekday: 'short',
       month: 'short',
       day: 'numeric'
     })
@@ -167,9 +121,14 @@ export default function PractitionerConsultationsPage() {
   }
 
   const getInitials = (name: string) => {
-    if (!name) return 'C'
+    if (!name) return 'CL'
     return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
   }
+
+  // Calculate stats
+  const totalCount = consultations.length
+  const upcomingCount = consultations.filter(c => c.status === 'booked').length
+  const completedCount = consultations.filter(c => c.status === 'completed').length
 
   // Filter consultations based on search
   const filteredConsultations = consultations.filter(c => 
@@ -189,54 +148,40 @@ export default function PractitionerConsultationsPage() {
     return null
   }
 
-  const statsCards = [
-    { label: 'Total Consultations', value: stats.totalConsultations, icon: CalendarIcon, color: 'text-gray-900' },
-    { label: 'Upcoming', value: stats.upcomingCount, icon: ClockIcon, color: 'text-blue-600' },
-    { label: 'Completed', value: stats.completedCount, icon: CheckCircleIcon, color: 'text-green-600' },
-    { label: 'Cancelled', value: stats.cancelledCount, icon: XCircleIcon, color: 'text-red-600' },
-    { label: 'Total Earnings', value: `KES ${stats.totalEarnings.toLocaleString()}`, icon: CurrencyDollarIcon, color: 'text-emerald-600' }
-  ]
-
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Consultations</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage your appointments and track your practice</p>
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Consultations</h1>
+          <p className="text-sm text-gray-500 mt-1">Manage your appointments</p>
         </div>
         
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2 border-gray-200"
-          >
-            <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
-          </Button>
-        </div>
+        <Button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-2 border-gray-200"
+        >
+          <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          <span className="hidden sm:inline">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+        </Button>
       </div>
 
-      {/* Stats Grid - Horizontal Scroll on Mobile */}
-      <div className="overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0">
-        <div className="flex sm:grid sm:grid-cols-5 gap-3 min-w-max sm:min-w-0">
-          {statsCards.map((stat, index) => {
-            const Icon = stat.icon
-            return (
-              <Card key={index} className="w-36 sm:w-auto flex-shrink-0 sm:flex-shrink">
-                <CardBody className="p-3 sm:p-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Icon className="h-4 w-4 text-gray-400" />
-                    <span className="text-xs text-gray-500">{stat.label}</span>
-                  </div>
-                  <p className={`text-base sm:text-lg font-semibold ${stat.color}`}>{stat.value}</p>
-                </CardBody>
-              </Card>
-            )
-          })}
+      {/* Stats - Clean, minimal cards */}
+      <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
+        <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+          <p className="text-xs text-gray-500 mb-1">Total</p>
+          <p className="text-lg sm:text-xl font-semibold text-gray-900">{totalCount}</p>
+        </div>
+        <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
+          <p className="text-xs text-blue-600 mb-1">Upcoming</p>
+          <p className="text-lg sm:text-xl font-semibold text-blue-700">{upcomingCount}</p>
+        </div>
+        <div className="bg-green-50 rounded-lg p-3 sm:p-4">
+          <p className="text-xs text-green-600 mb-1">Completed</p>
+          <p className="text-lg sm:text-xl font-semibold text-green-700">{completedCount}</p>
         </div>
       </div>
 
@@ -247,7 +192,7 @@ export default function PractitionerConsultationsPage() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6"
+            className="bg-red-50 border border-red-200 rounded-lg p-3 mb-6"
           >
             <p className="text-sm text-red-600">{error}</p>
           </motion.div>
@@ -256,23 +201,21 @@ export default function PractitionerConsultationsPage() {
 
       {/* Filters & Search */}
       <div className="space-y-3 mb-6">
-        {/* Filter Tabs - Scrollable on Mobile */}
-        <div className="overflow-x-auto pb-1">
-          <div className="flex gap-1 min-w-max sm:min-w-0">
-            {(['upcoming', 'completed', 'cancelled', 'all'] as FilterType[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setFilter(tab)}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap transition ${
-                  filter === tab
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
-          </div>
+        {/* Filter Tabs */}
+        <div className="flex gap-1 p-1 bg-gray-50 rounded-lg w-fit">
+          {(['upcoming', 'completed', 'cancelled', 'all'] as FilterType[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setFilter(tab)}
+              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition ${
+                filter === tab
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
         </div>
 
         {/* Search Bar */}
@@ -280,7 +223,7 @@ export default function PractitionerConsultationsPage() {
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search by client name or email..."
+            placeholder="Search by client name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
@@ -289,7 +232,7 @@ export default function PractitionerConsultationsPage() {
       </div>
 
       {/* Consultations List */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <AnimatePresence mode="popLayout">
           {loading && !refreshing ? (
             <div className="flex justify-center py-12">
@@ -297,64 +240,57 @@ export default function PractitionerConsultationsPage() {
             </div>
           ) : filteredConsultations.length > 0 ? (
             filteredConsultations.map((consultation, index) => {
-              const status = getStatusConfig(consultation.status)
-              const StatusIcon = status.icon
               const { date, time } = formatDateTime(consultation.date, consultation.time)
               
               return (
                 <motion.div
                   key={consultation.id}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ delay: index * 0.03 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ delay: index * 0.02 }}
                   layout
                 >
-                  <Card className="border border-gray-100 hover:shadow-md transition">
-                    <CardBody className="p-4 sm:p-5">
-                      {/* Mobile View (Stacked) */}
+                  <Card className="border border-gray-100">
+                    <CardBody className="p-4">
+                      {/* Mobile Layout */}
                       <div className="sm:hidden space-y-3">
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-2">
-                            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-600">
                               {getInitials(consultation.client_name || 'Client')}
                             </div>
                             <div>
-                              <h3 className="font-semibold text-gray-900">
+                              <h3 className="text-sm font-medium text-gray-900">
                                 {consultation.client_name || 'Client'}
                               </h3>
                               <p className="text-xs text-gray-500">{consultation.client_email}</p>
                             </div>
                           </div>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.badge}`}>
-                            {status.label}
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(consultation.status)}`}>
+                            {getStatusLabel(consultation.status)}
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div className="flex items-center gap-1 text-gray-500">
+                        <div className="flex items-center gap-3 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
                             <CalendarIcon className="h-3 w-3" />
-                            <span>{date}</span>
-                          </div>
-                          <div className="flex items-center gap-1 text-gray-500">
+                            {date}
+                          </span>
+                          <span className="flex items-center gap-1">
                             <ClockIcon className="h-3 w-3" />
-                            <span>{time} ({consultation.duration_minutes}min)</span>
-                          </div>
+                            {time}
+                          </span>
+                          <span>{consultation.duration_minutes}min</span>
                         </div>
-
-                        {consultation.client_notes && (
-                          <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                            📝 {consultation.client_notes}
-                          </p>
-                        )}
 
                         {consultation.status === 'booked' && (
                           <div className="flex gap-2 pt-1">
-                            <button className="flex-1 px-3 py-2 bg-green-50 text-green-700 rounded-lg text-xs font-medium flex items-center justify-center gap-1">
+                            <button className="flex-1 py-2 bg-gray-50 text-gray-700 rounded-lg text-xs font-medium flex items-center justify-center gap-1">
                               <VideoCameraIcon className="h-3 w-3" />
-                              Start
+                              Video
                             </button>
-                            <button className="flex-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium flex items-center justify-center gap-1">
+                            <button className="flex-1 py-2 bg-gray-50 text-gray-700 rounded-lg text-xs font-medium flex items-center justify-center gap-1">
                               <PhoneIcon className="h-3 w-3" />
                               Call
                             </button>
@@ -362,14 +298,14 @@ export default function PractitionerConsultationsPage() {
                         )}
                       </div>
 
-                      {/* Desktop View (Row) */}
+                      {/* Desktop Layout */}
                       <div className="hidden sm:flex sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-600 flex-shrink-0">
                             {getInitials(consultation.client_name || 'Client')}
                           </div>
                           <div className="min-w-0">
-                            <h3 className="font-semibold text-gray-900 truncate">
+                            <h3 className="text-sm font-medium text-gray-900 truncate">
                               {consultation.client_name || 'Client'}
                             </h3>
                             <p className="text-xs text-gray-500 truncate">{consultation.client_email}</p>
@@ -378,71 +314,58 @@ export default function PractitionerConsultationsPage() {
 
                         <div className="flex items-center gap-4 flex-1 justify-center">
                           <div className="flex items-center gap-3 text-sm text-gray-500">
-                            <div className="flex items-center gap-1">
+                            <span className="flex items-center gap-1">
                               <CalendarIcon className="h-4 w-4" />
-                              <span>{date}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
+                              {date}
+                            </span>
+                            <span className="flex items-center gap-1">
                               <ClockIcon className="h-4 w-4" />
-                              <span>{time}</span>
-                            </div>
-                            <span className="text-xs text-gray-400">({consultation.duration_minutes}min)</span>
+                              {time}
+                            </span>
+                            <span className="text-xs text-gray-400">{consultation.duration_minutes}min</span>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-3 flex-1 justify-end">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${status.badge}`}>
-                            {status.label}
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(consultation.status)}`}>
+                            {getStatusLabel(consultation.status)}
                           </span>
                           
                           {consultation.status === 'booked' && (
                             <>
-                              <button className="p-2 hover:bg-gray-100 rounded-lg transition" title="Video call">
-                                <VideoCameraIcon className="h-5 w-5 text-gray-600" />
+                              <button className="p-1.5 hover:bg-gray-50 rounded-lg transition" title="Video call">
+                                <VideoCameraIcon className="h-4 w-4 text-gray-500" />
                               </button>
-                              <button className="p-2 hover:bg-gray-100 rounded-lg transition" title="Phone call">
-                                <PhoneIcon className="h-5 w-5 text-gray-600" />
+                              <button className="p-1.5 hover:bg-gray-50 rounded-lg transition" title="Phone call">
+                                <PhoneIcon className="h-4 w-4 text-gray-500" />
                               </button>
                             </>
-                          )}
-
-                          {consultation.status === 'completed' && consultation.price && (
-                            <span className="flex items-center text-sm font-medium text-emerald-600">
-                              <CurrencyDollarIcon className="h-4 w-4 mr-1" />
-                              KES {consultation.price}
-                            </span>
                           )}
                         </div>
                       </div>
 
-                      {/* Client Notes - Desktop */}
+                      {/* Client Notes */}
                       {consultation.client_notes && (
-                        <div className="hidden sm:block mt-3 text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                        <p className="mt-3 text-xs text-gray-500 bg-gray-50 p-2 rounded">
                           📝 {consultation.client_notes}
-                        </div>
+                        </p>
                       )}
 
                       {/* Status Update Actions */}
                       {consultation.status === 'booked' && (
                         <div className="mt-3 flex gap-2 justify-end border-t border-gray-100 pt-3">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-green-600 border-green-200 hover:bg-green-50 text-xs sm:text-sm"
+                          <button
                             onClick={() => handleStatusUpdate(consultation.id, 'completed')}
+                            className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition"
                           >
-                            <CheckCircleIcon className="h-4 w-4 mr-1" />
-                            Mark Completed
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-red-600 border-red-200 hover:bg-red-50 text-xs sm:text-sm"
+                            Mark completed
+                          </button>
+                          <button
                             onClick={() => handleStatusUpdate(consultation.id, 'cancelled')}
+                            className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition"
                           >
-                            <XCircleIcon className="h-4 w-4 mr-1" />
                             Cancel
-                          </Button>
+                          </button>
                         </div>
                       )}
                     </CardBody>
@@ -456,22 +379,15 @@ export default function PractitionerConsultationsPage() {
               animate={{ opacity: 1 }}
               className="text-center py-12"
             >
-              <div className="text-5xl mb-4">📅</div>
-              <h3 className="text-lg font-semibold mb-2">No consultations found</h3>
-              <p className="text-sm text-gray-500 mb-4">
+              <div className="text-4xl mb-3">📅</div>
+              <h3 className="text-sm font-medium text-gray-900 mb-1">No consultations found</h3>
+              <p className="text-xs text-gray-500">
                 {searchTerm 
                   ? "No results match your search" 
                   : filter === 'upcoming' 
                     ? "You don't have any upcoming appointments"
-                    : `No ${filter} consultations to display`}
+                    : `No ${filter} consultations`}
               </p>
-              {filter === 'upcoming' && !searchTerm && (
-                <Link href="/practitioner/dashboard/availability">
-                  <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                    Set Your Availability
-                  </Button>
-                </Link>
-              )}
             </motion.div>
           )}
         </AnimatePresence>
