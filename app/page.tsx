@@ -116,7 +116,7 @@ export default function LandingPage() {
               <Link href="/about" className="text-sm text-gray-600 hover:text-gray-900 transition font-medium">
                 About
               </Link>
-              <Link href="/contact" className="text-sm text-gray-600 hover:text-gray-900 transition font-medium">
+              <Link href="#" className="text-sm text-gray-600 hover:text-gray-900 transition font-medium">
                 Contact
               </Link>
             </nav>
@@ -153,7 +153,7 @@ export default function LandingPage() {
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/auth" className="w-full sm:w-auto">
+                <Link href="/register" className="w-full sm:w-auto">
                   <button className="w-full sm:w-auto px-8 py-4 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all">
                     Create free account
                     <ArrowRightIcon className="inline ml-2 h-4 w-4" />
@@ -253,7 +253,7 @@ export default function LandingPage() {
 
             {/* Signup prompt */}
             <div className="text-center mt-12">
-              <Link href="/auth">
+              <Link href="/register">
                 <button className="px-8 py-3 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-lg shadow-md transition">
                   Create your account now
                   <ArrowRightIcon className="inline ml-2 h-4 w-4" />
@@ -294,7 +294,7 @@ export default function LandingPage() {
             </div>
 
             <div className="text-center mt-10">
-              <Link href="/auth">
+              <Link href="/register">
                 <button className="px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-200 shadow-sm hover:shadow transition">
                   Sign up to browse all
                   <ArrowRightIcon className="inline ml-2 h-4 w-4" />
@@ -316,7 +316,7 @@ export default function LandingPage() {
               Practitioner details, availability, and booking are available 
               <span className="font-semibold text-gray-900"> only after creating a free account.</span>
             </p>
-            <Link href="/auth">
+            <Link href="/register">
               <button className="px-8 py-4 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all">
                 Join AfyaConnect today
                 <ArrowRightIcon className="inline ml-2 h-4 w-4" />
@@ -387,8 +387,8 @@ export default function LandingPage() {
               © {new Date().getFullYear()} AfyaConnect. Private platform.
             </p>
             <div className="flex gap-6">
-              <Link href="/privacy" className="text-sm text-gray-500 hover:text-white">Privacy</Link>
-              <Link href="/terms" className="text-sm text-gray-500 hover:text-white">Terms</Link>
+              <Link href="#" className="text-sm text-gray-500 hover:text-white">Privacy</Link>
+              <Link href="#" className="text-sm text-gray-500 hover:text-white">Terms</Link>
             </div>
           </div>
         </div>
