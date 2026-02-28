@@ -225,7 +225,7 @@ export default function AboutPage() {
             <div>
               <h4 className="text-sm font-semibold text-white mb-4">Connect</h4>
               <ul className="space-y-2">
-                <li><Link href="/contact" className="text-sm text-gray-400 hover:text-white">Contact</Link></li>
+                <li><Link href="#" className="text-sm text-gray-400 hover:text-white">Contact</Link></li>
                 <li><a href="mailto:hello@afyaconnect.com" className="text-sm text-gray-400 hover:text-white">hello@afyaconnect.com</a></li>
               </ul>
             </div>
