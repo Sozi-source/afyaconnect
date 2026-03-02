@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { 
   ArrowRightIcon, 
@@ -24,7 +24,20 @@ import {
   DocumentTextIcon,
   ChartBarIcon,
   Bars3Icon,
-  XMarkIcon
+  XMarkIcon,
+  PlayCircleIcon,
+  InformationCircleIcon,
+  SparklesIcon,
+  AcademicCapIcon,
+  BriefcaseIcon,
+  IdentificationIcon,
+  DocumentCheckIcon,
+  UserCircleIcon,
+  VideoCameraIcon,
+  ChatBubbleLeftRightIcon,
+  CreditCardIcon,
+  BellAlertIcon,
+  HeartIcon
 } from '@heroicons/react/24/outline'
 import apiClient, { 
   getPractitioners,
@@ -36,16 +49,33 @@ import type { Specialty, Practitioner, PaginatedResponse } from '@/app/types'
  * AfyaConnect - A platform that connects patients with verified practitioners
  */
 
+// ==================== CONSTANTS ====================
+const PLATFORM_NAME = 'AfyaConnect'
+const SUPPORT_EMAIL = 'support@afyaconnect.com'
+const SUPPORT_PHONE = '+254 700 000 000'
+
+// ==================== TYPES ====================
+interface Step {
+  id: number
+  title: string
+  description: string
+  icon: any
+  color: string
+  details: string[]
+}
+
+// ==================== COMPONENTS ====================
+
 // Mobile-first card component
-const AdminCard = ({ children, className = '' }: { children: React.ReactNode, className?: string }) => (
-  <div className={`bg-white border border-slate-200 rounded-lg shadow-sm ${className}`}>
+const AdminCard = ({ children, className = '', hover = true }: { children: React.ReactNode, className?: string; hover?: boolean }) => (
+  <div className={`bg-white border border-slate-200 rounded-lg shadow-sm ${hover ? 'hover:shadow-md transition-all duration-200 hover:border-emerald-200' : ''} ${className}`}>
     {children}
   </div>
 )
 
 // Status indicator
-const StatusIndicator = ({ active = true }: { active?: boolean }) => (
-  <span className={`inline-block w-1.5 h-1.5 rounded-full ${active ? 'bg-emerald-500' : 'bg-slate-300'} mr-1.5`}></span>
+const StatusIndicator = ({ active = true, pulse = false }: { active?: boolean; pulse?: boolean }) => (
+  <span className={`inline-block w-1.5 h-1.5 rounded-full ${active ? 'bg-emerald-500' : 'bg-slate-300'} ${pulse ? 'animate-pulse' : ''} mr-1.5`}></span>
 )
 
 // Mobile-optimized Stat Card
@@ -83,6 +113,360 @@ const StatCard = ({
         <div className="text-[10px] sm:text-xs text-slate-500 mt-1 flex items-center">
           <span className="inline-block w-1 h-1 rounded-full bg-emerald-400 mr-1 flex-shrink-0"></span>
           <span className="truncate">{change}</span>
+        </div>
+      </div>
+    </AdminCard>
+  )
+}
+
+// Interactive Info Card with Auto-rotating Content
+const InteractiveInfoCard = () => {
+  const [activeStep, setActiveStep] = useState(0)
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true)
+  const [progress, setProgress] = useState(0)
+  const autoPlayRef = useRef<NodeJS.Timeout | null>(null)
+  const progressRef = useRef<NodeJS.Timeout | null>(null)
+
+  const steps: Step[] = [
+    {
+      id: 1,
+      title: 'For Patients',
+      description: 'Find and book verified practitioners',
+      icon: UserCircleIcon,
+      color: 'emerald',
+      details: [
+        'Browse verified practitioners by specialty',
+        'View real-time availability',
+        'Book consultations instantly',
+        'Secure video calls',
+        'Leave reviews and ratings'
+      ]
+    },
+    {
+      id: 2,
+      title: 'For Practitioners',
+      description: 'Grow your practice online',
+      icon: BriefcaseIcon,
+      color: 'blue',
+      details: [
+        'Create professional profile',
+        'Set your availability',
+        'Manage appointments',
+        'Accept secure payments',
+        'Build your reputation'
+      ]
+    },
+    {
+      id: 3,
+      title: 'Verification Process',
+      description: 'Ensuring trust and safety',
+      icon: ShieldCheckIcon,
+      color: 'purple',
+      details: [
+        'Submit professional credentials',
+        'License verification',
+        'Background checks',
+        'ID verification',
+        'Approved within 48 hours'
+      ]
+    },
+    {
+      id: 4,
+      title: 'Consultation Experience',
+      description: 'Seamless healthcare delivery',
+      icon: VideoCameraIcon,
+      color: 'amber',
+      details: [
+        'HD video consultations',
+        'Secure messaging',
+        'Prescription delivery',
+        'Follow-up scheduling',
+        'Medical records access'
+      ]
+    }
+  ]
+
+  const colorClasses = {
+    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+    blue: 'bg-blue-50 text-blue-600 border-blue-200',
+    purple: 'bg-purple-50 text-purple-600 border-purple-200',
+    amber: 'bg-amber-50 text-amber-600 border-amber-200'
+  }
+
+  useEffect(() => {
+    if (isAutoPlaying) {
+      // Auto-rotate every 8 seconds
+      autoPlayRef.current = setInterval(() => {
+        setActiveStep((prev) => (prev + 1) % steps.length)
+        setProgress(0)
+      }, 8000)
+
+      // Progress bar animation
+      progressRef.current = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 100) return 0
+          return prev + 1
+        })
+      }, 80) // 8000ms / 100 = 80ms per 1%
+    }
+
+    return () => {
+      if (autoPlayRef.current) clearInterval(autoPlayRef.current)
+      if (progressRef.current) clearInterval(progressRef.current)
+    }
+  }, [isAutoPlaying, steps.length])
+
+  const handleStepClick = (index: number) => {
+    setActiveStep(index)
+    setProgress(0)
+    // Pause auto-play for a moment when user interacts
+    setIsAutoPlaying(false)
+    setTimeout(() => setIsAutoPlaying(true), 10000)
+  }
+
+  const currentStep = steps[activeStep]
+
+  return (
+    <AdminCard className="overflow-hidden relative group">
+      {/* Progress Bar */}
+      <div className="absolute top-0 left-0 w-full h-1 bg-slate-100">
+        <div 
+          className={`h-full transition-all duration-100 ease-linear ${
+            currentStep.color === 'emerald' ? 'bg-emerald-500' :
+            currentStep.color === 'blue' ? 'bg-blue-500' :
+            currentStep.color === 'purple' ? 'bg-purple-500' : 'bg-amber-500'
+          }`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      {/* Header with Navigation Dots */}
+      <div className="border-b border-slate-200 px-4 sm:px-5 py-3 bg-slate-50/50 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <InformationCircleIcon className="w-4 h-4 text-emerald-600" />
+          <h2 className="text-xs sm:text-sm font-semibold text-slate-700">How It Works</h2>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {steps.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => handleStepClick(index)}
+              className={`w-2 h-2 rounded-full transition-all ${
+                index === activeStep
+                  ? index === 0 ? 'bg-emerald-500 scale-125' :
+                    index === 1 ? 'bg-blue-500 scale-125' :
+                    index === 2 ? 'bg-purple-500 scale-125' : 'bg-amber-500 scale-125'
+                  : 'bg-slate-300 hover:bg-slate-400'
+              }`}
+              aria-label={`Go to step ${index + 1}`}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Content Area with Animation */}
+      <div className="p-4 sm:p-5">
+        <div className="flex items-start gap-4">
+          {/* Icon with animated background */}
+          <div className={`relative p-3 rounded-xl transition-all duration-500 ${
+            colorClasses[currentStep.color as keyof typeof colorClasses].split(' ')[0]
+          }`}>
+            <currentStep.icon className={`w-6 h-6 sm:w-7 sm:h-7 transition-transform duration-500 ${
+              colorClasses[currentStep.color as keyof typeof colorClasses].split(' ')[1]
+            }`} />
+            <div className={`absolute inset-0 rounded-xl animate-ping opacity-20 ${
+              currentStep.color === 'emerald' ? 'bg-emerald-500' :
+              currentStep.color === 'blue' ? 'bg-blue-500' :
+              currentStep.color === 'purple' ? 'bg-purple-500' : 'bg-amber-500'
+            }`} style={{ animationDuration: '2s' }} />
+          </div>
+
+          {/* Text Content */}
+          <div className="flex-1 min-w-0">
+            <h3 className={`text-base sm:text-lg font-semibold transition-colors duration-300 ${
+              currentStep.color === 'emerald' ? 'text-emerald-700' :
+              currentStep.color === 'blue' ? 'text-blue-700' :
+              currentStep.color === 'purple' ? 'text-purple-700' : 'text-amber-700'
+            }`}>
+              {currentStep.title}
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-600 mt-1">
+              {currentStep.description}
+            </p>
+          </div>
+        </div>
+
+        {/* Details List with Staggered Animation */}
+        <div className="mt-4 space-y-2">
+          {currentStep.details.map((detail, idx) => (
+            <div 
+              key={idx} 
+              className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 animate-fadeIn"
+              style={{ animationDelay: `${idx * 100}ms`, animationFillMode: 'both' }}
+            >
+              <CheckBadgeIcon className={`w-4 h-4 flex-shrink-0 ${
+                currentStep.color === 'emerald' ? 'text-emerald-500' :
+                currentStep.color === 'blue' ? 'text-blue-500' :
+                currentStep.color === 'purple' ? 'text-purple-500' : 'text-amber-500'
+              }`} />
+              <span>{detail}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Interactive Controls */}
+        <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between">
+          <button 
+            onClick={() => setIsAutoPlaying(!isAutoPlaying)}
+            className="text-xs text-slate-500 hover:text-emerald-600 transition flex items-center gap-1.5"
+          >
+            {isAutoPlaying ? (
+              <>
+                <ClockIcon className="w-3.5 h-3.5" />
+                Auto-rotating
+              </>
+            ) : (
+              <>
+                <PlayCircleIcon className="w-3.5 h-3.5" />
+                Paused
+              </>
+            )}
+          </button>
+          <div className="flex gap-1">
+            {steps.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => handleStepClick(index)}
+                className={`text-[10px] px-1.5 py-0.5 rounded transition ${
+                  index === activeStep
+                    ? index === 0 ? 'bg-emerald-100 text-emerald-700' :
+                      index === 1 ? 'bg-blue-100 text-blue-700' :
+                      index === 2 ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateX(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out forwards;
+        }
+      `}</style>
+    </AdminCard>
+  )
+}
+
+// Floating Stats Card with Live Updates
+const FloatingStatsCard = () => {
+  const [liveStats, setLiveStats] = useState({
+    onlineNow: 24,
+    consultationsToday: 156,
+    avgWaitTime: '4.5 min'
+  })
+
+  useEffect(() => {
+    // Simulate live updates
+    const interval = setInterval(() => {
+      setLiveStats(prev => ({
+        onlineNow: prev.onlineNow + (Math.random() > 0.5 ? 1 : -1),
+        consultationsToday: prev.consultationsToday + Math.floor(Math.random() * 3),
+        avgWaitTime: (4.2 + Math.random() * 0.6).toFixed(1) + ' min'
+      }))
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <AdminCard className="bg-gradient-to-br from-emerald-600 to-emerald-500 text-white">
+      <div className="p-4 sm:p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <HeartIcon className="w-4 h-4 animate-pulse" />
+          <h3 className="text-xs font-medium uppercase tracking-wider opacity-90">Live Activity</h3>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <p className="text-2xl font-bold">{liveStats.onlineNow}</p>
+            <p className="text-[10px] opacity-80">Online now</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold">{liveStats.consultationsToday}</p>
+            <p className="text-[10px] opacity-80">Today</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold">{liveStats.avgWaitTime}</p>
+            <p className="text-[10px] opacity-80">Avg. wait</p>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center gap-1 text-[10px] opacity-75">
+          <StatusIndicator active={true} pulse={true} />
+          <span>Updating live</span>
+        </div>
+      </div>
+    </AdminCard>
+  )
+}
+
+// Testimonial Carousel
+const TestimonialCarousel = () => {
+  const testimonials = [
+    {
+      id: 1,
+      name: 'Dr. Sarah Kimani',
+      role: 'Cardiologist',
+      content: 'The verification process was smooth and professional. Now I can reach patients across Kenya.',
+      rating: 5
+    },
+    {
+      id: 2,
+      name: 'James Mwangi',
+      role: 'Patient',
+      content: 'Found a great specialist within minutes. The platform is intuitive and secure.',
+      rating: 5
+    },
+    {
+      id: 3,
+      name: 'Dr. Peter Odhiambo',
+      role: 'Dermatologist',
+      content: 'Application was approved in 24 hours. Excellent support team!',
+      rating: 5
+    }
+  ]
+
+  return (
+    <AdminCard>
+      <div className="p-4 sm:p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <StarIcon className="w-4 h-4 text-amber-500" />
+          <h3 className="text-xs font-semibold text-slate-700">Trusted by professionals</h3>
+        </div>
+        <div className="space-y-3">
+          {testimonials.map((t) => (
+            <div key={t.id} className="flex items-start gap-2">
+              <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center text-[10px] font-bold text-emerald-700 flex-shrink-0 mt-0.5">
+                {t.name.split(' ').map(n => n[0]).join('')}
+              </div>
+              <div>
+                <p className="text-xs text-slate-600">"{t.content}"</p>
+                <p className="text-[10px] text-slate-500 mt-1">- {t.name}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </AdminCard>
@@ -334,7 +718,7 @@ export default function LandingPage() {
           <div className="flex items-center justify-between min-w-max sm:min-w-0">
             <div className="flex items-center gap-3 sm:gap-6 text-[10px] sm:text-xs text-slate-600">
               <span className="flex items-center flex-shrink-0">
-                <StatusIndicator active={stats.activeToday > 0} />
+                <StatusIndicator active={stats.activeToday > 0} pulse={true} />
                 <span className="font-medium mr-1">{stats.activeToday}</span> active
               </span>
               <span className="flex items-center flex-shrink-0">
@@ -402,7 +786,7 @@ export default function LandingPage() {
           
           {/* Medical metrics */}
           <div className="flex flex-wrap gap-3">
-            <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm">
+            <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm hover:shadow-md transition">
               <div className="flex items-center gap-2">
                 <span className="text-lg">👥</span>
                 <div>
@@ -412,7 +796,7 @@ export default function LandingPage() {
               </div>
             </div>
             
-            <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm">
+            <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm hover:shadow-md transition">
               <div className="flex items-center gap-2">
                 <span className="text-lg">📍</span>
                 <div>
@@ -422,7 +806,7 @@ export default function LandingPage() {
               </div>
             </div>
             
-            <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm">
+            <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm hover:shadow-md transition">
               <div className="flex items-center gap-2">
                 <span className="text-lg">⭐</span>
                 <div>
@@ -458,14 +842,28 @@ export default function LandingPage() {
           </div>
         )}
 
-        {/* Main content grid */}
+        {/* Interactive Cards Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 mb-6 sm:mb-8">
+          {/* Left column - Interactive Info Card */}
+          <div className="lg:col-span-2">
+            <InteractiveInfoCard />
+          </div>
+
+          {/* Right column - Floating Stats & Testimonials */}
+          <div className="space-y-4 sm:space-y-5">
+            <FloatingStatsCard />
+            <TestimonialCarousel />
+          </div>
+        </div>
+
+        {/* Specialties Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
           {/* Left column - Specialties */}
           <div className="lg:col-span-2">
             <AdminCard>
               <div className="border-b border-slate-200 px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 bg-slate-50/50">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xs sm:text-sm font-semibold text-slate-700">Specialties</h2>
+                  <h2 className="text-xs sm:text-sm font-semibold text-slate-700">Medical Specialties</h2>
                   <div className="flex items-center gap-2 sm:gap-3">
                     <FunnelIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 flex-shrink-0" />
                     <span className="text-[10px] sm:text-xs text-slate-500 bg-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md border border-slate-200">
@@ -483,7 +881,7 @@ export default function LandingPage() {
                         {specialties.map((specialty) => (
                           <div 
                             key={specialty.id} 
-                            className="group relative bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-lg p-2 sm:p-3 md:p-4 hover:border-emerald-200 transition-all"
+                            className="group relative bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-lg p-2 sm:p-3 md:p-4 hover:border-emerald-200 hover:shadow-md transition-all"
                           >
                             <div className="absolute top-1 right-1 sm:top-2 sm:right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <LockClosedIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-300" />
@@ -592,7 +990,7 @@ export default function LandingPage() {
                       item.color === 'emerald' ? 'text-emerald-600' : 'text-slate-900'
                     }`}>
                       {item.active !== undefined && (
-                        <StatusIndicator active={item.active} />
+                        <StatusIndicator active={item.active} pulse={item.color === 'emerald'} />
                       )}
                       {item.value}
                     </span>
@@ -611,13 +1009,13 @@ export default function LandingPage() {
                   <div className="p-1.5 sm:p-2 bg-slate-100 rounded-lg group-hover:bg-emerald-100 transition flex-shrink-0">
                     <EnvelopeIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
-                  <span className="truncate">support@afyaconnect.com</span>
+                  <span className="truncate">{SUPPORT_EMAIL}</span>
                 </a>
-                <a href="tel:+254700000000" className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-600 group hover:text-emerald-600 transition">
+                <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, '')}`} className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-600 group hover:text-emerald-600 transition">
                   <div className="p-1.5 sm:p-2 bg-slate-100 rounded-lg group-hover:bg-emerald-100 transition flex-shrink-0">
                     <PhoneIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
-                  <span className="truncate">+254 700 000 000</span>
+                  <span className="truncate">{SUPPORT_PHONE}</span>
                 </a>
                 <div className="border-t border-slate-200 pt-3 sm:pt-4 mt-2">
                   <Link 
