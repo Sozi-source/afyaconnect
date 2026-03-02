@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -20,8 +20,11 @@ import {
   DocumentTextIcon,
   ShieldCheckIcon,
   XMarkIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  ClipboardDocumentListIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline'
+import { apiClient } from '@/app/lib/api'
 
 interface DashboardSidebarProps {
   isOpen: boolean
@@ -36,43 +39,161 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>
   badge?: number | string
   roles: UserRole[]
+  showIfVerified?: boolean
+  showIfUnverified?: boolean
 }
 
 export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
+  // ============================================================================
+  // ALL HOOKS MUST BE AT THE TOP LEVEL
+  // ============================================================================
+  
+  // State hooks
   const [mounted, setMounted] = useState(false)
+  const [applicationStatus, setApplicationStatus] = useState<string | null>(null)
+  const [hasApplication, setHasApplication] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  
+  // Next.js hooks
   const pathname = usePathname()
-  const { user } = useAuth()
+  
+  // Auth hook
+  const { user, refreshUser } = useAuth()
 
+  // Set mounted state immediately
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  // Determine user role
+  const userRole = useMemo((): UserRole => {
+    if (!user) return 'client'
+    if (user.is_staff) return 'admin'
+    return (user.role as UserRole) || 'client'
+  }, [user])
+
+  // Check if user is verified
+  const isVerified = useMemo(() => user?.is_verified || false, [user?.is_verified])
+
+  // Fetch application status
+  const fetchApplicationStatus = useCallback(async () => {
+    if (!user || user.role !== 'practitioner') return
+    
+    try {
+      const response = await apiClient.practitioners.applications.getStatus()
+      setHasApplication(response.hasApplication)
+      if (response.hasApplication && response.application) {
+        setApplicationStatus(response.application.status)
+      }
+    } catch (error) {
+      console.error('Failed to fetch application status:', error)
+    }
+  }, [user])
+
+  // Refresh data
+  const refreshData = useCallback(async () => {
+    if (isRefreshing || !user) return
+    
+    setIsRefreshing(true)
+    try {
+      await refreshUser()
+      if (user.role === 'practitioner') {
+        await fetchApplicationStatus()
+      }
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [user, isRefreshing, refreshUser, fetchApplicationStatus])
+
+  // Fetch application status on mount and when user changes
   useEffect(() => {
-    if (window.innerWidth < 1024) {
+    if (user?.role === 'practitioner') {
+      fetchApplicationStatus()
+    }
+  }, [user?.id, user?.role, fetchApplicationStatus])
+
+  // Poll for updates
+  useEffect(() => {
+    if (!user) return
+    
+    const interval = setInterval(() => {
+      refreshData()
+    }, 30000)
+    
+    return () => clearInterval(interval)
+  }, [user, refreshData])
+
+  // Refresh on visibility change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user) {
+        refreshData()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [user, refreshData])
+
+  // Close sidebar on route change for mobile
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       onClose()
     }
   }, [pathname, onClose])
 
-  // Log when user changes to debug
-  useEffect(() => {
-    console.log('🔄 DashboardSidebar - user updated:', user)
-  }, [user])
+  // Compute role badge information
+  const roleInfo = useMemo(() => {
+    if (!user) {
+      return {
+        text: 'Loading...',
+        color: 'bg-slate-50 text-slate-700 border border-slate-200',
+        icon: UserIcon
+      }
+    }
+    
+    if (userRole === 'admin') {
+      return {
+        text: 'Administrator',
+        color: 'bg-purple-50 text-purple-700 border border-purple-200',
+        icon: ShieldCheckIcon
+      }
+    }
+    if (userRole === 'practitioner') {
+      if (isVerified) {
+        return {
+          text: 'Verified Practitioner',
+          color: 'bg-teal-50 text-teal-700 border border-teal-200',
+          icon: CheckCircleIcon
+        }
+      } else {
+        let statusText = 'Pending Verification'
+        if (hasApplication) {
+          if (applicationStatus === 'pending') statusText = 'Application Under Review'
+          else if (applicationStatus === 'draft') statusText = 'Complete Application'
+          else if (applicationStatus === 'info_needed') statusText = 'Action Required'
+          else if (applicationStatus === 'rejected') statusText = 'Application Rejected'
+          else if (applicationStatus === 'approved') statusText = 'Application Approved'
+        }
+        
+        return {
+          text: statusText,
+          color: applicationStatus === 'approved' 
+            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+            : 'bg-amber-50 text-amber-700 border border-amber-200',
+          icon: applicationStatus === 'approved' ? CheckCircleIcon : ClockIcon
+        }
+      }
+    }
+    return {
+      text: 'Client',
+      color: 'bg-blue-50 text-blue-700 border border-blue-200',
+      icon: UserIcon
+    }
+  }, [user, userRole, isVerified, hasApplication, applicationStatus])
 
-  if (!mounted) {
-    return null
-  }
-
-  // Recompute these values whenever user changes
-  const userRole = (() => {
-    if (!user) return 'client' // fallback
-    if (user.is_staff) return 'admin'
-    return user.role || 'client'
-  })()
-
-  const isVerified = user?.is_verified || false
-
-  // Define navigation items with role-based hrefs
-  const navItems: NavItem[] = [
+  // Navigation items
+  const navItems = useMemo((): NavItem[] => [
     { 
       name: 'Dashboard', 
       href: `/${userRole}/dashboard`, 
@@ -97,13 +218,22 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
       name: 'Availability', 
       href: '/practitioner/dashboard/availability', 
       icon: ClockIcon, 
-      roles: ['practitioner'] 
+      roles: ['practitioner'],
+      showIfVerified: true
     },
     { 
       name: 'Earnings', 
       href: '/practitioner/dashboard/earnings', 
       icon: CurrencyDollarIcon, 
-      roles: ['practitioner'] 
+      roles: ['practitioner'],
+      showIfVerified: true
+    },
+    { 
+      name: 'Application', 
+      href: '/practitioner/application', 
+      icon: ClipboardDocumentListIcon, 
+      roles: ['practitioner'],
+      showIfUnverified: true
     },
     // Admin specific
     { 
@@ -137,15 +267,53 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
       icon: UserIcon, 
       roles: ['client', 'practitioner', 'admin'] 
     },
-  ]
+  ], [userRole])
 
-  const secondaryNav = [
+  const secondaryNav = useMemo(() => [
     { name: 'Settings', href: `/${userRole}/dashboard/settings`, icon: Cog6ToothIcon, roles: ['client', 'practitioner', 'admin'] },
     { name: 'Help', href: `/${userRole}/dashboard/support`, icon: DocumentTextIcon, roles: ['client', 'practitioner', 'admin'] },
-  ]
+  ], [userRole])
 
-  // Filter items based on user role
-  const mainNav = navItems.filter(item => item.roles.includes(userRole))
+  // ============================================================================
+  // RENDER LOGIC
+  // ============================================================================
+  
+  // Don't render anything if not mounted (prevents hydration issues)
+  if (!mounted) {
+    return null
+  }
+
+  // If no user, show a simplified sidebar or null
+  if (!user) {
+    return (
+      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
+        <div className="flex flex-col flex-1 min-h-0 bg-white border-r border-gray-200">
+          <div className="h-20 flex items-center px-6 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-lg">NC</span>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">
+                  Nutri<span className="text-teal-600">Connect</span>
+                </h1>
+                <p className="text-xs text-gray-500">Loading...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Filter navigation items
+  const mainNav = navItems.filter(item => {
+    if (!item.roles.includes(userRole)) return false
+    if (item.showIfVerified === true && !isVerified) return false
+    if (item.showIfUnverified === true && isVerified) return false
+    return true
+  })
+
   const supportNav = secondaryNav.filter(item => item.roles.includes(userRole))
 
   const isActive = (href: string) => {
@@ -153,7 +321,6 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
   }
 
   const getUserInitials = () => {
-    if (!user) return 'U'
     if (user.first_name && user.last_name) {
       return `${user.first_name[0]}${user.last_name[0]}`
     }
@@ -166,53 +333,20 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
     return userRole === 'practitioner' ? 'P' : userRole === 'admin' ? 'A' : 'C'
   }
 
-  const getRoleBadge = () => {
-    if (userRole === 'admin') {
-      return {
-        text: 'Administrator',
-        color: 'bg-purple-50 text-purple-700 border border-purple-200'
-      }
-    }
-    if (userRole === 'practitioner') {
-      if (isVerified) {
-        return {
-          text: 'Verified Practitioner',
-          color: 'bg-teal-50 text-teal-700 border border-teal-200'
-        }
-      } else {
-        return {
-          text: 'Pending Verification',
-          color: 'bg-amber-50 text-amber-700 border border-amber-200'
-        }
-      }
-    }
-    return {
-      text: 'Client',
-      color: 'bg-blue-50 text-blue-700 border border-blue-200'
-    }
-  }
-
-  const roleInfo = getRoleBadge()
+  const RoleIcon = roleInfo.icon
   const portalName = userRole === 'practitioner' 
     ? 'Practitioner Portal' 
     : userRole === 'admin' 
     ? 'Admin Portal' 
     : 'Client Portal'
 
-  const displayName = user 
-    ? (user.first_name 
-        ? `${user.first_name} ${user.last_name || ''}`.trim()
-        : user.email?.split('@')[0] || 'User')
-    : 'User'
-
-  // Don't render if no user
-  if (!user) {
-    return null
-  }
+  const displayName = user.first_name 
+    ? `${user.first_name} ${user.last_name || ''}`.trim()
+    : user.email?.split('@')[0] || 'User'
 
   return (
     <>
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar - Always visible on large screens */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
         <div className="flex flex-col flex-1 min-h-0 bg-white border-r border-gray-200">
           {/* Logo */}
@@ -243,13 +377,22 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
                 <p className="text-xs text-gray-500 truncate mt-0.5">
                   {user.email}
                 </p>
-                <div className="mt-1.5">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${roleInfo.color}`}>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <span 
+                    key={`${isVerified}-${applicationStatus}`} 
+                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${roleInfo.color}`}
+                  >
+                    <RoleIcon className="mr-1 h-3 w-3" />
                     {roleInfo.text}
-                    {isVerified && userRole === 'practitioner' && (
-                      <CheckCircleIcon className="ml-1 h-3 w-3" />
-                    )}
                   </span>
+                  <button
+                    onClick={refreshData}
+                    disabled={isRefreshing}
+                    className="text-xs text-teal-600 hover:text-teal-700 disabled:opacity-50"
+                    title="Refresh status"
+                  >
+                    <ArrowPathIcon className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -283,6 +426,17 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
                     <span className="ml-3 text-sm font-medium flex-1">
                       {item.name}
                     </span>
+                    {item.name === 'Application' && applicationStatus && (
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        applicationStatus === 'draft' ? 'bg-slate-100 text-slate-600' :
+                        applicationStatus === 'pending' ? 'bg-amber-100 text-amber-600' :
+                        applicationStatus === 'info_needed' ? 'bg-blue-100 text-blue-600' :
+                        applicationStatus === 'rejected' ? 'bg-red-100 text-red-600' :
+                        'bg-emerald-100 text-emerald-600'
+                      }`}>
+                        {applicationStatus === 'approved' ? 'Approved' : applicationStatus.replace('_', ' ')}
+                      </span>
+                    )}
                   </Link>
                 )
               })}
@@ -325,7 +479,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
         </div>
       </div>
 
-      {/* Mobile Sidebar */}
+      {/* Mobile Sidebar - Only shown when isOpen is true */}
       <AnimatePresence>
         {isOpen && (
           <>
@@ -371,9 +525,23 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
                     <div>
                       <p className="font-medium text-gray-900">{displayName}</p>
                       <p className="text-xs text-gray-500 mt-0.5">{user.email}</p>
-                      <span className={`inline-flex items-center px-2 py-0.5 mt-1.5 rounded text-xs font-medium ${roleInfo.color}`}>
-                        {roleInfo.text}
-                      </span>
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <span 
+                          key={`${isVerified}-${applicationStatus}-mobile`} 
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${roleInfo.color}`}
+                        >
+                          <RoleIcon className="mr-1 h-3 w-3" />
+                          {roleInfo.text}
+                        </span>
+                        <button
+                          onClick={refreshData}
+                          disabled={isRefreshing}
+                          className="text-xs text-teal-600 hover:text-teal-700 disabled:opacity-50"
+                          title="Refresh status"
+                        >
+                          <ArrowPathIcon className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -403,6 +571,17 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
                         <span className="ml-3 text-sm font-medium">
                           {item.name}
                         </span>
+                        {item.name === 'Application' && applicationStatus && (
+                          <span className={`ml-2 text-xs px-2 py-1 rounded-full ${
+                            applicationStatus === 'draft' ? 'bg-slate-100 text-slate-600' :
+                            applicationStatus === 'pending' ? 'bg-amber-100 text-amber-600' :
+                            applicationStatus === 'info_needed' ? 'bg-blue-100 text-blue-600' :
+                            applicationStatus === 'rejected' ? 'bg-red-100 text-red-600' :
+                            'bg-emerald-100 text-emerald-600'
+                          }`}>
+                            {applicationStatus === 'approved' ? 'Approved' : applicationStatus.replace('_', ' ')}
+                          </span>
+                        )}
                       </Link>
                     ))}
                   </div>

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/app/contexts/AuthContext'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ArrowLeftIcon,
   CalendarIcon,
@@ -16,12 +16,17 @@ import {
   DocumentTextIcon,
   CheckCircleIcon,
   XCircleIcon,
-  PencilIcon
+  PencilIcon,
+  ShieldCheckIcon,
+  InformationCircleIcon,
+  ExclamationTriangleIcon,
+  ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline'
 import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import { apiClient } from '@/app/lib/api'
-import type { Consultation } from '@/app/types'
+import { extractResults } from '@/app/lib/utils'
+import type { Consultation, Message, Review } from '@/app/types'
 
 interface ExtendedUser {
   id: number
@@ -29,6 +34,7 @@ interface ExtendedUser {
   first_name?: string
   last_name?: string
   role?: string
+  is_verified?: boolean
 }
 
 export default function ConsultationDetailPage() {
@@ -37,10 +43,13 @@ export default function ConsultationDetailPage() {
   const { user, isAuthenticated } = useAuth()
   const extendedUser = user as ExtendedUser | null
   const [consultation, setConsultation] = useState<Consultation | null>(null)
+  const [recentMessages, setRecentMessages] = useState<Message[]>([])
+  const [hasReview, setHasReview] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const [isCancelling, setIsCancelling] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const id = params.id as string
 
@@ -55,25 +64,37 @@ export default function ConsultationDetailPage() {
   const fetchConsultation = async () => {
     try {
       setLoading(true)
-      // Mock data - replace with API call
-      const mockData: Consultation = {
-        id: parseInt(id),
-        client: 101,
-        client_name: 'Mary Wanjiku',
-        practitioner: 201,
-        practitioner_name: 'Dr. James Omondi',
-        date: '2024-02-22',
-        time: '10:00:00',
-        status: 'booked',
-        duration_minutes: 60,
-        client_notes: 'First consultation about nutrition plan. Need help with meal planning for diabetes management.',
-        practitioner_notes: '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+      setError(null)
+      
+      // Fetch consultation data from API
+      const data = await apiClient.consultations.getOne(parseInt(id))
+      setConsultation(data)
+      
+      // Fetch recent messages for this consultation
+      try {
+        const messages = await apiClient.messages.getAll(parseInt(id))
+        const messagesList = extractResults<Message>(messages)
+        setRecentMessages(messagesList.slice(0, 2))
+      } catch (error) {
+        console.log('No messages available for this consultation')
+        setRecentMessages([])
       }
-      setConsultation(mockData)
-    } catch (error) {
+      
+      // Check if review exists
+      if (data.status === 'completed') {
+        try {
+          const reviews = await apiClient.reviews.getMyReviews()
+          const reviewsList = extractResults<Review>(reviews)
+          const existingReview = reviewsList.find(r => r.consultation === parseInt(id))
+          setHasReview(!!existingReview)
+        } catch (error) {
+          console.log('Could not fetch reviews')
+        }
+      }
+      
+    } catch (error: any) {
       console.error('Error fetching consultation:', error)
+      setError(error.message || 'Failed to load consultation details')
     } finally {
       setLoading(false)
     }
@@ -82,57 +103,132 @@ export default function ConsultationDetailPage() {
   const handleCancel = async () => {
     setIsCancelling(true)
     try {
-      // API call to cancel consultation
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await apiClient.consultations.updateStatus(parseInt(id), 'cancelled')
       setConsultation(prev => prev ? { ...prev, status: 'cancelled' } : null)
       setShowCancelModal(false)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error cancelling consultation:', error)
+      setError(error.message || 'Failed to cancel consultation')
     } finally {
       setIsCancelling(false)
     }
   }
 
   const handleReschedule = () => {
-    router.push(`/dashboard/consultations/reschedule/${id}`)
+    // Navigate to reschedule page with consultation data
+    router.push(`/${extendedUser?.role}/dashboard/consultations/reschedule/${id}`)
   }
 
   const handleJoinCall = () => {
-    // Implement video/audio call logic
-    window.open(`/call/${id}`, '_blank')
+    // In production, this would open the actual video call
+    // For now, show a message that the feature is coming
+    alert('Video call feature coming soon!')
+  }
+
+  const getStatusConfig = (status: string) => {
+    switch(status) {
+      case 'booked':
+        return {
+          icon: ClockIcon,
+          title: 'Upcoming Consultation',
+          message: 'Please be ready 5 minutes before the scheduled time',
+          bg: 'bg-blue-50',
+          border: 'border-blue-200',
+          text: 'text-blue-800',
+          subtext: 'text-blue-600'
+        }
+      case 'completed':
+        return {
+          icon: CheckCircleIcon,
+          title: 'Consultation Completed',
+          message: hasReview ? 'Thank you for your feedback' : 'Please leave a review',
+          bg: 'bg-green-50',
+          border: 'border-green-200',
+          text: 'text-green-800',
+          subtext: 'text-green-600'
+        }
+      case 'cancelled':
+        return {
+          icon: XCircleIcon,
+          title: 'Consultation Cancelled',
+          message: 'This consultation has been cancelled',
+          bg: 'bg-red-50',
+          border: 'border-red-200',
+          text: 'text-red-800',
+          subtext: 'text-red-600'
+        }
+      default:
+        return {
+          icon: InformationCircleIcon,
+          title: 'Consultation',
+          message: 'Status unknown',
+          bg: 'bg-slate-50',
+          border: 'border-slate-200',
+          text: 'text-slate-800',
+          subtext: 'text-slate-600'
+        }
+    }
+  }
+
+  const formatDateTime = (dateString: string, timeString: string) => {
+    const date = new Date(dateString)
+    const formattedDate = date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+    const formattedTime = timeString.slice(0,5)
+    return { formattedDate, formattedTime }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="relative">
+          <div className="animate-spin rounded-full h-12 w-12 sm:h-14 sm:w-14 border-4 border-emerald-200 border-t-emerald-600"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <CalendarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 animate-pulse" />
+          </div>
+        </div>
       </div>
     )
   }
 
-  if (!consultation) {
+  if (error || !consultation) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-bold">Consultation not found</h2>
-        <Link href="/client/dashboard/consultations" className="mt-4 inline-block">
-          <Button variant="outline">Back to Consultations</Button>
-        </Link>
+      <div className="min-h-[60vh] flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardBody className="p-6 text-center">
+            <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <ExclamationTriangleIcon className="w-7 h-7 text-amber-600" />
+            </div>
+            <h2 className="text-lg font-semibold text-slate-900 mb-2">Consultation not found</h2>
+            <p className="text-sm text-slate-500 mb-4">{error || 'The consultation you\'re looking for doesn\'t exist'}</p>
+            <Link href={`/${extendedUser?.role || 'client'}/dashboard/consultations`}>
+              <Button variant="outline" className="w-full">
+                <ArrowLeftIcon className="w-4 h-4 mr-2" />
+                Back to Consultations
+              </Button>
+            </Link>
+          </CardBody>
+        </Card>
       </div>
     )
   }
 
   const isPractitioner = extendedUser?.role === 'practitioner'
-  const isUpcoming = consultation.status === 'booked'
-  const isCompleted = consultation.status === 'completed'
-  const isCancelled = consultation.status === 'cancelled'
+  const statusConfig = getStatusConfig(consultation.status)
+  const StatusIcon = statusConfig.icon
+  const { formattedDate, formattedTime } = formatDateTime(consultation.date, consultation.time)
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-5 md:py-6 space-y-4 sm:space-y-5 md:space-y-6">
       {/* Back Button */}
-      <Link href="/client/dashboard/consultations">
-        <Button variant="outline" size="sm">
-          <ArrowLeftIcon className="h-4 w-4 mr-2" />
-          Back to Consultations
+      <Link href={`/${isPractitioner ? 'practitioner' : 'client'}/dashboard/consultations`}>
+        <Button variant="outline" size="sm" className="!p-2 sm:!px-4">
+          <ArrowLeftIcon className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Back to Consultations</span>
         </Button>
       </Link>
 
@@ -140,100 +236,94 @@ export default function ConsultationDetailPage() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-xl p-4 ${
-          isUpcoming ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' :
-          isCompleted ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' :
-          'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-        }`}
+        className={`rounded-lg sm:rounded-xl p-3 sm:p-4 ${statusConfig.bg} border ${statusConfig.border}`}
       >
-        <div className="flex items-center gap-3">
-          {isUpcoming && <ClockIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
-          {isCompleted && <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400" />}
-          {isCancelled && <XCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400" />}
-          <div>
-            <p className={`font-medium ${
-              isUpcoming ? 'text-blue-800 dark:text-blue-300' :
-              isCompleted ? 'text-green-800 dark:text-green-300' :
-              'text-red-800 dark:text-red-300'
-            }`}>
-              {isUpcoming && 'Upcoming Consultation'}
-              {isCompleted && 'Consultation Completed'}
-              {isCancelled && 'Consultation Cancelled'}
+        <div className="flex items-start sm:items-center gap-2 sm:gap-3">
+          <div className={`p-1.5 sm:p-2 rounded-lg ${statusConfig.bg} border ${statusConfig.border} flex-shrink-0`}>
+            <StatusIcon className={`h-4 w-4 sm:h-5 sm:w-5 ${statusConfig.text}`} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm sm:text-base font-medium ${statusConfig.text}`}>
+              {statusConfig.title}
             </p>
-            <p className={`text-sm ${
-              isUpcoming ? 'text-blue-600 dark:text-blue-400' :
-              isCompleted ? 'text-green-600 dark:text-green-400' :
-              'text-red-600 dark:text-red-400'
-            }`}>
-              {isUpcoming && 'Please be ready 5 minutes before the scheduled time'}
-              {isCompleted && 'Thank you for your consultation'}
-              {isCancelled && 'This consultation has been cancelled'}
+            <p className={`text-xs sm:text-sm ${statusConfig.subtext} mt-0.5`}>
+              {statusConfig.message}
             </p>
           </div>
         </div>
       </motion.div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
         {/* Left Column - Details */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-5">
           {/* Consultation Details */}
           <Card>
-            <CardBody className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Consultation Details</h2>
+            <CardBody className="p-4 sm:p-5 md:p-6">
+              <h2 className="text-base sm:text-lg font-semibold text-slate-900 mb-4">Consultation Details</h2>
               <div className="space-y-4">
+                {/* Client/Practitioner Info */}
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                    {isPractitioner ? consultation.client_name?.[0] : consultation.practitioner_name?.[0]}
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-base sm:text-lg flex-shrink-0">
+                    {isPractitioner 
+                      ? consultation.client_name?.[0] || 'C' 
+                      : consultation.practitioner_name?.[0] || 'P'}
                   </div>
-                  <div>
-                    <p className="font-semibold">
+                  <div className="min-w-0">
+                    <p className="text-sm sm:text-base font-semibold text-slate-900 truncate">
                       {isPractitioner ? consultation.client_name : consultation.practitioner_name}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-xs sm:text-sm text-slate-500">
                       {isPractitioner ? 'Client' : 'Practitioner'}
                     </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                {/* Date/Time Grid */}
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 pt-3 sm:pt-4 border-t border-slate-200">
                   <div>
-                    <p className="text-xs text-gray-500">Date</p>
-                    <p className="text-sm font-medium">
-                      {new Date(consultation.date).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        month: 'long',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </p>
+                    <p className="text-xs text-slate-500">Date</p>
+                    <p className="text-sm font-medium text-slate-900">{formattedDate}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Time</p>
-                    <p className="text-sm font-medium">
-                      {consultation.time.slice(0,5)} ({consultation.duration_minutes} min)
+                    <p className="text-xs text-slate-500">Time</p>
+                    <p className="text-sm font-medium text-slate-900">
+                      {formattedTime} ({consultation.duration_minutes} min)
                     </p>
                   </div>
                 </div>
 
-                {/* Notes */}
-                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <p className="text-xs text-gray-500 mb-2">Notes</p>
-                  <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                    <p className="text-sm">
+                {/* Client Notes */}
+                <div className="pt-3 sm:pt-4 border-t border-slate-200">
+                  <p className="text-xs text-slate-500 mb-2">Client Notes</p>
+                  <div className="bg-slate-50 p-3 sm:p-4 rounded-lg">
+                    <p className="text-xs sm:text-sm text-slate-700">
                       {consultation.client_notes || 'No notes provided'}
                     </p>
                   </div>
                 </div>
 
-                {isPractitioner && isUpcoming && (
-                  <div className="pt-4">
+                {/* Practitioner Notes (if applicable) */}
+                {isPractitioner && consultation.practitioner_notes && (
+                  <div className="pt-3 sm:pt-4 border-t border-slate-200">
+                    <p className="text-xs text-slate-500 mb-2">Your Notes</p>
+                    <div className="bg-emerald-50 p-3 sm:p-4 rounded-lg">
+                      <p className="text-xs sm:text-sm text-emerald-700">
+                        {consultation.practitioner_notes}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {isPractitioner && consultation.status === 'booked' && (
+                  <div className="pt-3 sm:pt-4">
                     <Button
                       variant="outline"
                       fullWidth
-                      onClick={() => router.push(`/dashboard/consultations/${id}/notes`)}
+                      onClick={() => router.push(`/practitioner/dashboard/consultations/${id}/notes`)}
+                      className="text-xs sm:text-sm"
                     >
-                      <PencilIcon className="h-4 w-4 mr-2" />
+                      <PencilIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5" />
                       Add Consultation Notes
                     </Button>
                   </div>
@@ -244,29 +334,53 @@ export default function ConsultationDetailPage() {
 
           {/* Messages Preview */}
           <Card>
-            <CardBody className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">Messages</h2>
-                <Link href={`/dashboard/messages?consultation=${id}`} className="text-sm text-emerald-600 hover:underline">
+            <CardBody className="p-4 sm:p-5 md:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base sm:text-lg font-semibold text-slate-900">Messages</h2>
+                <Link href={`/${isPractitioner ? 'practitioner' : 'client'}/dashboard/messages?consultation=${id}`} 
+                      className="text-xs sm:text-sm text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1">
                   View all
+                  <ArrowLeftIcon className="h-3 w-3 rotate-180" />
                 </Link>
               </div>
-              <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-xs font-bold">
-                    {isPractitioner ? 'MW' : 'JO'}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">
-                      {isPractitioner ? 'Mary Wanjiku' : 'Dr. James Omondi'}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Looking forward to our session!
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">2 hours ago</p>
-                  </div>
+              
+              {recentMessages.length > 0 ? (
+                <div className="space-y-3">
+                  {recentMessages.map((message) => (
+                    <div key={message.id} className="flex items-start gap-2 sm:gap-3">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-slate-200 rounded-full flex items-center justify-center text-xs font-bold text-slate-700 flex-shrink-0">
+                        {message.sender_name?.[0] || 'U'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs sm:text-sm font-medium text-slate-900">
+                            {message.sender_name || 'User'}
+                          </p>
+                          <span className="text-[10px] text-slate-400">
+                            {message.created_at ? new Date(message.created_at).toLocaleDateString() : ''}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 mt-1 line-clamp-2">
+                          {message.content}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-6">
+                  <ChatBubbleLeftRightIcon className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-xs text-slate-500">No messages yet</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => router.push(`/${isPractitioner ? 'practitioner' : 'client'}/dashboard/messages/new?consultation=${id}`)}
+                    className="mt-3 text-xs"
+                  >
+                    Send Message
+                  </Button>
+                </div>
+              )}
             </CardBody>
           </Card>
         </div>
@@ -274,14 +388,14 @@ export default function ConsultationDetailPage() {
         {/* Right Column - Actions */}
         <div className="space-y-4">
           {/* Action Buttons */}
-          {isUpcoming && (
+          {consultation.status === 'booked' && (
             <Card>
-              <CardBody className="p-6">
-                <h2 className="text-lg font-semibold mb-4">Join Session</h2>
-                <div className="space-y-3">
+              <CardBody className="p-4 sm:p-5 md:p-6">
+                <h2 className="text-base sm:text-lg font-semibold text-slate-900 mb-4">Join Session</h2>
+                <div className="space-y-2 sm:space-y-3">
                   <Button
                     fullWidth
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm py-2.5"
                     onClick={handleJoinCall}
                   >
                     <VideoCameraIcon className="h-4 w-4 mr-2" />
@@ -291,6 +405,7 @@ export default function ConsultationDetailPage() {
                     fullWidth
                     variant="outline"
                     onClick={handleJoinCall}
+                    className="text-xs sm:text-sm py-2.5"
                   >
                     <PhoneIcon className="h-4 w-4 mr-2" />
                     Join Audio Call
@@ -298,7 +413,8 @@ export default function ConsultationDetailPage() {
                   <Button
                     fullWidth
                     variant="outline"
-                    onClick={() => router.push(`/dashboard/messages/new?consultation=${id}`)}
+                    onClick={() => router.push(`/${isPractitioner ? 'practitioner' : 'client'}/dashboard/messages/new?consultation=${id}`)}
+                    className="text-xs sm:text-sm py-2.5"
                   >
                     <ChatBubbleLeftIcon className="h-4 w-4 mr-2" />
                     Send Message
@@ -310,15 +426,17 @@ export default function ConsultationDetailPage() {
 
           {/* Management Actions */}
           <Card>
-            <CardBody className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Manage</h2>
-              <div className="space-y-3">
-                {isUpcoming && (
+            <CardBody className="p-4 sm:p-5 md:p-6">
+              <h2 className="text-base sm:text-lg font-semibold text-slate-900 mb-4">Manage</h2>
+              <div className="space-y-2 sm:space-y-3">
+                {consultation.status === 'booked' && (
                   <>
                     <Button
                       fullWidth
                       variant="outline"
                       onClick={handleReschedule}
+                      className="text-xs sm:text-sm py-2.5"
+                      disabled // Disable until reschedule feature is implemented
                     >
                       <CalendarIcon className="h-4 w-4 mr-2" />
                       Reschedule
@@ -327,39 +445,50 @@ export default function ConsultationDetailPage() {
                       fullWidth
                       variant="danger"
                       onClick={() => setShowCancelModal(true)}
+                      className="text-xs sm:text-sm py-2.5"
                     >
                       <XCircleIcon className="h-4 w-4 mr-2" />
                       Cancel Consultation
                     </Button>
                   </>
                 )}
-                {isCompleted && (
+                {consultation.status === 'completed' && !hasReview && !isPractitioner && (
                   <Button
                     fullWidth
                     variant="outline"
-                    onClick={() => router.push(`/dashboard/reviews/new?consultation=${id}`)}
+                    onClick={() => router.push(`/client/dashboard/reviews/new?consultation=${id}`)}
+                    className="text-xs sm:text-sm py-2.5"
                   >
                     <DocumentTextIcon className="h-4 w-4 mr-2" />
                     Leave a Review
                   </Button>
+                )}
+                {consultation.status === 'completed' && hasReview && !isPractitioner && (
+                  <div className="text-center py-2">
+                    <p className="text-xs text-emerald-600">✓ Review submitted</p>
+                  </div>
                 )}
               </div>
             </CardBody>
           </Card>
 
           {/* Meeting Info */}
-          {isUpcoming && (
+          {consultation.status === 'booked' && (
             <Card>
-              <CardBody className="p-6">
-                <h2 className="text-lg font-semibold mb-4">Meeting Information</h2>
-                <div className="space-y-2 text-sm">
-                  <p className="flex items-center gap-2">
-                    <VideoCameraIcon className="h-4 w-4 text-gray-400" />
-                    <span>Meeting link will appear 5 minutes before start</span>
+              <CardBody className="p-4 sm:p-5 md:p-6">
+                <h2 className="text-base sm:text-lg font-semibold text-slate-900 mb-4">Meeting Information</h2>
+                <div className="space-y-2 text-xs sm:text-sm">
+                  <p className="flex items-center gap-2 text-slate-600">
+                    <VideoCameraIcon className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                    <span>Meeting link will be available 5 minutes before start</span>
                   </p>
-                  <p className="flex items-center gap-2">
-                    <ClockIcon className="h-4 w-4 text-gray-400" />
+                  <p className="flex items-center gap-2 text-slate-600">
+                    <ClockIcon className="h-4 w-4 text-slate-400 flex-shrink-0" />
                     <span>Duration: {consultation.duration_minutes} minutes</span>
+                  </p>
+                  <p className="flex items-center gap-2 text-slate-600">
+                    <ShieldCheckIcon className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                    <span>End-to-end encrypted</span>
                   </p>
                 </div>
               </CardBody>
@@ -369,44 +498,64 @@ export default function ConsultationDetailPage() {
       </div>
 
       {/* Cancel Modal */}
-      {showCancelModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6"
-          >
-            <h2 className="text-xl font-bold mb-4">Cancel Consultation</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Are you sure you want to cancel this consultation? This action cannot be undone.
-            </p>
-            <textarea
-              placeholder="Reason for cancellation (optional)"
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              className="w-full p-3 border border-gray-200 dark:border-gray-700 rounded-lg mb-4 text-sm"
-              rows={3}
-            />
-            <div className="flex gap-3">
-              <Button
-                variant="danger"
-                fullWidth
-                onClick={handleCancel}
-                disabled={isCancelling}
-              >
-                {isCancelling ? 'Cancelling...' : 'Yes, Cancel'}
-              </Button>
-              <Button
-                variant="outline"
-                fullWidth
-                onClick={() => setShowCancelModal(false)}
-              >
-                No, Keep it
-              </Button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      <AnimatePresence>
+        {showCancelModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-xl max-w-md w-full p-5 sm:p-6"
+            >
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-3">Cancel Consultation</h2>
+              <p className="text-xs sm:text-sm text-slate-600 mb-4">
+                Are you sure you want to cancel this consultation? This action cannot be undone.
+              </p>
+              <textarea
+                placeholder="Reason for cancellation (optional)"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="w-full p-2.5 sm:p-3 text-xs sm:text-sm border border-slate-200 rounded-lg mb-4 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                rows={3}
+              />
+              <div className="flex flex-col xs:flex-row gap-2">
+                <Button
+                  variant="danger"
+                  fullWidth
+                  onClick={handleCancel}
+                  disabled={isCancelling}
+                  className="text-xs sm:text-sm py-2.5"
+                >
+                  {isCancelling ? (
+                    <>
+                      <ArrowLeftIcon className="h-4 w-4 mr-2 animate-spin" />
+                      Cancelling...
+                    </>
+                  ) : (
+                    'Yes, Cancel'
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  fullWidth
+                  onClick={() => setShowCancelModal(false)}
+                  className="text-xs sm:text-sm py-2.5"
+                >
+                  No, Keep it
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <style jsx>{`
+        @media (max-width: 480px) {
+          .xs\\:flex-row {
+            flex-direction: row;
+          }
+        }
+      `}</style>
     </div>
   )
 }

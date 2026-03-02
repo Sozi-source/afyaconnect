@@ -10,11 +10,15 @@ import {
   StarIcon,
   UserGroupIcon,
   ChartBarIcon,
-  ArrowTrendingUpIcon
+  ArrowTrendingUpIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline'
-import { Card, CardBody } from '@/app/components/ui/Card'
+import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import { apiClient } from '@/app/lib/api'
+import { extractResults } from '@/app/lib/utils'
 import type { PractitionerMetrics } from '@/app/types'
 import Link from 'next/link'
 
@@ -47,7 +51,6 @@ export default function PractitionerMetricsPage() {
       
       const data = await apiClient.consultations.getMetrics()
       
-      // Type guard to ensure we have practitioner metrics
       if ('total_earnings' in data && 'average_rating' in data) {
         setMetrics(data as PractitionerMetrics)
       } else {
@@ -64,8 +67,13 @@ export default function PractitionerMetricsPage() {
 
   if (isLoading || loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="relative">
+          <div className="animate-spin rounded-full h-12 w-12 sm:h-14 sm:w-14 border-4 border-emerald-200 border-t-emerald-600"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <ChartBarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 animate-pulse" />
+          </div>
+        </div>
       </div>
     )
   }
@@ -76,13 +84,16 @@ export default function PractitionerMetricsPage() {
 
   if (error || !metrics) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <Card>
-          <CardBody className="p-8 text-center">
-            <p className="text-red-600 dark:text-red-400 mb-4">
+          <CardBody className="p-6 sm:p-8 text-center">
+            <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <XCircleIcon className="h-7 w-7 text-red-600" />
+            </div>
+            <p className="text-sm sm:text-base text-red-600 mb-4">
               {error || 'Failed to load metrics'}
             </p>
-            <Button onClick={() => fetchMetrics()}>
+            <Button onClick={() => fetchMetrics()} className="mx-auto">
               Try Again
             </Button>
           </CardBody>
@@ -101,28 +112,26 @@ export default function PractitionerMetricsPage() {
     : 0
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-5 sm:space-y-6 p-3 sm:p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Practice Metrics
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Practice Metrics</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Track your performance and earnings
           </p>
         </div>
         
         {/* Timeframe selector */}
-        <div className="flex gap-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+        <div className="flex gap-2 bg-slate-100 p-1 rounded-lg w-fit">
           {(['week', 'month', 'year'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTimeframe(t)}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition ${
+              className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-md transition ${
                 timeframe === t
                   ? 'bg-emerald-600 text-white'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -132,8 +141,7 @@ export default function PractitionerMetricsPage() {
       </div>
 
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Total Earnings */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Total Earnings"
           value={`KES ${metrics.total_earnings.toLocaleString()}`}
@@ -141,8 +149,6 @@ export default function PractitionerMetricsPage() {
           trend="+12.5%"
           color="emerald"
         />
-
-        {/* Average Rating */}
         <MetricCard
           title="Average Rating"
           value={metrics.average_rating.toFixed(1)}
@@ -150,8 +156,6 @@ export default function PractitionerMetricsPage() {
           subtitle={`${metrics.total_reviews} reviews`}
           color="yellow"
         />
-
-        {/* Completion Rate */}
         <MetricCard
           title="Completion Rate"
           value={`${completionRate}%`}
@@ -159,8 +163,6 @@ export default function PractitionerMetricsPage() {
           subtitle={`${metrics.completed_consultations}/${metrics.total_consultations}`}
           color="blue"
         />
-
-        {/* Average per Consultation */}
         <MetricCard
           title="Avg. per Session"
           value={`KES ${averagePerConsultation.toLocaleString()}`}
@@ -170,11 +172,11 @@ export default function PractitionerMetricsPage() {
       </div>
 
       {/* Detailed Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
         {/* Consultation Breakdown */}
         <Card>
-          <CardBody className="p-6">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <CardBody className="p-5 sm:p-6">
+            <h2 className="text-base sm:text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
               <CalendarIcon className="h-5 w-5 text-emerald-600" />
               Consultation Breakdown
             </h2>
@@ -210,47 +212,47 @@ export default function PractitionerMetricsPage() {
 
         {/* Performance Metrics */}
         <Card>
-          <CardBody className="p-6">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <CardBody className="p-5 sm:p-6">
+            <h2 className="text-base sm:text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
               <UserGroupIcon className="h-5 w-5 text-emerald-600" />
               Performance Metrics
             </h2>
             
-            <div className="space-y-6">
+            <div className="space-y-5">
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                  Client Satisfaction
-                </p>
+                <p className="text-xs sm:text-sm text-slate-500 mb-2">Client Satisfaction</p>
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
-                    <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
+                    <div className="h-2 bg-slate-200 rounded-full">
                       <div 
-                        className="h-2 bg-emerald-500 rounded-full"
+                        className="h-2 bg-emerald-500 rounded-full transition-all duration-500"
                         style={{ width: `${(metrics.average_rating / 5) * 100}%` }}
                       />
                     </div>
                   </div>
-                  <span className="text-sm font-medium">
+                  <span className="text-xs sm:text-sm font-medium text-slate-900">
                     {metrics.average_rating.toFixed(1)}/5.0
                   </span>
                 </div>
               </div>
 
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                  Total Clients
-                </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {metrics.total_clients || calculateTotalClients(metrics)}
-                </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Total Clients</p>
+                  <p className="text-xl font-bold text-slate-900">
+                    {metrics.total_clients || Math.round(metrics.total_consultations * 0.7)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Total Reviews</p>
+                  <p className="text-xl font-bold text-slate-900">{metrics.total_reviews}</p>
+                </div>
               </div>
 
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                  Total Reviews
-                </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {metrics.total_reviews}
+                <p className="text-xs text-slate-500 mb-2">Hourly Rate</p>
+                <p className="text-lg font-semibold text-slate-900">
+                  KES {(metrics.total_earnings / (metrics.completed_consultations || 1) / 1.5).toFixed(0)}/hr
                 </p>
               </div>
             </div>
@@ -260,23 +262,26 @@ export default function PractitionerMetricsPage() {
 
       {/* Quick Actions */}
       <Card>
-        <CardBody className="p-6">
-          <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <CardBody className="p-5 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-slate-900 mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Link href="/practitioner/dashboard/availability">
-              Manage Availability
+              <Button variant="outline" className="w-full text-xs sm:text-sm">
+                <CalendarIcon className="h-4 w-4 mr-2" />
+                Manage Availability
+              </Button>
             </Link>
-            
             <Link href="/practitioner/dashboard/consultations">
-              <Button variant='outline' className='w-full'>
-               Consultations
-            </Button>
+              <Button variant="outline" className="w-full text-xs sm:text-sm">
+                <ClockIcon className="h-4 w-4 mr-2" />
+                View Consultations
+              </Button>
             </Link>
-            
             <Link href="/practitioner/dashboard/profile">
-            <Button variant='outline' className='w-full'>
-              Update Profile
-            </Button>
+              <Button variant="outline" className="w-full text-xs sm:text-sm">
+                <UserGroupIcon className="h-4 w-4 mr-2" />
+                Update Profile
+              </Button>
             </Link>
           </div>
         </CardBody>
@@ -287,43 +292,37 @@ export default function PractitionerMetricsPage() {
 
 // Helper Components
 
-interface MetricCardProps {
-  title: string
-  value: string
-  icon: React.ElementType
-  trend?: string
-  subtitle?: string
-  color: 'emerald' | 'yellow' | 'blue' | 'purple' | 'red' | 'green'
-}
-
-function MetricCard({ title, value, icon: Icon, trend, subtitle, color }: MetricCardProps) {
+function MetricCard({ title, value, icon: Icon, trend, subtitle, color }: { 
+  title: string; 
+  value: string; 
+  icon: React.ElementType; 
+  trend?: string; 
+  subtitle?: string; 
+  color: 'emerald' | 'yellow' | 'blue' | 'purple' 
+}) {
   const colorClasses = {
-    emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
-    yellow: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
-    blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-    purple: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
-    red: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
-    green: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
+    emerald: 'bg-emerald-100 text-emerald-600',
+    yellow: 'bg-yellow-100 text-yellow-600',
+    blue: 'bg-blue-100 text-blue-600',
+    purple: 'bg-purple-100 text-purple-600',
   }
 
   return (
     <Card>
-      <CardBody className="p-6">
+      <CardBody className="p-5">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-              {value}
-            </p>
+            <p className="text-xs text-slate-500 mb-1">{title}</p>
+            <p className="text-xl sm:text-2xl font-bold text-slate-900">{value}</p>
             {(trend || subtitle) && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {trend && <span className="text-green-600 mr-1">{trend}</span>}
+              <p className="text-xs text-slate-500 mt-2">
+                {trend && <span className="text-emerald-600 mr-2">{trend}</span>}
                 {subtitle}
               </p>
             )}
           </div>
-          <div className={`p-3 rounded-xl ${colorClasses[color]}`}>
-            <Icon className="h-5 w-5" />
+          <div className={`p-2 sm:p-3 rounded-xl ${colorClasses[color]}`}>
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
         </div>
       </CardBody>
@@ -331,25 +330,18 @@ function MetricCard({ title, value, icon: Icon, trend, subtitle, color }: Metric
   )
 }
 
-interface StatBarProps {
-  label: string
-  value: number
-  total: number
-  color: string
-}
-
-function StatBar({ label, value, total, color }: StatBarProps) {
+function StatBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
   const percentage = total > 0 ? (value / total) * 100 : 0
 
   return (
     <div>
-      <div className="flex justify-between text-sm mb-1">
-        <span className="text-gray-600 dark:text-gray-400">{label}</span>
-        <span className="font-medium text-gray-900 dark:text-white">
+      <div className="flex justify-between text-xs sm:text-sm mb-1">
+        <span className="text-slate-600">{label}</span>
+        <span className="font-medium text-slate-900">
           {value} ({percentage.toFixed(1)}%)
         </span>
       </div>
-      <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
+      <div className="h-2 bg-slate-200 rounded-full">
         <div 
           className={`h-2 ${color} rounded-full transition-all duration-500`}
           style={{ width: `${percentage}%` }}
@@ -357,10 +349,4 @@ function StatBar({ label, value, total, color }: StatBarProps) {
       </div>
     </div>
   )
-}
-
-// Helper function to calculate total clients (if not provided by API)
-function calculateTotalClients(metrics: PractitionerMetrics): number {
-  // This is a placeholder - you might need to fetch this separately
-  return Math.round(metrics.total_consultations * 0.7) // Rough estimate
 }

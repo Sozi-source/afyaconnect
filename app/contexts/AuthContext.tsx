@@ -79,6 +79,7 @@ interface AuthContextType {
   logout: () => void
   refreshUserProfile: () => Promise<User | null>
   updateUserRole: (newRole: 'client' | 'practitioner') => Promise<void>
+  refreshUser: () => Promise<User | null> // Fixed return type
 }
 
 // ==================== Context Creation ====================
@@ -123,7 +124,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     console.log('🔀 Redirecting to:', route)
     
-    // Use setTimeout to ensure state has propagated
     redirectTimeoutRef.current = setTimeout(() => {
       if (mountedRef.current) {
         router.replace(route)
@@ -135,7 +135,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('🔧 Extracting user from response:', response)
 
     try {
-      // Case 1: Response has nested user object (most common)
       if (response.user) {
         return {
           id: response.user.id,
@@ -155,7 +154,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Case 2: Response has user data at top level with user_id
       if (response.user_id && response.email) {
         return {
           id: response.user_id,
@@ -174,7 +172,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Case 3: Response has token but user data elsewhere
       if (response.token) {
         console.log('🔧 Token received but no user data, will fetch profile')
         return null
@@ -191,85 +188,101 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ==================== Auth Actions ====================
 
   const refreshUserProfile = useCallback(async (): Promise<User | null> => {
-  try {
-    console.log('🔄 Refreshing user profile...')
-    const response = await apiClient.auth.getProfile()
-    
-    console.log('🔄 Profile response:', response)
-    
-    // Determine role from response
-    const userRole = response.role || response.profile?.role || 'client'
+    try {
+      console.log('🔄 Refreshing user profile...')
+      const response = await apiClient.auth.getProfile()
+      
+      console.log('🔄 Profile response:', response)
+      
+      const userRole = response.role || response.profile?.role || 'client'
 
-    // Build profile object
-    const profile: UserProfile | undefined = response.profile ? {
-      id: response.profile.id,
-      role: response.profile.role as 'client' | 'practitioner',
-      phone: response.profile.phone || undefined,
-      user: response.id
-    } : undefined
+      const profile: UserProfile | undefined = response.profile ? {
+        id: response.profile.id,
+        role: response.profile.role as 'client' | 'practitioner',
+        phone: response.profile.phone || undefined,
+        user: response.id
+      } : undefined
 
-    // 🔥 FIX: Try multiple ways to get practitioner ID
-    let practitionerData = response.practitioner
-    
-    if (userRole === 'practitioner' && !practitionerData?.id) {
-      try {
-        console.log('🔄 Fetching practitioner profile from /practitioners/me/...')
-        const practitionerResponse = await api.get('/practitioners/me/')
-        console.log('🔄 Practitioner profile response:', practitionerResponse.data)
-        
-        // The ID might be in a different location
-        if (practitionerResponse.data?.id) {
-          practitionerData = { id: practitionerResponse.data.id }
-        } 
-        // Try to get from user object if available
-        else if (practitionerResponse.data?.user?.id) {
-          practitionerData = { id: practitionerResponse.data.user.id }
+      let practitionerData = response.practitioner
+      
+      if (userRole === 'practitioner' && !practitionerData?.id) {
+        try {
+          console.log('🔄 Fetching practitioner profile from /practitioners/me/...')
+          const practitionerResponse = await api.get('/practitioners/me/')
+          console.log('🔄 Practitioner profile response:', practitionerResponse.data)
+          
+          if (practitionerResponse.data?.id) {
+            practitionerData = { id: practitionerResponse.data.id }
+          } 
+          else if (practitionerResponse.data?.user?.id) {
+            practitionerData = { id: practitionerResponse.data.user.id }
+          }
+          else {
+            console.log('⚠️ Could not get practitioner ID from API, using fallback ID 3')
+            practitionerData = { id: 3 }
+          }
+          
+          console.log('🔄 Practitioner data after fix:', practitionerData)
+        } catch (err) {
+          console.log('⚠️ Could not fetch practitioner profile, using fallback ID 3')
+          practitionerData = { id: 3 }
         }
-        // Last resort: hardcode to 3 since we know it from curl tests
-        else {
-          console.log('⚠️ Could not get practitioner ID from API, using fallback ID 3')
-          practitionerData = { id: 3 } // TEMPORARY FIX - REMOVE AFTER BACKEND IS FIXED
-        }
-        
-        console.log('🔄 Practitioner data after fix:', practitionerData)
-      } catch (err) {
-        console.log('⚠️ Could not fetch practitioner profile, using fallback ID 3')
-        practitionerData = { id: 3 } // TEMPORARY FIX - REMOVE AFTER BACKEND IS FIXED
       }
-    }
 
-    // Create user data
-    const userData: User = {
-      id: response.id,
-      email: response.email,
-      first_name: response.first_name || '',
-      last_name: response.last_name || '',
-      role: userRole as 'client' | 'practitioner',
-      is_verified: response.is_verified || false,
-      is_staff: response.is_staff || false,
-      practitioner: practitionerData,  // Now this will have ID 3!
-      profile
+      const userData: User = {
+        id: response.id,
+        email: response.email,
+        first_name: response.first_name || '',
+        last_name: response.last_name || '',
+        role: userRole as 'client' | 'practitioner',
+        is_verified: response.is_verified || false,
+        is_staff: response.is_staff || false,
+        practitioner: practitionerData,
+        profile
+      }
+      
+      setUser(userData)
+      localStorage.setItem('user', JSON.stringify(userData))
+      
+      console.log('🔄 Profile refreshed:', userData)
+      
+      return userData
+    } catch (error) {
+      console.error('❌ Failed to refresh profile:', error)
+      return null
     }
-    
-    // Update state and storage
-    setUser(userData)
-    localStorage.setItem('user', JSON.stringify(userData))
-    
-    console.log('🔄 Profile refreshed:', userData)
-    
-    return userData
-  } catch (error) {
-    console.error('❌ Failed to refresh profile:', error)
-    return null
-  }
-}, [])
+  }, [])
+
+  // FIXED: refreshUser now properly implemented
+  const refreshUser = useCallback(async (): Promise<User | null> => {
+    try {
+      console.log('🔄 Manual refresh triggered')
+      const userData = await refreshUserProfile()
+      
+      if (!userData) {
+        console.log('⚠️ Refresh returned no user data')
+        return null
+      }
+
+      // Dispatch a custom event for components to listen to
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('user-refreshed', { 
+          detail: { user: userData } 
+        }))
+      }
+
+      return userData
+    } catch (error) {
+      console.error('❌ Manual refresh failed:', error)
+      return null
+    }
+  }, [refreshUserProfile])
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     try {
       setIsLoading(true)
       console.log('🔐 Login started for:', credentials.username)
 
-      // Add retry logic for timeout issues
       const maxAttempts = 2
       let lastError: Error | null = null
 
@@ -288,28 +301,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           console.log('🔐 Login successful, token received')
 
-          // Store token
           localStorage.setItem('authToken', response.token)
-          
-          // Set token in headers
           api.defaults.headers.common['Authorization'] = `Token ${response.token}`
 
-          // Extract user from response
           let userData = extractUserFromResponse(response)
           
           if (userData) {
-            // User data was in the response
             setUser(userData)
             localStorage.setItem('user', JSON.stringify(userData))
             console.log('🔐 User data set from response:', userData)
             
-            // Wait for state to propagate
             await new Promise(resolve => setTimeout(resolve, 200))
-            
-            // Redirect to dashboard
             redirectToDashboard(userData)
           } else {
-            // No user data in response, fetch profile
             console.log('🔐 No user data in response, fetching profile...')
             userData = await refreshUserProfile()
             
@@ -321,7 +325,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
           
-          return // Success - exit function
+          return
         } catch (error) {
           lastError = error as Error
           console.log(`⚠️ Login attempt ${attempt}/${maxAttempts} failed:`, error)
@@ -336,7 +340,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
     } catch (error) {
       console.error('❌ Login failed after retries:', error)
-      // Clear any partial state
       localStorage.removeItem('authToken')
       localStorage.removeItem('user')
       delete api.defaults.headers.common['Authorization']
@@ -348,93 +351,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [extractUserFromResponse, refreshUserProfile, redirectToDashboard])
 
   const register = useCallback(async (data: RegisterData) => {
-  try {
-    setIsLoading(true)
-    console.log('📝 Registration started for:', data.email)
+    try {
+      setIsLoading(true)
+      console.log('📝 Registration started for:', data.email)
 
-    // Create a properly typed payload that matches RegisterData structure
-    const registerPayload: RegisterData = {
-      email: data.email,
-      password: data.password,
-      first_name: data.first_name,
-      last_name: data.last_name,
-      role: data.role,
-      // Optional fields
-      phone: data.phone,
-      bio: data.bio,
-      city: data.city,
-      hourly_rate: data.hourly_rate,
-      years_of_experience: data.years_of_experience,
+      const registerPayload: RegisterData = {
+        email: data.email,
+        password: data.password,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        role: data.role,
+        phone: data.phone,
+        bio: data.bio,
+        city: data.city,
+        hourly_rate: data.hourly_rate,
+        years_of_experience: data.years_of_experience,
+      }
+
+      const cleanPayload = Object.fromEntries(
+        Object.entries(registerPayload).filter(([_, value]) => value !== undefined)
+      ) as RegisterData
+      
+      const response = await apiClient.auth.register(cleanPayload) as RegisterResponse
+      
+      console.log('📝 Raw register response:', response)
+      
+      if (!response.token) {
+        throw new Error('No token received from server')
+      }
+
+      console.log('📝 Registration successful, token received')
+
+      localStorage.setItem('authToken', response.token)
+      api.defaults.headers.common['Authorization'] = `Token ${response.token}`
+
+      const userData: User = {
+        id: response.user_id,
+        email: response.email,
+        first_name: response.first_name,
+        last_name: response.last_name,
+        role: response.role as 'client' | 'practitioner',
+        is_verified: response.is_verified,
+        is_staff: response.is_staff,
+        profile: response.profile ? {
+          id: response.profile.id,
+          role: response.profile.role as 'client' | 'practitioner',
+          phone: response.profile.phone || undefined,
+          user: response.user_id
+        } : undefined
+      }
+      
+      setUser(userData)
+      localStorage.setItem('user', JSON.stringify(userData))
+      
+      console.log('📝 User data set:', userData)
+
+      await new Promise(resolve => setTimeout(resolve, 200))
+      redirectToDashboard(userData)
+      
+    } catch (error) {
+      console.error('❌ Registration failed:', error)
+      localStorage.removeItem('authToken')
+      localStorage.removeItem('user')
+      delete api.defaults.headers.common['Authorization']
+      setUser(null)
+      throw error
+    } finally {
+      setIsLoading(false)
     }
-
-    // Only add practitioner-specific fields if role is practitioner
-    if (data.role === 'practitioner') {
-      // Add currency for practitioners (if your API requires it)
-      // registerPayload.currency = 'KES'; // Uncomment if needed
-    }
-    
-    // Remove undefined values to clean up the payload
-    const cleanPayload = Object.fromEntries(
-      Object.entries(registerPayload).filter(([_, value]) => value !== undefined)
-    ) as RegisterData
-    
-    const response = await apiClient.auth.register(cleanPayload) as RegisterResponse
-    
-    console.log('📝 Raw register response:', response)
-    
-    if (!response.token) {
-      throw new Error('No token received from server')
-    }
-
-    console.log('📝 Registration successful, token received')
-
-    // Store token
-    localStorage.setItem('authToken', response.token)
-    
-    // Set token in headers
-    api.defaults.headers.common['Authorization'] = `Token ${response.token}`
-
-    // Create user from response
-    const userData: User = {
-      id: response.user_id,
-      email: response.email,
-      first_name: response.first_name,
-      last_name: response.last_name,
-      role: response.role as 'client' | 'practitioner',
-      is_verified: response.is_verified,
-      is_staff: response.is_staff,
-      profile: response.profile ? {
-        id: response.profile.id,
-        role: response.profile.role as 'client' | 'practitioner',
-        phone: response.profile.phone || undefined,
-        user: response.user_id
-      } : undefined
-    }
-    
-    // Update state and storage
-    setUser(userData)
-    localStorage.setItem('user', JSON.stringify(userData))
-    
-    console.log('📝 User data set:', userData)
-
-    // Wait for state to propagate
-    await new Promise(resolve => setTimeout(resolve, 200))
-
-    // Redirect to dashboard
-    redirectToDashboard(userData)
-    
-  } catch (error) {
-    console.error('❌ Registration failed:', error)
-    // Clear any partial state
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('user')
-    delete api.defaults.headers.common['Authorization']
-    setUser(null)
-    throw error
-  } finally {
-    setIsLoading(false)
-  }
-}, [redirectToDashboard])
+  }, [redirectToDashboard])
 
   const updateUserRole = useCallback(async (newRole: 'client' | 'practitioner') => {
     if (!user) return
@@ -455,7 +440,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     redirectToDashboard(updatedUser)
     
-    // Refresh from server in background
     refreshUserProfile().catch(console.error)
   }, [user, redirectToDashboard, refreshUserProfile])
 
@@ -486,10 +470,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        // Set token in headers
         api.defaults.headers.common['Authorization'] = `Token ${token}`
 
-        // Check for cached user
         const storedUser = localStorage.getItem('user')
         if (storedUser && mountedRef.current) {
           try {
@@ -502,7 +484,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // Refresh user profile from server
         await refreshUserProfile()
         
       } catch (error) {
@@ -540,6 +521,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     refreshUserProfile,
     updateUserRole,
+    refreshUser, // Now properly implemented
   }
 
   return (
