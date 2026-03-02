@@ -371,15 +371,67 @@ export default function LandingPage() {
       </header>
 
       <main id="main-content" className="px-3 sm:px-4 md:px-6 py-4 sm:py-5 md:py-6 max-w-7xl mx-auto">
-        {/* Hero Section with concise description */}
+        {/* Hero Section with clean medical icons */}
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-slate-900 mb-2">
-            A platform that connects patients with verified practitioners
+          {/* Medical icon grid */}
+          <div className="grid grid-cols-5 gap-1 w-fit mb-4 opacity-80">
+            <span className="text-xl hover:scale-110 transition-transform">🏥</span>
+            <span className="text-xl hover:scale-110 transition-transform">👨‍⚕️</span>
+            <span className="text-xl hover:scale-110 transition-transform">👩‍⚕️</span>
+            <span className="text-xl hover:scale-110 transition-transform">💊</span>
+            <span className="text-xl hover:scale-110 transition-transform">🩺</span>
+          </div>
+          
+          {/* Main heading */}
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-slate-900 mb-4">
+            A platform that connects{' '}
+            <span className="relative inline-block">
+              <span className="relative z-10 bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent font-bold">
+                patients
+              </span>
+              <span className="absolute -top-3 -right-3 text-sm">👤</span>
+            </span>{' '}
+            with{' '}
+            <span className="relative inline-block">
+              <span className="relative z-10 bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent font-bold">
+                verified practitioners
+              </span>
+              <span className="absolute -top-3 -right-3 text-sm">👨‍⚕️</span>
+            </span>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 flex items-center gap-2">
-            <ChartBarIcon className="w-4 h-4 text-slate-400" />
-            {stats.practitionerCount} practitioners · {stats.cityCount} cities
-          </p>
+          
+          {/* Medical metrics */}
+          <div className="flex flex-wrap gap-3">
+            <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">👥</span>
+                <div>
+                  <div className="text-xs text-slate-500">Active practitioners</div>
+                  <div className="text-sm font-semibold text-slate-900">{stats.practitionerCount}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">📍</span>
+                <div>
+                  <div className="text-xs text-slate-500">Cities covered</div>
+                  <div className="text-sm font-semibold text-slate-900">{stats.cityCount}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">⭐</span>
+                <div>
+                  <div className="text-xs text-slate-500">Average rating</div>
+                  <div className="text-sm font-semibold text-slate-900">{stats.averageRating}</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Breadcrumb */}
