@@ -22,7 +22,9 @@ import {
   ExclamationTriangleIcon,
   InformationCircleIcon,
   PencilSquareIcon,
-  EyeIcon
+  EyeIcon,
+  AcademicCapIcon,
+  UserCircleIcon
 } from '@heroicons/react/24/outline'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
@@ -47,7 +49,7 @@ interface ExtendedUser {
 
 type StatColor = 'emerald' | 'blue' | 'purple' | 'amber'
 
-// Application Status Card Component
+// Application Status Card Component - Enhanced visibility
 const ApplicationStatusCard = ({ status, application }: { status: ApplicationStatus; application?: PractitionerApplication | null }) => {
   const statusConfig = {
     draft: {
@@ -59,7 +61,8 @@ const ApplicationStatusCard = ({ status, application }: { status: ApplicationSta
       bg: 'bg-slate-50',
       border: 'border-slate-200',
       text: 'text-slate-700',
-      button: 'bg-slate-600 hover:bg-slate-700'
+      button: 'bg-slate-600 hover:bg-slate-700',
+      iconBg: 'bg-slate-100'
     },
     pending: {
       icon: ClockIcon,
@@ -70,7 +73,8 @@ const ApplicationStatusCard = ({ status, application }: { status: ApplicationSta
       bg: 'bg-amber-50',
       border: 'border-amber-200',
       text: 'text-amber-700',
-      button: 'bg-amber-600 hover:bg-amber-700'
+      button: 'bg-amber-600 hover:bg-amber-700',
+      iconBg: 'bg-amber-100'
     },
     approved: {
       icon: CheckCircleIcon,
@@ -81,7 +85,8 @@ const ApplicationStatusCard = ({ status, application }: { status: ApplicationSta
       bg: 'bg-emerald-50',
       border: 'border-emerald-200',
       text: 'text-emerald-700',
-      button: 'bg-emerald-600 hover:bg-emerald-700'
+      button: 'bg-emerald-600 hover:bg-emerald-700',
+      iconBg: 'bg-emerald-100'
     },
     rejected: {
       icon: XCircleIcon,
@@ -92,7 +97,8 @@ const ApplicationStatusCard = ({ status, application }: { status: ApplicationSta
       bg: 'bg-rose-50',
       border: 'border-rose-200',
       text: 'text-rose-700',
-      button: 'bg-rose-600 hover:bg-rose-700'
+      button: 'bg-rose-600 hover:bg-rose-700',
+      iconBg: 'bg-rose-100'
     },
     info_needed: {
       icon: InformationCircleIcon,
@@ -103,7 +109,8 @@ const ApplicationStatusCard = ({ status, application }: { status: ApplicationSta
       bg: 'bg-blue-50',
       border: 'border-blue-200',
       text: 'text-blue-700',
-      button: 'bg-blue-600 hover:bg-blue-700'
+      button: 'bg-blue-600 hover:bg-blue-700',
+      iconBg: 'bg-blue-100'
     }
   }
 
@@ -111,29 +118,31 @@ const ApplicationStatusCard = ({ status, application }: { status: ApplicationSta
   const Icon = config.icon
 
   return (
-    <Card className={`border ${config.border} ${config.bg} shadow-sm mb-6`}>
+    <Card className={`border ${config.border} ${config.bg} shadow-md mb-6 relative overflow-hidden`}>
+      {/* Decorative accent */}
+      <div className={`absolute top-0 left-0 w-1 h-full ${config.button.split(' ')[0]}`}></div>
       <CardBody className="p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className={`p-2 sm:p-3 rounded-xl ${config.bg} border ${config.border} flex-shrink-0`}>
-              <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${config.text}`} />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pl-2">
+          <div className="flex items-start gap-4">
+            <div className={`p-3 rounded-xl ${config.iconBg} border ${config.border} flex-shrink-0 shadow-sm`}>
+              <Icon className={`w-6 h-6 sm:w-7 sm:h-7 ${config.text}`} />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className={`text-sm sm:text-base font-semibold ${config.text} mb-0.5`}>
+              <h3 className={`text-base sm:text-lg font-semibold ${config.text} mb-1`}>
                 {config.title}
               </h3>
-              <p className="text-xs sm:text-sm text-slate-600 line-clamp-2">
+              <p className="text-xs sm:text-sm text-slate-600">
                 {config.message}
               </p>
               {status === 'rejected' && application?.rejection_reason && (
-                <div className="mt-2 text-xs sm:text-sm text-rose-600 bg-rose-100/50 p-2 rounded-lg">
-                  <span className="font-medium">Reason: </span>
+                <div className="mt-3 text-xs sm:text-sm text-rose-700 bg-rose-100 p-3 rounded-lg border border-rose-200">
+                  <span className="font-semibold block mb-1">Reason for rejection:</span>
                   {application.rejection_reason}
                 </div>
               )}
               {status === 'info_needed' && application?.admin_notes && (
-                <div className="mt-2 text-xs sm:text-sm text-blue-600 bg-blue-100/50 p-2 rounded-lg">
-                  <span className="font-medium">Admin notes: </span>
+                <div className="mt-3 text-xs sm:text-sm text-blue-700 bg-blue-100 p-3 rounded-lg border border-blue-200">
+                  <span className="font-semibold block mb-1">Admin notes:</span>
                   {application.admin_notes}
                 </div>
               )}
@@ -145,9 +154,9 @@ const ApplicationStatusCard = ({ status, application }: { status: ApplicationSta
               : `/practitioner/application/${application?.id || ''}`} 
             className="sm:flex-shrink-0"
           >
-            <Button className={`w-full sm:w-auto ${config.button} text-white text-xs sm:text-sm px-4 py-2`}>
+            <Button className={`w-full sm:w-auto ${config.button} text-white text-xs sm:text-sm px-5 py-2.5 shadow-sm hover:shadow-md transition-all`}>
               {config.action}
-              <ArrowRightIcon className="w-3.5 h-3.5 ml-1.5" />
+              <ArrowRightIcon className="w-4 h-4 ml-2" />
             </Button>
           </Link>
         </div>
@@ -401,42 +410,87 @@ export default function PractitionerDashboardPage() {
     applicationStatus !== 'approved' && 
     !extendedUser?.is_verified
 
+  // Get welcome message based on verification status
+  const getWelcomeMessage = () => {
+    if (extendedUser?.is_verified) {
+      return {
+        title: 'Verified Practitioner',
+        subtitle: 'You can accept bookings and manage your practice',
+        color: 'text-emerald-600',
+        bg: 'bg-emerald-50',
+        icon: CheckCircleIcon
+      }
+    } else if (hasApplication) {
+      return {
+        title: 'Application in Progress',
+        subtitle: `Status: ${applicationStatus?.replace('_', ' ') || 'pending'}`,
+        color: 'text-amber-600',
+        bg: 'bg-amber-50',
+        icon: ClockIcon
+      }
+    } else {
+      return {
+        title: 'Complete Your Profile',
+        subtitle: 'Start your application to get verified',
+        color: 'text-blue-600',
+        bg: 'bg-blue-50',
+        icon: AcademicCapIcon
+      }
+    }
+  }
+
+  const welcomeMsg = getWelcomeMessage()
+  const WelcomeIcon = welcomeMsg.icon
+
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-5 md:py-6 space-y-5 sm:space-y-6 md:space-y-8 overflow-x-hidden">
-      {/* Application Status Banner - Show if not verified and has application */}
+      {/* Application Status Banner - Enhanced visibility */}
       {showApplicationCard && applicationStatus && (
         <ApplicationStatusCard status={applicationStatus} application={application} />
       )}
 
-      {/* Header Section */}
+      {/* Header Section with Color-Coded Welcome */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 text-emerald-600 mb-1">
+          <div className="flex items-center gap-2 text-emerald-600 mb-2">
             <SparklesIcon className="h-4 w-4 flex-shrink-0" />
             <span className="text-[10px] sm:text-xs font-medium uppercase tracking-wider">Practice Overview</span>
           </div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-light text-slate-800 break-words">
-            Welcome back, <span className="font-semibold text-emerald-600">Dr. {extendedUser?.first_name || 'Practitioner'}</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
+          
+          {/* Welcome message with colored background */}
+          <div className={`inline-flex items-center gap-3 ${welcomeMsg.bg} px-4 py-2 rounded-lg mb-2`}>
+            <div className={`p-2 rounded-full ${welcomeMsg.bg} border-2 border-white shadow-sm`}>
+              <WelcomeIcon className={`h-5 w-5 ${welcomeMsg.color}`} />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-slate-800">
+                Dr. {extendedUser?.first_name || 'Practitioner'}
+              </h1>
+              <p className={`text-xs sm:text-sm font-medium ${welcomeMsg.color}`}>
+                {welcomeMsg.title}
+              </p>
+            </div>
+          </div>
+          
+          <p className="text-xs sm:text-sm text-slate-500 mt-2 flex items-center gap-2 flex-wrap">
             <ShieldCheckIcon className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
             {extendedUser?.is_verified ? (
-              <span>Verified Practitioner · Accepting bookings</span>
+              <span>✓ Verified account · Accepting new patients</span>
             ) : hasApplication ? (
-              <span>Application {applicationStatus} · Complete verification to start</span>
+              <span>⏳ {applicationStatus?.replace('_', ' ')} · Complete verification to start</span>
             ) : (
-              <span>Not verified · Start your application</span>
+              <span>📝 Not verified · Start your application today</span>
             )}
           </p>
         </div>
         
         <div className="flex flex-col xs:flex-row gap-2 sm:gap-3">
           <Link href="/practitioner/dashboard/notifications" className="relative inline-block">
-            <Button variant="outline" className="px-3 py-2 text-xs sm:text-sm border-slate-200">
+            <Button variant="outline" className="px-3 py-2 text-xs sm:text-sm border-slate-200 hover:bg-slate-50">
               <BellIcon className="h-4 w-4 mr-1.5" />
               Notifications
               {unreadNotifications > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[10px] rounded-full flex items-center justify-center animate-pulse">
                   {unreadNotifications}
                 </span>
               )}
@@ -520,7 +574,9 @@ export default function PractitionerDashboardPage() {
               ? 'Start verification' 
               : applicationStatus === 'approved' 
                 ? 'View status' 
-                : 'Complete verification'}
+                : applicationStatus === 'pending'
+                  ? 'Under review'
+                  : 'Complete verification'}
             color="amber"
           />
         </div>
@@ -653,7 +709,7 @@ export default function PractitionerDashboardPage() {
             </CardBody>
           </Card>
 
-          {/* Quick Stats Card */}
+          {/* Quick Stats Card - Application Status */}
           <Card className="border-slate-200/60 shadow-sm bg-gradient-to-br from-emerald-50 to-emerald-50/30">
             <CardBody className="p-4 sm:p-5">
               <div className="flex items-center gap-3 mb-3">
@@ -669,44 +725,71 @@ export default function PractitionerDashboardPage() {
               </div>
               
               {!extendedUser?.is_verified && hasApplication && applicationStatus && (
-                <div className="mt-3 p-3 bg-white rounded-lg border border-emerald-200">
-                  <div className="flex items-center gap-2 text-xs">
-                    {applicationStatus === 'pending' && (
-                      <>
-                        <ClockIcon className="h-4 w-4 text-amber-500" />
-                        <span className="text-slate-600">Application under review</span>
-                      </>
-                    )}
-                    {applicationStatus === 'draft' && (
-                      <>
-                        <PencilSquareIcon className="h-4 w-4 text-slate-500" />
-                        <span className="text-slate-600">Complete your application</span>
-                      </>
-                    )}
-                    {applicationStatus === 'info_needed' && (
-                      <>
-                        <InformationCircleIcon className="h-4 w-4 text-blue-500" />
-                        <span className="text-slate-600">Additional info required</span>
-                      </>
-                    )}
-                    {applicationStatus === 'rejected' && (
-                      <>
-                        <XCircleIcon className="h-4 w-4 text-rose-500" />
-                        <span className="text-slate-600">Application rejected</span>
-                      </>
-                    )}
+                <div className="mt-3 space-y-2">
+                  <div className={`p-3 rounded-lg border ${
+                    applicationStatus === 'pending' ? 'bg-amber-50 border-amber-200' :
+                    applicationStatus === 'draft' ? 'bg-slate-50 border-slate-200' :
+                    applicationStatus === 'info_needed' ? 'bg-blue-50 border-blue-200' :
+                    applicationStatus === 'rejected' ? 'bg-rose-50 border-rose-200' :
+                    'bg-emerald-50 border-emerald-200'
+                  }`}>
+                    <div className="flex items-center gap-2 text-xs">
+                      {applicationStatus === 'pending' && (
+                        <>
+                          <ClockIcon className="h-4 w-4 text-amber-500" />
+                          <span className="text-slate-700 font-medium">Application under review</span>
+                        </>
+                      )}
+                      {applicationStatus === 'draft' && (
+                        <>
+                          <PencilSquareIcon className="h-4 w-4 text-slate-500" />
+                          <span className="text-slate-700 font-medium">Complete your application</span>
+                        </>
+                      )}
+                      {applicationStatus === 'info_needed' && (
+                        <>
+                          <InformationCircleIcon className="h-4 w-4 text-blue-500" />
+                          <span className="text-slate-700 font-medium">Additional info required</span>
+                        </>
+                      )}
+                      {applicationStatus === 'rejected' && (
+                        <>
+                          <XCircleIcon className="h-4 w-4 text-rose-500" />
+                          <span className="text-slate-700 font-medium">Application rejected</span>
+                        </>
+                      )}
+                    </div>
                   </div>
+                  <Link href="/practitioner/application">
+                    <Button variant="outline" className="w-full text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50">
+                      View Application Details
+                      <ArrowRightIcon className="w-3.5 h-3.5 ml-1.5" />
+                    </Button>
+                  </Link>
                 </div>
               )}
               
               {!hasApplication && !extendedUser?.is_verified && (
                 <div className="mt-3">
                   <Link href="/practitioner/application">
-                    <Button className="w-full bg-emerald-600 text-white text-xs py-2">
+                    <Button className="w-full bg-emerald-600 text-white text-xs py-2.5 shadow-sm hover:shadow-md transition-all">
+                      <AcademicCapIcon className="w-4 h-4 mr-2" />
                       Start Application
-                      <ArrowRightIcon className="w-3.5 h-3.5 ml-1.5" />
+                      <ArrowRightIcon className="w-3.5 h-3.5 ml-2" />
                     </Button>
                   </Link>
+                  <p className="text-[10px] text-slate-500 text-center mt-2">
+                    Get verified to start accepting bookings
+                  </p>
+                </div>
+              )}
+
+              {extendedUser?.is_verified && (
+                <div className="mt-3 p-3 bg-emerald-100 rounded-lg border border-emerald-200">
+                  <div className="flex items-center gap-2 text-xs text-emerald-700">
+                    <CheckCircleIcon className="h-4 w-4" />
+                    <span className="font-medium">Your account is verified and active</span>
+                  </div>
                 </div>
               )}
             </CardBody>
@@ -714,7 +797,7 @@ export default function PractitionerDashboardPage() {
         </div>
       </div>
 
-      {/* Mobile Scroll Hint (only visible on small devices when content overflows) */}
+      {/* Mobile Scroll Hint */}
       <div className="flex justify-center mt-4 sm:hidden">
         <div className="bg-slate-100 px-3 py-1.5 rounded-full text-[10px] text-slate-500 flex items-center gap-1.5">
           <span className="inline-block w-1 h-1 rounded-full bg-slate-400"></span>

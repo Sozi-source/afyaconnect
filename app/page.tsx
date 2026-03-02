@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { 
   ArrowRightIcon, 
@@ -24,20 +24,7 @@ import {
   DocumentTextIcon,
   ChartBarIcon,
   Bars3Icon,
-  XMarkIcon,
-  PlayCircleIcon,
-  InformationCircleIcon,
-  SparklesIcon,
-  AcademicCapIcon,
-  BriefcaseIcon,
-  IdentificationIcon,
-  DocumentCheckIcon,
-  UserCircleIcon,
-  VideoCameraIcon,
-  ChatBubbleLeftRightIcon,
-  CreditCardIcon,
-  BellAlertIcon,
-  HeartIcon
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import apiClient, { 
   getPractitioners,
@@ -54,16 +41,6 @@ const PLATFORM_NAME = 'AfyaConnect'
 const SUPPORT_EMAIL = 'support@afyaconnect.com'
 const SUPPORT_PHONE = '+254 700 000 000'
 
-// ==================== TYPES ====================
-interface Step {
-  id: number
-  title: string
-  description: string
-  icon: any
-  color: string
-  details: string[]
-}
-
 // ==================== COMPONENTS ====================
 
 // Mobile-first card component
@@ -74,8 +51,8 @@ const AdminCard = ({ children, className = '', hover = true }: { children: React
 )
 
 // Status indicator
-const StatusIndicator = ({ active = true, pulse = false }: { active?: boolean; pulse?: boolean }) => (
-  <span className={`inline-block w-1.5 h-1.5 rounded-full ${active ? 'bg-emerald-500' : 'bg-slate-300'} ${pulse ? 'animate-pulse' : ''} mr-1.5`}></span>
+const StatusIndicator = ({ active = true }: { active?: boolean }) => (
+  <span className={`inline-block w-1.5 h-1.5 rounded-full ${active ? 'bg-emerald-500' : 'bg-slate-300'} mr-1.5`}></span>
 )
 
 // Mobile-optimized Stat Card
@@ -119,354 +96,58 @@ const StatCard = ({
   )
 }
 
-// Interactive Info Card with Auto-rotating Content
-const InteractiveInfoCard = () => {
-  const [activeStep, setActiveStep] = useState(0)
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true)
-  const [progress, setProgress] = useState(0)
-  const autoPlayRef = useRef<NodeJS.Timeout | null>(null)
-  const progressRef = useRef<NodeJS.Timeout | null>(null)
-
-  const steps: Step[] = [
+// Platform Overview Card - replaces interactive/floating cards
+const PlatformOverviewCard = () => {
+  const steps = [
     {
-      id: 1,
       title: 'For Patients',
-      description: 'Find and book verified practitioners',
-      icon: UserCircleIcon,
-      color: 'emerald',
-      details: [
-        'Browse verified practitioners by specialty',
-        'View real-time availability',
-        'Book consultations instantly',
-        'Secure video calls',
-        'Leave reviews and ratings'
-      ]
+      description: 'Browse verified practitioners, check real-time availability, and book consultations securely.',
+      icon: UserGroupIcon,
+      color: 'emerald'
     },
     {
-      id: 2,
       title: 'For Practitioners',
-      description: 'Grow your practice online',
-      icon: BriefcaseIcon,
-      color: 'blue',
-      details: [
-        'Create professional profile',
-        'Set your availability',
-        'Manage appointments',
-        'Accept secure payments',
-        'Build your reputation'
-      ]
+      description: 'Create a professional profile, manage your schedule, and grow your practice online.',
+      icon: BuildingOfficeIcon,
+      color: 'blue'
     },
     {
-      id: 3,
       title: 'Verification Process',
-      description: 'Ensuring trust and safety',
+      description: 'All practitioners undergo credential verification, license confirmation, and identity checks.',
       icon: ShieldCheckIcon,
-      color: 'purple',
-      details: [
-        'Submit professional credentials',
-        'License verification',
-        'Background checks',
-        'ID verification',
-        'Approved within 48 hours'
-      ]
-    },
-    {
-      id: 4,
-      title: 'Consultation Experience',
-      description: 'Seamless healthcare delivery',
-      icon: VideoCameraIcon,
-      color: 'amber',
-      details: [
-        'HD video consultations',
-        'Secure messaging',
-        'Prescription delivery',
-        'Follow-up scheduling',
-        'Medical records access'
-      ]
-    }
-  ]
-
-  const colorClasses = {
-    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-    blue: 'bg-blue-50 text-blue-600 border-blue-200',
-    purple: 'bg-purple-50 text-purple-600 border-purple-200',
-    amber: 'bg-amber-50 text-amber-600 border-amber-200'
-  }
-
-  useEffect(() => {
-    if (isAutoPlaying) {
-      // Auto-rotate every 8 seconds
-      autoPlayRef.current = setInterval(() => {
-        setActiveStep((prev) => (prev + 1) % steps.length)
-        setProgress(0)
-      }, 8000)
-
-      // Progress bar animation
-      progressRef.current = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 100) return 0
-          return prev + 1
-        })
-      }, 80) // 8000ms / 100 = 80ms per 1%
-    }
-
-    return () => {
-      if (autoPlayRef.current) clearInterval(autoPlayRef.current)
-      if (progressRef.current) clearInterval(progressRef.current)
-    }
-  }, [isAutoPlaying, steps.length])
-
-  const handleStepClick = (index: number) => {
-    setActiveStep(index)
-    setProgress(0)
-    // Pause auto-play for a moment when user interacts
-    setIsAutoPlaying(false)
-    setTimeout(() => setIsAutoPlaying(true), 10000)
-  }
-
-  const currentStep = steps[activeStep]
-
-  return (
-    <AdminCard className="overflow-hidden relative group">
-      {/* Progress Bar */}
-      <div className="absolute top-0 left-0 w-full h-1 bg-slate-100">
-        <div 
-          className={`h-full transition-all duration-100 ease-linear ${
-            currentStep.color === 'emerald' ? 'bg-emerald-500' :
-            currentStep.color === 'blue' ? 'bg-blue-500' :
-            currentStep.color === 'purple' ? 'bg-purple-500' : 'bg-amber-500'
-          }`}
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-
-      {/* Header with Navigation Dots */}
-      <div className="border-b border-slate-200 px-4 sm:px-5 py-3 bg-slate-50/50 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <InformationCircleIcon className="w-4 h-4 text-emerald-600" />
-          <h2 className="text-xs sm:text-sm font-semibold text-slate-700">How It Works</h2>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {steps.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => handleStepClick(index)}
-              className={`w-2 h-2 rounded-full transition-all ${
-                index === activeStep
-                  ? index === 0 ? 'bg-emerald-500 scale-125' :
-                    index === 1 ? 'bg-blue-500 scale-125' :
-                    index === 2 ? 'bg-purple-500 scale-125' : 'bg-amber-500 scale-125'
-                  : 'bg-slate-300 hover:bg-slate-400'
-              }`}
-              aria-label={`Go to step ${index + 1}`}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Content Area with Animation */}
-      <div className="p-4 sm:p-5">
-        <div className="flex items-start gap-4">
-          {/* Icon with animated background */}
-          <div className={`relative p-3 rounded-xl transition-all duration-500 ${
-            colorClasses[currentStep.color as keyof typeof colorClasses].split(' ')[0]
-          }`}>
-            <currentStep.icon className={`w-6 h-6 sm:w-7 sm:h-7 transition-transform duration-500 ${
-              colorClasses[currentStep.color as keyof typeof colorClasses].split(' ')[1]
-            }`} />
-            <div className={`absolute inset-0 rounded-xl animate-ping opacity-20 ${
-              currentStep.color === 'emerald' ? 'bg-emerald-500' :
-              currentStep.color === 'blue' ? 'bg-blue-500' :
-              currentStep.color === 'purple' ? 'bg-purple-500' : 'bg-amber-500'
-            }`} style={{ animationDuration: '2s' }} />
-          </div>
-
-          {/* Text Content */}
-          <div className="flex-1 min-w-0">
-            <h3 className={`text-base sm:text-lg font-semibold transition-colors duration-300 ${
-              currentStep.color === 'emerald' ? 'text-emerald-700' :
-              currentStep.color === 'blue' ? 'text-blue-700' :
-              currentStep.color === 'purple' ? 'text-purple-700' : 'text-amber-700'
-            }`}>
-              {currentStep.title}
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-600 mt-1">
-              {currentStep.description}
-            </p>
-          </div>
-        </div>
-
-        {/* Details List with Staggered Animation */}
-        <div className="mt-4 space-y-2">
-          {currentStep.details.map((detail, idx) => (
-            <div 
-              key={idx} 
-              className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 animate-fadeIn"
-              style={{ animationDelay: `${idx * 100}ms`, animationFillMode: 'both' }}
-            >
-              <CheckBadgeIcon className={`w-4 h-4 flex-shrink-0 ${
-                currentStep.color === 'emerald' ? 'text-emerald-500' :
-                currentStep.color === 'blue' ? 'text-blue-500' :
-                currentStep.color === 'purple' ? 'text-purple-500' : 'text-amber-500'
-              }`} />
-              <span>{detail}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Interactive Controls */}
-        <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between">
-          <button 
-            onClick={() => setIsAutoPlaying(!isAutoPlaying)}
-            className="text-xs text-slate-500 hover:text-emerald-600 transition flex items-center gap-1.5"
-          >
-            {isAutoPlaying ? (
-              <>
-                <ClockIcon className="w-3.5 h-3.5" />
-                Auto-rotating
-              </>
-            ) : (
-              <>
-                <PlayCircleIcon className="w-3.5 h-3.5" />
-                Paused
-              </>
-            )}
-          </button>
-          <div className="flex gap-1">
-            {steps.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => handleStepClick(index)}
-                className={`text-[10px] px-1.5 py-0.5 rounded transition ${
-                  index === activeStep
-                    ? index === 0 ? 'bg-emerald-100 text-emerald-700' :
-                      index === 1 ? 'bg-blue-100 text-blue-700' :
-                      index === 2 ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                {index + 1}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateX(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out forwards;
-        }
-      `}</style>
-    </AdminCard>
-  )
-}
-
-// Floating Stats Card with Live Updates
-const FloatingStatsCard = () => {
-  const [liveStats, setLiveStats] = useState({
-    onlineNow: 24,
-    consultationsToday: 156,
-    avgWaitTime: '4.5 min'
-  })
-
-  useEffect(() => {
-    // Simulate live updates
-    const interval = setInterval(() => {
-      setLiveStats(prev => ({
-        onlineNow: prev.onlineNow + (Math.random() > 0.5 ? 1 : -1),
-        consultationsToday: prev.consultationsToday + Math.floor(Math.random() * 3),
-        avgWaitTime: (4.2 + Math.random() * 0.6).toFixed(1) + ' min'
-      }))
-    }, 5000)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  return (
-    <AdminCard className="bg-gradient-to-br from-emerald-600 to-emerald-500 text-white">
-      <div className="p-4 sm:p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <HeartIcon className="w-4 h-4 animate-pulse" />
-          <h3 className="text-xs font-medium uppercase tracking-wider opacity-90">Live Activity</h3>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <div>
-            <p className="text-2xl font-bold">{liveStats.onlineNow}</p>
-            <p className="text-[10px] opacity-80">Online now</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold">{liveStats.consultationsToday}</p>
-            <p className="text-[10px] opacity-80">Today</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold">{liveStats.avgWaitTime}</p>
-            <p className="text-[10px] opacity-80">Avg. wait</p>
-          </div>
-        </div>
-        <div className="mt-3 flex items-center gap-1 text-[10px] opacity-75">
-          <StatusIndicator active={true} pulse={true} />
-          <span>Updating live</span>
-        </div>
-      </div>
-    </AdminCard>
-  )
-}
-
-// Testimonial Carousel
-const TestimonialCarousel = () => {
-  const testimonials = [
-    {
-      id: 1,
-      name: 'Dr. Sarah Kimani',
-      role: 'Cardiologist',
-      content: 'The verification process was smooth and professional. Now I can reach patients across Kenya.',
-      rating: 5
-    },
-    {
-      id: 2,
-      name: 'James Mwangi',
-      role: 'Patient',
-      content: 'Found a great specialist within minutes. The platform is intuitive and secure.',
-      rating: 5
-    },
-    {
-      id: 3,
-      name: 'Dr. Peter Odhiambo',
-      role: 'Dermatologist',
-      content: 'Application was approved in 24 hours. Excellent support team!',
-      rating: 5
+      color: 'purple'
     }
   ]
 
   return (
     <AdminCard>
+      <div className="border-b border-slate-200 px-4 sm:px-5 py-3 bg-slate-50/50">
+        <h2 className="text-xs sm:text-sm font-semibold text-slate-700 flex items-center gap-2">
+          <ChartBarIcon className="w-4 h-4 text-emerald-600" />
+          Platform Overview
+        </h2>
+      </div>
       <div className="p-4 sm:p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <StarIcon className="w-4 h-4 text-amber-500" />
-          <h3 className="text-xs font-semibold text-slate-700">Trusted by professionals</h3>
-        </div>
-        <div className="space-y-3">
-          {testimonials.map((t) => (
-            <div key={t.id} className="flex items-start gap-2">
-              <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center text-[10px] font-bold text-emerald-700 flex-shrink-0 mt-0.5">
-                {t.name.split(' ').map(n => n[0]).join('')}
+        <div className="space-y-4">
+          {steps.map((step, idx) => {
+            const Icon = step.icon
+            const colorClasses = {
+              emerald: 'bg-emerald-50 text-emerald-600',
+              blue: 'bg-blue-50 text-blue-600',
+              purple: 'bg-purple-50 text-purple-600'
+            }
+            return (
+              <div key={idx} className="flex items-start gap-3">
+                <div className={`p-2 rounded-lg flex-shrink-0 ${colorClasses[step.color as keyof typeof colorClasses]}`}>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-slate-900">{step.title}</h3>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">{step.description}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-slate-600">"{t.content}"</p>
-                <p className="text-[10px] text-slate-500 mt-1">- {t.name}</p>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </AdminCard>
@@ -531,7 +212,7 @@ export default function LandingPage() {
         const totalRating = practitionersWithRating.reduce((acc, p) => acc + (p.average_rating || 0), 0)
         const avgRating = practitionersWithRating.length > 0 
           ? (totalRating / practitionersWithRating.length) 
-          : 4.5
+          : 0
 
         setStats({
           practitionerCount: practitionersList.length,
@@ -546,7 +227,7 @@ export default function LandingPage() {
         
       } catch (error) {
         console.error('Error fetching landing page data:', error)
-        setError('Failed to load platform data')
+        setError('Unable to load platform data')
         setSpecialties([])
       } finally {
         setLoading(false)
@@ -584,21 +265,21 @@ export default function LandingPage() {
       label: 'Cities', 
       value: stats.cityCount.toLocaleString(), 
       icon: BuildingOfficeIcon,
-      change: 'Nationwide',
+      change: 'Nationwide coverage',
       color: 'blue' as const
     },
     { 
-      label: 'Monthly', 
+      label: 'Monthly Sessions', 
       value: stats.consultationCount.toLocaleString() + '+', 
       icon: CalendarIcon,
-      change: 'All specialties',
+      change: 'Platform estimate',
       color: 'purple' as const
     },
     { 
       label: 'Rating', 
       value: stats.averageRating.toFixed(1), 
       icon: StarIcon,
-      change: 'Verified reviews',
+      change: stats.averageRating > 0 ? 'From verified reviews' : 'No reviews yet',
       color: 'amber' as const
     }
   ]
@@ -655,7 +336,7 @@ export default function LandingPage() {
                 <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input 
                   type="text" 
-                  placeholder="Search..." 
+                  placeholder="Search practitioners..." 
                   className="pl-9 pr-4 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-300 w-48 lg:w-64 bg-slate-50"
                 />
               </div>
@@ -694,7 +375,7 @@ export default function LandingPage() {
                   <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input 
                     type="text" 
-                    placeholder="Search..." 
+                    placeholder="Search practitioners..." 
                     className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50"
                   />
                 </div>
@@ -718,12 +399,12 @@ export default function LandingPage() {
           <div className="flex items-center justify-between min-w-max sm:min-w-0">
             <div className="flex items-center gap-3 sm:gap-6 text-[10px] sm:text-xs text-slate-600">
               <span className="flex items-center flex-shrink-0">
-                <StatusIndicator active={stats.activeToday > 0} pulse={true} />
-                <span className="font-medium mr-1">{stats.activeToday}</span> active
+                <StatusIndicator active={stats.activeToday > 0} />
+                <span className="font-medium mr-1">{stats.activeToday}</span> practitioners online
               </span>
               <span className="flex items-center flex-shrink-0">
-                <span className="inline-block w-1 h-1 rounded-full bg-slate-300 mr-1.5"></span>
-                Updated now
+                <ShieldCheckIcon className="w-3 h-3 text-emerald-500 mr-1" />
+                Verified platform
               </span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 ml-2">
@@ -755,66 +436,44 @@ export default function LandingPage() {
       </header>
 
       <main id="main-content" className="px-3 sm:px-4 md:px-6 py-4 sm:py-5 md:py-6 max-w-7xl mx-auto">
-        {/* Hero Section with clean medical icons */}
+        {/* Hero Section - Clean and professional */}
         <div className="mb-6 sm:mb-8">
-          {/* Medical icon grid */}
-          <div className="grid grid-cols-5 gap-1 w-fit mb-4 opacity-80">
-            <span className="text-xl hover:scale-110 transition-transform">🏥</span>
-            <span className="text-xl hover:scale-110 transition-transform">👨‍⚕️</span>
-            <span className="text-xl hover:scale-110 transition-transform">👩‍⚕️</span>
-            <span className="text-xl hover:scale-110 transition-transform">💊</span>
-            <span className="text-xl hover:scale-110 transition-transform">🩺</span>
+          <div className="flex items-center gap-2 text-emerald-600 mb-3">
+            <ShieldCheckIcon className="w-5 h-5" />
+            <span className="text-xs font-medium uppercase tracking-wider">Verified Healthcare Platform</span>
           </div>
           
-          {/* Main heading */}
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-slate-900 mb-4">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-light text-slate-900 mb-4">
             A platform that connects{' '}
             <span className="relative inline-block">
-              <span className="relative z-10 bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent font-bold">
+              <span className="relative z-10 bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent font-semibold">
                 patients
               </span>
-              <span className="absolute -top-3 -right-3 text-sm">👤</span>
             </span>{' '}
             with{' '}
             <span className="relative inline-block">
-              <span className="relative z-10 bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent font-bold">
+              <span className="relative z-10 bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent font-semibold">
                 verified practitioners
               </span>
-              <span className="absolute -top-3 -right-3 text-sm">👨‍⚕️</span>
             </span>
           </h1>
           
-          {/* Medical metrics */}
-          <div className="flex flex-wrap gap-3">
-            <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm hover:shadow-md transition">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">👥</span>
-                <div>
-                  <div className="text-xs text-slate-500">Active practitioners</div>
-                  <div className="text-sm font-semibold text-slate-900">{stats.practitionerCount}</div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm hover:shadow-md transition">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">📍</span>
-                <div>
-                  <div className="text-xs text-slate-500">Cities covered</div>
-                  <div className="text-sm font-semibold text-slate-900">{stats.cityCount}</div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm hover:shadow-md transition">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">⭐</span>
-                <div>
-                  <div className="text-xs text-slate-500">Average rating</div>
-                  <div className="text-sm font-semibold text-slate-900">{stats.averageRating}</div>
-                </div>
-              </div>
-            </div>
+          {/* Platform metrics - Real data only */}
+          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
+            <span className="flex items-center gap-1.5">
+              <CheckBadgeIcon className="w-4 h-4 text-emerald-500" />
+              {stats.practitionerCount} registered practitioners
+            </span>
+            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+            <span className="flex items-center gap-1.5">
+              <MapPinIcon className="w-4 h-4 text-emerald-500" />
+              {stats.cityCount} cities covered
+            </span>
+            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+            <span className="flex items-center gap-1.5">
+              <ClockIcon className="w-4 h-4 text-emerald-500" />
+              {stats.activeToday} active now
+            </span>
           </div>
         </div>
 
@@ -822,41 +481,32 @@ export default function LandingPage() {
         <div className="hidden xs:flex items-center gap-2 text-xs text-slate-500 mb-4 sm:mb-6 overflow-x-auto scrollbar-hide">
           <Link href="/" className="hover:text-emerald-600 transition whitespace-nowrap">Home</Link>
           <ChevronRightIcon className="w-3 h-3 flex-shrink-0" />
-          <span className="text-slate-900 font-medium whitespace-nowrap">Dashboard</span>
+          <span className="text-slate-900 font-medium whitespace-nowrap">Platform Dashboard</span>
         </div>
 
-        {/* Stats grid */}
+        {/* Stats grid - Real data only */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-5 mb-5 sm:mb-6 md:mb-8">
           {statCards.map((stat, index) => (
             <StatCard key={index} {...stat} />
           ))}
         </div>
 
-        {/* Error message */}
+        {/* Error message - Only show if there's an actual error */}
         {error && (
           <div className="mb-4 sm:mb-5 md:mb-6 p-3 sm:p-4 bg-amber-50 border border-amber-200 rounded-lg">
             <p className="text-xs sm:text-sm text-amber-700 flex items-center gap-2">
               <span className="inline-block w-1 h-1 rounded-full bg-amber-500 flex-shrink-0"></span>
-              <span className="truncate">{error}</span>
+              {error}
             </p>
           </div>
         )}
 
-        {/* Interactive Cards Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 mb-6 sm:mb-8">
-          {/* Left column - Interactive Info Card */}
-          <div className="lg:col-span-2">
-            <InteractiveInfoCard />
-          </div>
-
-          {/* Right column - Floating Stats & Testimonials */}
-          <div className="space-y-4 sm:space-y-5">
-            <FloatingStatsCard />
-            <TestimonialCarousel />
-          </div>
+        {/* Platform Overview Card - Replaces fake interactive content */}
+        <div className="mb-6 sm:mb-8">
+          <PlatformOverviewCard />
         </div>
 
-        {/* Specialties Section */}
+        {/* Main content grid - Specialties only, no fake testimonials */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
           {/* Left column - Specialties */}
           <div className="lg:col-span-2">
@@ -890,7 +540,10 @@ export default function LandingPage() {
                               {specialty.name}
                             </div>
                             <div className="text-[10px] sm:text-xs text-slate-500 line-clamp-2">
-                              {specialty.description?.substring(0, 30) || 'Specialized care'}
+                              {specialty.description?.substring(0, 30) || 'Specialized medical care'}
+                            </div>
+                            <div className="mt-2 text-[8px] sm:text-[10px] text-slate-400 border-t border-slate-100 pt-1">
+                              ID: {specialty.id}
                             </div>
                           </div>
                         ))}
@@ -933,7 +586,7 @@ export default function LandingPage() {
                     href="/register" 
                     className="text-xs sm:text-sm text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 group"
                   >
-                    <span>View all specialties</span>
+                    <span>Sign up to access full directory</span>
                     <ChevronRightIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 group-hover:translate-x-0.5 transition flex-shrink-0" />
                   </Link>
                 </div>
@@ -959,7 +612,7 @@ export default function LandingPage() {
                   <div>
                     <p className="text-xs sm:text-sm font-medium text-slate-900 mb-0.5 sm:mb-1">Full directory access</p>
                     <p className="text-[10px] sm:text-xs text-slate-500 leading-relaxed">
-                      Sign up to view practitioner details and availability.
+                      Sign up to view practitioner profiles, availability, and book consultations.
                     </p>
                   </div>
                 </div>
@@ -972,30 +625,31 @@ export default function LandingPage() {
               </div>
             </AdminCard>
 
-            {/* Quick stats */}
+            {/* System status - Real data only */}
             <AdminCard>
               <div className="border-b border-slate-200 px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 bg-slate-50/50">
-                <h2 className="text-xs sm:text-sm font-semibold text-slate-700">System status</h2>
+                <h2 className="text-xs sm:text-sm font-semibold text-slate-700">Platform Status</h2>
               </div>
               <div className="p-3 sm:p-4 md:p-5 space-y-2.5 sm:space-y-3 md:space-y-4">
-                {[
-                  { label: 'Platform', value: 'Operational', color: 'emerald', active: true },
-                  { label: 'Active', value: stats.activeToday, color: 'blue' },
-                  { label: 'Total', value: stats.practitionerCount, color: 'purple' },
-                  { label: 'Cities', value: stats.cityCount, color: 'amber' }
-                ].map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center">
-                    <span className="text-[10px] sm:text-xs text-slate-500">{item.label}</span>
-                    <span className={`text-xs sm:text-sm font-medium flex items-center gap-1 ${
-                      item.color === 'emerald' ? 'text-emerald-600' : 'text-slate-900'
-                    }`}>
-                      {item.active !== undefined && (
-                        <StatusIndicator active={item.active} pulse={item.color === 'emerald'} />
-                      )}
-                      {item.value}
-                    </span>
-                  </div>
-                ))}
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] sm:text-xs text-slate-500">Platform</span>
+                  <span className="text-xs sm:text-sm font-medium text-emerald-600 flex items-center">
+                    <StatusIndicator active={true} />
+                    Operational
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] sm:text-xs text-slate-500">Active practitioners</span>
+                  <span className="text-xs sm:text-sm font-medium text-slate-900">{stats.activeToday}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] sm:text-xs text-slate-500">Total practitioners</span>
+                  <span className="text-xs sm:text-sm font-medium text-slate-900">{stats.practitionerCount}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] sm:text-xs text-slate-500">Cities covered</span>
+                  <span className="text-xs sm:text-sm font-medium text-slate-900">{stats.cityCount}</span>
+                </div>
               </div>
             </AdminCard>
 
@@ -1005,7 +659,7 @@ export default function LandingPage() {
                 <h2 className="text-xs sm:text-sm font-semibold text-slate-700">Support</h2>
               </div>
               <div className="p-3 sm:p-4 md:p-5 space-y-3 sm:space-y-4">
-                <a href="mailto:support@afyaconnect.com" className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-600 group hover:text-emerald-600 transition">
+                <a href={`mailto:${SUPPORT_EMAIL}`} className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-600 group hover:text-emerald-600 transition">
                   <div className="p-1.5 sm:p-2 bg-slate-100 rounded-lg group-hover:bg-emerald-100 transition flex-shrink-0">
                     <EnvelopeIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
