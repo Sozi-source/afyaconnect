@@ -438,13 +438,13 @@ export default function LandingPage() {
                 <Link href="/" className="px-4 py-2 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-lg">
                   Dashboard
                 </Link>
-                <Link href="/practitioners" className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
+                <Link href="/login" className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
                   Practitioners
                 </Link>
-                <Link href="/specialties" className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
+                <Link href="/login" className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
                   Specialties
                 </Link>
-                <Link href="/how-it-works" className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
+                <Link href="#" className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
                   How it works
                 </Link>
               </nav>
@@ -491,13 +491,13 @@ export default function LandingPage() {
               <Link href="/" className="block px-4 py-2.5 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-lg">
                 Dashboard
               </Link>
-              <Link href="/practitioners" className="block px-4 py-2.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
+              <Link href="/login" className="block px-4 py-2.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
                 Practitioners
               </Link>
-              <Link href="/specialties" className="block px-4 py-2.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
+              <Link href="/login" className="block px-4 py-2.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
                 Specialties
               </Link>
-              <Link href="/how-it-works" className="block px-4 py-2.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
+              <Link href="#" className="block px-4 py-2.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
                 How it works
               </Link>
               <div className="border-t border-slate-200 my-3 pt-3">
@@ -875,7 +875,7 @@ export default function LandingPage() {
                 <ArrowRightIcon className="w-4 h-4" />
               </button>
             </Link>
-            <Link href="/practitioners">
+            <Link href="/login">
               <button className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-xl border border-white/20 hover:border-white/30 transition-all min-w-[200px]">
                 Browse directory
               </button>
@@ -895,36 +895,36 @@ export default function LandingPage() {
               <h3 className="text-sm font-semibold text-slate-900 mb-4">Platform</h3>
               <ul className="space-y-2">
                 <li><Link href="/about" className="text-xs text-slate-500 hover:text-emerald-600 transition">About</Link></li>
-                <li><Link href="/how-it-works" className="text-xs text-slate-500 hover:text-emerald-600 transition">How it works</Link></li>
-                <li><Link href="/pricing" className="text-xs text-slate-500 hover:text-emerald-600 transition">Pricing</Link></li>
-                <li><Link href="/faq" className="text-xs text-slate-500 hover:text-emerald-600 transition">FAQ</Link></li>
+                <li><Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">How it works</Link></li>
+                <li><Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">Pricing</Link></li>
+                <li><Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">FAQ</Link></li>
               </ul>
             </div>
             <div>
               <h3 className="text-sm font-semibold text-slate-900 mb-4">For Practitioners</h3>
               <ul className="space-y-2">
-                <li><Link href="/join" className="text-xs text-slate-500 hover:text-emerald-600 transition">Join as practitioner</Link></li>
-                <li><Link href="/practitioner-guide" className="text-xs text-slate-500 hover:text-emerald-600 transition">Practitioner guide</Link></li>
-                <li><Link href="/resources" className="text-xs text-slate-500 hover:text-emerald-600 transition">Resources</Link></li>
-                <li><Link href="/webinars" className="text-xs text-slate-500 hover:text-emerald-600 transition">Webinars</Link></li>
+                <li><Link href="/login" className="text-xs text-slate-500 hover:text-emerald-600 transition">Join as practitioner</Link></li>
+                <li><Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">Practitioner guide</Link></li>
+                <li><Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">Resources</Link></li>
+                <li><Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">Webinars</Link></li>
               </ul>
             </div>
             <div>
               <h3 className="text-sm font-semibold text-slate-900 mb-4">For Patients</h3>
               <ul className="space-y-2">
-                <li><Link href="/how-to-consult" className="text-xs text-slate-500 hover:text-emerald-600 transition">How to consult</Link></li>
-                <li><Link href="/patient-guide" className="text-xs text-slate-500 hover:text-emerald-600 transition">Patient guide</Link></li>
-                <li><Link href="/insurance" className="text-xs text-slate-500 hover:text-emerald-600 transition">Insurance</Link></li>
-                <li><Link href="/support" className="text-xs text-slate-500 hover:text-emerald-600 transition">Patient support</Link></li>
+                <li><Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">How to consult</Link></li>
+                <li><Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">Patient guide</Link></li>
+                <li><Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">Insurance</Link></li>
+                <li><Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">Patient support</Link></li>
               </ul>
             </div>
             <div>
               <h3 className="text-sm font-semibold text-slate-900 mb-4">Legal</h3>
               <ul className="space-y-2">
-                <li><Link href="/privacy" className="text-xs text-slate-500 hover:text-emerald-600 transition">Privacy policy</Link></li>
-                <li><Link href="/terms" className="text-xs text-slate-500 hover:text-emerald-600 transition">Terms of service</Link></li>
-                <li><Link href="/compliance" className="text-xs text-slate-500 hover:text-emerald-600 transition">Compliance</Link></li>
-                <li><Link href="/security" className="text-xs text-slate-500 hover:text-emerald-600 transition">Security</Link></li>
+                <li><Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">Privacy policy</Link></li>
+                <li><Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">Terms of service</Link></li>
+                <li><Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">Compliance</Link></li>
+                <li><Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">Security</Link></li>
               </ul>
             </div>
           </div>
@@ -938,10 +938,10 @@ export default function LandingPage() {
               <span>{COMPANY_LOCATION}</span>
             </div>
             <div className="flex gap-6">
-              <Link href="/privacy" className="text-xs text-slate-500 hover:text-emerald-600 transition">Privacy</Link>
-              <Link href="/terms" className="text-xs text-slate-500 hover:text-emerald-600 transition">Terms</Link>
-              <Link href="/contact" className="text-xs text-slate-500 hover:text-emerald-600 transition">Contact</Link>
-              <Link href="/sitemap" className="text-xs text-slate-500 hover:text-emerald-600 transition">Sitemap</Link>
+              <Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">Privacy</Link>
+              <Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">Terms</Link>
+              <Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">Contact</Link>
+              <Link href="#" className="text-xs text-slate-500 hover:text-emerald-600 transition">Sitemap</Link>
             </div>
           </div>
         </div>
