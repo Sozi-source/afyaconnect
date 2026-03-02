@@ -156,7 +156,7 @@ export default function LoginPage() {
   const fillTestCredentials = (type: 'client' | 'practitioner') => {
     if (type === 'client') {
       setEmail('client@example.com')
-      setPassword('Client123')
+      setPassword('client123')
     } else {
       setEmail('practitioner@example.com')
       setPassword('practitioner123')
