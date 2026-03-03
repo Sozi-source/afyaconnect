@@ -208,7 +208,7 @@ export default function LoginPage() {
                 Welcome Back
               </h1>
               <p className="text-emerald-100 text-center text-sm sm:text-base mt-2">
-                Sign in to continue to NutriConnect
+                Sign in to continue to AfyaConnect
               </p>
             </motion.div>
           </div>

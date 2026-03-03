@@ -246,7 +246,7 @@ export default function RegisterForm() {
                   }`}>
                     <BriefcaseIcon className="w-6 h-6 text-emerald-600 mb-3" />
                     <h4 className="font-semibold">Practitioner</h4>
-                    <p className="text-sm text-gray-600">Offer nutrition consultations</p>
+                    <p className="text-sm text-gray-600">Offer Health consultations</p>
                   </button>
                 </div>
                 {errors.role && <p className="text-sm text-red-600 text-center">{errors.role}</p>}

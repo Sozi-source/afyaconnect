@@ -13,10 +13,10 @@ export default function AuthLayout({
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">MC</span>
+                <span className="text-white font-bold">AC</span>
               </div>
               <span className="text-lg font-bold text-gray-900 dark:text-white">
-                Medi<span className="text-emerald-600">Connect</span>
+                Afya<span className="text-emerald-600">Connect</span>
               </span>
             </Link>
             <Link 
@@ -36,7 +36,7 @@ export default function AuthLayout({
 
       {/* Simple Footer */}
       <footer className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-        © {new Date().getFullYear()} MediConnect. All rights reserved.
+        © {new Date().getFullYear()} AfyaConnect. All rights reserved.
       </footer>
     </div>
   )

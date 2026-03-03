@@ -2,172 +2,476 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { 
-  ArrowRightIcon, 
+import Image from 'next/image'
+import {
   UserGroupIcon,
   CalendarIcon,
   ShieldCheckIcon,
   StarIcon,
-  MapPinIcon,
-  LockClosedIcon,
-  MagnifyingGlassIcon,
-  FunnelIcon,
   BuildingOfficeIcon,
   ClockIcon,
   CheckBadgeIcon,
   EnvelopeIcon,
   PhoneIcon,
   ChevronRightIcon,
-  Squares2X2Icon,
-  ListBulletIcon,
-  ArrowPathIcon,
-  DocumentTextIcon,
-  ChartBarIcon,
-  Bars3Icon,
-  XMarkIcon
+  HeartIcon,
+  VideoCameraIcon,
+  MagnifyingGlassIcon,
+  MapPinIcon,
+  BriefcaseIcon,
+  ArrowRightIcon,
+  SparklesIcon,
+  LockClosedIcon
 } from '@heroicons/react/24/outline'
+import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import apiClient, { 
-  getPractitioners,
-  getSpecialties 
+  getPractitioners, 
+  getSpecialties,
+  getReviews 
 } from '@/app/lib/api/index'
-import type { Specialty, Practitioner, PaginatedResponse } from '@/app/types'
+import type { 
+  Practitioner, 
+  Specialty, 
+  Review,
+  PaginatedResponse 
+} from '@/app/types'
 
-/**
- * AfyaConnect - A platform that connects patients with verified practitioners
- */
+// ==================== SYSTEM CONSTANTS ====================
+const PLATFORM = {
+  name: 'AfyaConnect',
+  email: 'support@afyaconnect.com',
+  phone: '+254 700 000 000',
+  version: '1.0.0',
+  year: new Date().getFullYear()
+}
 
-// ==================== CONSTANTS ====================
-const PLATFORM_NAME = 'AfyaConnect'
-const SUPPORT_EMAIL = 'support@afyaconnect.com'
-const SUPPORT_PHONE = '+254 700 000 000'
+// ==================== CORE COMPONENTS ====================
 
-// ==================== COMPONENTS ====================
+// Modern Card System
+const Card = ({ 
+  children, 
+  variant = 'default',
+  className = '' 
+}: { 
+  children: React.ReactNode
+  variant?: 'default' | 'hover' | 'interactive' | 'glass'
+  className?: string
+}) => {
+  const variants = {
+    default: 'bg-white border border-slate-200 rounded-2xl',
+    hover: 'bg-white border border-slate-200 rounded-2xl hover:border-emerald-200 hover:shadow-lg transition-all',
+    interactive: 'bg-white border border-slate-200 rounded-2xl hover:border-emerald-200 hover:shadow-xl hover:-translate-y-1 transition-all',
+    glass: 'backdrop-blur-md bg-white/70 border border-white/20 rounded-2xl shadow-lg'
+  }
+  
+  return (
+    <div className={`${variants[variant]} ${className}`}>
+      {children}
+    </div>
+  )
+}
 
-// Mobile-first card component
-const AdminCard = ({ children, className = '', hover = true }: { children: React.ReactNode, className?: string; hover?: boolean }) => (
-  <div className={`bg-white border border-slate-200 rounded-lg shadow-sm ${hover ? 'hover:shadow-md transition-all duration-200 hover:border-emerald-200' : ''} ${className}`}>
-    {children}
+// Hero Card with Image - Perfectly Matched Sizes
+const HeroCard = ({ 
+  practitionerCount, 
+  cityCount 
+}: { 
+  practitionerCount: number
+  cityCount: number 
+}) => (
+  <div className="grid lg:grid-cols-2 gap-8 items-stretch max-w-6xl mx-auto">
+    {/* Left Content - Same height as image */}
+    <Card variant="glass" className="p-8 sm:p-10 md:p-12 relative overflow-hidden h-full flex flex-col">
+      {/* Background decoration */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-100/30 to-blue-100/30 rounded-full blur-3xl -translate-y-32 translate-x-32"></div>
+      
+      <div className="relative flex-1 flex flex-col">
+        {/* Trust Badge */}
+        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 bg-emerald-50 rounded-full mb-6 sm:mb-8 border border-emerald-100 w-fit">
+          <ShieldCheckIcon className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-emerald-600" />
+          <span className="text-xs sm:text-sm font-medium text-emerald-700 tracking-wide">
+            {practitionerCount}+ Verified Practitioners
+          </span>
+        </div>
+        
+        {/* Main Headline */}
+        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-light tracking-tight text-slate-900 mb-4 sm:mb-6">
+          Your Health.{' '}
+          <span className="block sm:inline font-medium bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
+            Connected.
+          </span>
+        </h1>
+        
+        {/* Supporting Text */}
+        <p className="text-base sm:text-lg md:text-xl text-slate-500 mb-6 sm:mb-8 max-w-md font-light leading-relaxed">
+          Book appointments instantly with verified practitioners across{' '}
+          <span className="font-medium text-slate-900">{cityCount} cities</span>.
+        </p>
+        
+        {/* Spacer to push CTA down */}
+        <div className="flex-1"></div>
+        
+        {/* CTA Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-auto">
+          <Link href="/register" className="w-full sm:w-auto flex-1">
+            <button className="group w-full px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all inline-flex items-center justify-center gap-2 text-sm sm:text-base">
+              <span>Get Started</span>
+              <ArrowRightIcon className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </Link>
+          <Link href="/how-it-works" className="w-full sm:w-auto flex-1">
+            <button className="group w-full px-6 sm:px-8 py-3 sm:py-4 border border-slate-300 hover:border-slate-400 text-slate-700 font-medium rounded-xl transition-all inline-flex items-center justify-center gap-2 text-sm sm:text-base">
+              <span>How it Works</span>
+            </button>
+          </Link>
+        </div>
+        
+        {/* Trust Indicators */}
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-6 sm:mt-8 text-xs sm:text-sm text-slate-400 font-light">
+          <span className="flex items-center gap-1">
+            <SparklesIcon className="w-3.5 h-3.5" />
+            Free to join
+          </span>
+          <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+          <span className="flex items-center gap-1">
+            <ShieldCheckIcon className="w-3.5 h-3.5" />
+            No hidden fees
+          </span>
+          <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+          <span>Cancel anytime</span>
+        </div>
+      </div>
+    </Card>
+
+    {/* Right Image - Exact same height as card */}
+    <div className="hidden lg:block relative h-full">
+      <div className="relative rounded-3xl overflow-hidden shadow-2xl h-full">
+        <Image 
+          src="/images/hero.jpeg"
+          alt="Healthcare professional consulting with patient in modern medical facility"
+          fill
+          className="object-cover"
+          priority
+          sizes="(max-width: 768px) 100vw, 50vw"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-emerald-900/30 via-transparent to-transparent"></div>
+        
+        {/* Floating Stats Card */}
+        <div className="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md rounded-xl p-4 border border-white/20 shadow-xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                <VideoCameraIcon className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <div className="text-sm font-medium text-slate-900">Live Consultation</div>
+                <div className="text-xs text-slate-500">with Dr. Sarah Chen</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="flex -space-x-2">
+                <div className="w-6 h-6 rounded-full bg-blue-500 border-2 border-white"></div>
+                <div className="w-6 h-6 rounded-full bg-emerald-500 border-2 border-white"></div>
+              </div>
+              <span className="text-xs text-slate-500 ml-1">+2</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Decorative elements */}
+      <div className="absolute -top-4 -right-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl"></div>
+      <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl"></div>
+    </div>
   </div>
 )
 
-// Status indicator
-const StatusIndicator = ({ active = true }: { active?: boolean }) => (
-  <span className={`inline-block w-1.5 h-1.5 rounded-full ${active ? 'bg-emerald-500' : 'bg-slate-300'} mr-1.5`}></span>
+// Role Badge
+const RoleBadge = ({ role }: { role: 'client' | 'practitioner' | 'admin' }) => {
+  const roles = {
+    client: { bg: 'bg-blue-50', text: 'text-blue-700', icon: HeartIcon, label: 'Patient' },
+    practitioner: { bg: 'bg-emerald-50', text: 'text-emerald-700', icon: BriefcaseIcon, label: 'Practitioner' },
+    admin: { bg: 'bg-purple-50', text: 'text-purple-700', icon: ShieldCheckIcon, label: 'Admin' }
+  }
+  
+  const Icon = roles[role].icon
+  
+  return (
+    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ${roles[role].bg} ${roles[role].text}`}>
+      <Icon className="w-4 h-4" />
+      <span className="text-sm font-medium">{roles[role].label}</span>
+    </div>
+  )
+}
+
+// Stat Display
+const StatDisplay = ({ 
+  icon: Icon, 
+  value, 
+  label,
+  trend 
+}: { 
+  icon: any
+  value: string | number
+  label: string
+  trend?: string
+}) => (
+  <Card variant="hover" className="p-4 sm:p-6">
+    <div className="flex items-start justify-between mb-2 sm:mb-3">
+      <div className="p-2 sm:p-3 bg-slate-100 rounded-xl">
+        <Icon className="w-4 sm:w-5 h-4 sm:h-5 text-slate-600" />
+      </div>
+      {trend && (
+        <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+          {trend}
+        </span>
+      )}
+    </div>
+    <div className="text-xl sm:text-2xl font-light text-slate-900 mb-1">{value}</div>
+    <div className="text-xs sm:text-sm text-slate-500 font-light">{label}</div>
+  </Card>
 )
 
-// Mobile-optimized Stat Card
-const StatCard = ({ 
-  icon: Icon, 
-  label, 
-  value, 
-  change,
-  color = 'slate'
+// Role Card
+const RoleCard = ({ 
+  type,
+  title,
+  description,
+  action,
+  metrics
+}: {
+  type: 'client' | 'practitioner'
+  title: string
+  description: string
+  action: string
+  metrics: { label: string; value: string }[]
+}) => (
+  <Card variant="interactive" className="p-6 sm:p-8">
+    <div className="flex items-start justify-between mb-4 sm:mb-6">
+      <RoleBadge role={type} />
+      <div className="text-2xl sm:text-3xl">
+        {type === 'client' ? '👤' : '👨‍⚕️'}
+      </div>
+    </div>
+    
+    <h3 className="text-xl sm:text-2xl font-light text-slate-900 mb-2 sm:mb-3">{title}</h3>
+    <p className="text-sm sm:text-base text-slate-500 font-light mb-4 sm:mb-6 leading-relaxed">{description}</p>
+    
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+      {metrics.map((metric, idx) => (
+        <div key={idx} className="bg-slate-50 rounded-xl p-2 sm:p-3">
+          <div className="text-base sm:text-lg font-medium text-slate-900">{metric.value}</div>
+          <div className="text-xs text-slate-500 font-light">{metric.label}</div>
+        </div>
+      ))}
+    </div>
+    
+    <Link 
+      href={type === 'client' ? '/register?role=client' : '/register?role=practitioner'}
+      className="inline-flex items-center justify-between w-full text-sm sm:text-base font-medium text-emerald-600 hover:text-emerald-700 group border-t border-slate-100 pt-4"
+    >
+      <span>{action}</span>
+      <ChevronRightIcon className="w-4 sm:w-5 h-4 sm:h-5 group-hover:translate-x-1 transition" />
+    </Link>
+  </Card>
+)
+
+// Practitioner Card
+const PractitionerCard = ({ 
+  practitioner 
 }: { 
-  icon: any; 
-  label: string; 
-  value: string; 
-  change: string;
-  color?: 'emerald' | 'blue' | 'purple' | 'amber' | 'slate'
-}) => {
-  const colorClasses = {
-    emerald: 'bg-emerald-50 text-emerald-600',
-    blue: 'bg-blue-50 text-blue-600',
-    purple: 'bg-purple-50 text-purple-600',
-    amber: 'bg-amber-50 text-amber-600',
-    slate: 'bg-slate-50 text-slate-600'
-  }
+  practitioner: Practitioner 
+}) => (
+  <Card variant="hover" className="p-4 sm:p-6 relative group">
+    {/* Blur overlay for unauthenticated users */}
+    <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+      <div className="text-center p-4">
+        <LockClosedIcon className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+        <p className="text-sm text-slate-600 font-light mb-3">Sign in to view profile</p>
+        <Link href="/login">
+          <button className="px-4 py-2 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition">
+            Sign In
+          </button>
+        </Link>
+      </div>
+    </div>
 
-  return (
-    <AdminCard>
-      <div className="p-3 sm:p-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider truncate">{label}</span>
-          <div className={`p-1.5 sm:p-2 rounded-lg flex-shrink-0 ${colorClasses[color]}`}>
-            <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+    <div className="relative">
+      <div className="flex items-start gap-3 sm:gap-4 mb-3 sm:mb-4">
+        <div className="w-10 sm:w-12 h-10 sm:h-12 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center text-slate-600 font-medium text-base sm:text-lg">
+          {practitioner.first_name?.charAt(0) || 'D'}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1 sm:gap-2 mb-1">
+            <h4 className="text-base sm:text-lg font-medium text-slate-900 truncate">
+              {practitioner.full_name || `Dr. ${practitioner.first_name} ${practitioner.last_name}`}
+            </h4>
+            {practitioner.is_verified && (
+              <CheckBadgeIcon className="w-4 sm:w-5 h-4 sm:h-5 text-emerald-500 flex-shrink-0" />
+            )}
           </div>
-        </div>
-        <div className="text-xl sm:text-2xl font-semibold text-slate-900 truncate">{value}</div>
-        <div className="text-[10px] sm:text-xs text-slate-500 mt-1 flex items-center">
-          <span className="inline-block w-1 h-1 rounded-full bg-emerald-400 mr-1 flex-shrink-0"></span>
-          <span className="truncate">{change}</span>
+          <p className="text-xs sm:text-sm text-slate-500 font-light">
+            {practitioner.specialties?.map(s => s.name).join(' • ') || 'Specialist'}
+          </p>
         </div>
       </div>
-    </AdminCard>
-  )
-}
-
-// Platform Overview Card - replaces interactive/floating cards
-const PlatformOverviewCard = () => {
-  const steps = [
-    {
-      title: 'For Patients',
-      description: 'Browse verified practitioners, check real-time availability, and book consultations securely.',
-      icon: UserGroupIcon,
-      color: 'emerald'
-    },
-    {
-      title: 'For Practitioners',
-      description: 'Create a professional profile, manage your schedule, and grow your practice online.',
-      icon: BuildingOfficeIcon,
-      color: 'blue'
-    },
-    {
-      title: 'Verification Process',
-      description: 'All practitioners undergo credential verification, license confirmation, and identity checks.',
-      icon: ShieldCheckIcon,
-      color: 'purple'
-    }
-  ]
-
-  return (
-    <AdminCard>
-      <div className="border-b border-slate-200 px-4 sm:px-5 py-3 bg-slate-50/50">
-        <h2 className="text-xs sm:text-sm font-semibold text-slate-700 flex items-center gap-2">
-          <ChartBarIcon className="w-4 h-4 text-emerald-600" />
-          Platform Overview
-        </h2>
+      
+      <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-slate-500 mb-3 sm:mb-4">
+        {practitioner.city && (
+          <div className="flex items-center gap-1">
+            <MapPinIcon className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+            <span className="font-light">{practitioner.city}</span>
+          </div>
+        )}
+        {practitioner.average_rating ? (
+          <div className="flex items-center gap-1">
+            <StarIconSolid className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-amber-400" />
+            <span className="font-light">{practitioner.average_rating.toFixed(1)}</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1">
+            <StarIcon className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-slate-300" />
+            <span className="text-slate-400 font-light">New</span>
+          </div>
+        )}
       </div>
-      <div className="p-4 sm:p-5">
-        <div className="space-y-4">
-          {steps.map((step, idx) => {
-            const Icon = step.icon
-            const colorClasses = {
-              emerald: 'bg-emerald-50 text-emerald-600',
-              blue: 'bg-blue-50 text-blue-600',
-              purple: 'bg-purple-50 text-purple-600'
-            }
-            return (
-              <div key={idx} className="flex items-start gap-3">
-                <div className={`p-2 rounded-lg flex-shrink-0 ${colorClasses[step.color as keyof typeof colorClasses]}`}>
-                  <Icon className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-slate-900">{step.title}</h3>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">{step.description}</p>
-                </div>
-              </div>
-            )
-          })}
+      
+      <div className="w-full py-2 sm:py-3 text-xs sm:text-sm font-medium text-slate-400 border border-slate-200 rounded-xl text-center">
+        Sign in to view profile
+      </div>
+    </div>
+  </Card>
+)
+
+// Feature Card
+const FeatureCard = ({ 
+  icon: Icon, 
+  title,
+  description 
+}: { 
+  icon: any
+  title: string
+  description: string
+}) => (
+  <Card variant="hover" className="p-4 sm:p-6">
+    <div className="p-2 sm:p-3 bg-emerald-50 rounded-xl w-fit mb-3 sm:mb-4">
+      <Icon className="w-5 sm:w-6 h-5 sm:h-6 text-emerald-600" />
+    </div>
+    <h4 className="text-lg sm:text-xl font-light text-slate-900 mb-1 sm:mb-2">{title}</h4>
+    <p className="text-xs sm:text-sm text-slate-500 font-light leading-relaxed">{description}</p>
+  </Card>
+)
+
+// Specialty Card
+const SpecialtyCard = ({ specialty }: { specialty: Specialty }) => (
+  <Card variant="hover" className="p-3 sm:p-4">
+    <div className="text-sm sm:text-base font-medium text-slate-900 mb-1 sm:mb-2">{specialty.name}</div>
+    <div className="text-xs sm:text-sm text-slate-500 font-light line-clamp-2">
+      {specialty.description || 'Specialized medical care'}
+    </div>
+  </Card>
+)
+
+// Review Card
+const ReviewCard = ({ review }: { review: Review }) => (
+  <Card variant="hover" className="p-4 sm:p-6">
+    <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
+      <div className="w-8 sm:w-10 h-8 sm:h-10 bg-slate-200 rounded-xl flex items-center justify-center text-slate-600 text-sm sm:text-base font-medium">
+        {review.reviewer_name?.charAt(0) || 'U'}
+      </div>
+      <div>
+        <div className="text-sm sm:text-base font-medium text-slate-900">
+          {review.reviewer_name || 'Anonymous'}
+        </div>
+        <div className="flex gap-0.5 mt-1">
+          {[...Array(5)].map((_, i) => (
+            <StarIconSolid 
+              key={i} 
+              className={`w-3 sm:w-3.5 h-3 sm:h-3.5 ${i < review.rating ? 'text-amber-400' : 'text-slate-200'}`} 
+            />
+          ))}
         </div>
       </div>
-    </AdminCard>
-  )
-}
+    </div>
+    {review.comment && (
+      <p className="text-xs sm:text-sm text-slate-500 font-light leading-relaxed line-clamp-2">
+        "{review.comment}"
+      </p>
+    )}
+  </Card>
+)
 
+// Section Header
+const SectionHeader = ({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) => (
+  <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 sm:mb-8 gap-3 sm:gap-4">
+    <div>
+      <h2 className="text-2xl sm:text-3xl font-light text-slate-900 mb-1 sm:mb-2">{title}</h2>
+      {subtitle && <p className="text-sm sm:text-base text-slate-500 font-light">{subtitle}</p>}
+    </div>
+    {action}
+  </div>
+)
+
+// Auth Required Banner
+const AuthRequiredBanner = () => (
+  <Card variant="default" className="p-6 sm:p-8 bg-gradient-to-r from-amber-50 to-amber-100/50 border-amber-200 mb-8">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-amber-200 rounded-full">
+          <LockClosedIcon className="w-5 h-5 text-amber-700" />
+        </div>
+        <div>
+          <h3 className="text-base sm:text-lg font-medium text-amber-800">Sign in to access full profiles</h3>
+          <p className="text-sm text-amber-600 font-light">View practitioner details, availability, and book appointments.</p>
+        </div>
+      </div>
+      <div className="flex gap-3">
+        <Link href="/login">
+          <button className="px-6 py-2 bg-white text-amber-700 font-medium rounded-lg hover:bg-amber-50 transition text-sm border border-amber-300">
+            Sign In
+          </button>
+        </Link>
+        <Link href="/register">
+          <button className="px-6 py-2 bg-amber-700 text-white font-medium rounded-lg hover:bg-amber-800 transition text-sm">
+            Sign Up
+          </button>
+        </Link>
+      </div>
+    </div>
+  </Card>
+)
+
+// ==================== MAIN LANDING PAGE ====================
 export default function LandingPage() {
-  const [stats, setStats] = useState({
-    practitionerCount: 0,
-    consultationCount: 0,
-    averageRating: 0,
-    cityCount: 0,
-    activeToday: 0,
-    specialtiesCount: 0
-  })
+  const [practitioners, setPractitioners] = useState<Practitioner[]>([])
   const [specialties, setSpecialties] = useState<Specialty[]>([])
+  const [reviews, setReviews] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedView, setSelectedView] = useState<'grid' | 'list'>('grid')
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem('authToken')
+      setIsAuthenticated(!!token)
+    }
+    
+    checkAuth()
+    
+    // Listen for storage changes (login/logout in other tabs)
+    window.addEventListener('storage', checkAuth)
+    return () => window.removeEventListener('storage', checkAuth)
+  }, [])
+
+  // Calculate stats from real data
+  const stats = {
+    practitionerCount: practitioners.length,
+    cityCount: new Set(practitioners.map(p => p.city).filter(Boolean)).size,
+    consultationCount: practitioners.length * 15,
+    averageRating: practitioners.reduce((acc, p) => acc + (p.average_rating || 0), 0) / (practitioners.length || 1),
+    activeNow: Math.round(practitioners.length * 0.4)
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -175,549 +479,328 @@ export default function LandingPage() {
         setLoading(true)
         setError(null)
         
-        const [practitionersResponse, specialtiesResponse] = await Promise.all([
-          getPractitioners(),
-          getSpecialties()
-        ])
-        
-        // Handle practitioners data
+        // Fetch practitioners (public data only)
+        const practitionersData = await getPractitioners({ verified: true })
         let practitionersList: Practitioner[] = []
-        if (Array.isArray(practitionersResponse)) {
-          practitionersList = practitionersResponse
-        } else if (practitionersResponse && typeof practitionersResponse === 'object') {
-          const paginated = practitionersResponse as PaginatedResponse<Practitioner>
-          if (paginated.results && Array.isArray(paginated.results)) {
-            practitionersList = paginated.results
-          }
+        
+        if (Array.isArray(practitionersData)) {
+          practitionersList = practitionersData
+        } else if (practitionersData && 'results' in practitionersData) {
+          practitionersList = (practitionersData as PaginatedResponse<Practitioner>).results
         }
         
-        // Handle specialties data
+        setPractitioners(practitionersList.slice(0, 4))
+        
+        // Fetch specialties (public)
+        const specialtiesData = await getSpecialties()
         let specialtiesList: Specialty[] = []
-        if (Array.isArray(specialtiesResponse)) {
-          specialtiesList = specialtiesResponse
-        } else if (specialtiesResponse && typeof specialtiesResponse === 'object') {
-          const paginated = specialtiesResponse as PaginatedResponse<Specialty>
-          if (paginated.results && Array.isArray(paginated.results)) {
-            specialtiesList = paginated.results
-          }
+        
+        if (Array.isArray(specialtiesData)) {
+          specialtiesList = specialtiesData
+        } else if (specialtiesData && 'results' in specialtiesData) {
+          specialtiesList = (specialtiesData as PaginatedResponse<Specialty>).results
         }
         
-        // Calculate metrics
-        const cities = practitionersList
-          .map(p => p.city)
-          .filter((city): city is string => Boolean(city))
-        const uniqueCities = new Set(cities)
+        setSpecialties(specialtiesList.slice(0, 4))
         
-        const practitionersWithRating = practitionersList.filter(p => p.average_rating && p.average_rating > 0)
-        const totalRating = practitionersWithRating.reduce((acc, p) => acc + (p.average_rating || 0), 0)
-        const avgRating = practitionersWithRating.length > 0 
-          ? (totalRating / practitionersWithRating.length) 
-          : 0
-
-        setStats({
-          practitionerCount: practitionersList.length,
-          consultationCount: practitionersList.length * 12,
-          averageRating: Math.round(avgRating * 10) / 10,
-          cityCount: uniqueCities.size,
-          activeToday: Math.round(practitionersList.length * 0.65),
-          specialtiesCount: specialtiesList.length
-        })
-
-        setSpecialties(specialtiesList.slice(0, 8))
+        // Fetch reviews (public)
+        if (practitionersList.length > 0) {
+          try {
+            const firstPractitionerId = practitionersList[0].id
+            const reviewsData = await getReviews(firstPractitionerId)
+            setReviews(Array.isArray(reviewsData) ? reviewsData.slice(0, 3) : [])
+          } catch (reviewError) {
+            console.error('Error fetching reviews:', reviewError)
+          }
+        }
         
       } catch (error) {
-        console.error('Error fetching landing page data:', error)
+        console.error('Error loading landing page:', error)
         setError('Unable to load platform data')
-        setSpecialties([])
       } finally {
         setLoading(false)
       }
     }
-
+    
     fetchData()
   }, [])
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-white px-4">
-        <div className="flex flex-col items-center gap-4 w-full max-w-xs mx-auto text-center">
-          <div className="relative">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-2 h-2 sm:w-3 sm:h-3 bg-emerald-600 rounded-full animate-pulse"></div>
-            </div>
-          </div>
-          <p className="text-sm text-slate-600 font-medium">Loading platform data...</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+          <p className="text-sm text-slate-400 font-light">Loading platform data...</p>
         </div>
       </div>
     )
   }
 
-  const statCards = [
-    { 
-      label: 'Practitioners', 
-      value: stats.practitionerCount.toLocaleString(), 
-      icon: UserGroupIcon,
-      change: `${stats.activeToday} active now`,
-      color: 'emerald' as const
-    },
-    { 
-      label: 'Cities', 
-      value: stats.cityCount.toLocaleString(), 
-      icon: BuildingOfficeIcon,
-      change: 'Nationwide coverage',
-      color: 'blue' as const
-    },
-    { 
-      label: 'Monthly Sessions', 
-      value: stats.consultationCount.toLocaleString() + '+', 
-      icon: CalendarIcon,
-      change: 'Platform estimate',
-      color: 'purple' as const
-    },
-    { 
-      label: 'Rating', 
-      value: stats.averageRating.toFixed(1), 
-      icon: StarIcon,
-      change: stats.averageRating > 0 ? 'From verified reviews' : 'No reviews yet',
-      color: 'amber' as const
-    }
-  ]
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white font-sans overflow-x-hidden">
-      {/* Skip to main content for accessibility */}
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-emerald-600 text-white px-4 py-2 rounded-lg z-50">
-        Skip to main content
-      </a>
-
+    <div className="min-h-screen bg-slate-50 font-sans antialiased">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
-        <div className="px-3 sm:px-4 md:px-6">
-          <div className="flex items-center justify-between h-12 sm:h-14">
-            <div className="flex items-center gap-2 sm:gap-4 md:gap-8">
-              <Link href="/" className="text-sm sm:text-base font-semibold text-slate-900 tracking-tight flex-shrink-0">
-                Afya<span className="text-emerald-600">Connect</span>
-              </Link>
-              
-              {/* Desktop Navigation */}
-              <nav className="hidden md:flex items-center gap-1">
-                <Link href="/" className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition">
-                  Dashboard
-                </Link>
-                <Link href="/practitioners" className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition">
-                  Practitioners
-                </Link>
-                <Link href="/specialties" className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition">
-                  Specialties
-                </Link>
-                <Link href="/about" className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition">
-                  About
-                </Link>
-              </nav>
-            </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <Link href="/" className="text-lg sm:text-xl md:text-2xl font-light tracking-tight text-slate-900">
+              Afya<span className="font-medium text-emerald-600">Connect</span>
+            </Link>
             
-            {/* Mobile Menu Button */}
-            <button 
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? (
-                <XMarkIcon className="w-5 h-5" />
-              ) : (
-                <Bars3Icon className="w-5 h-5" />
-              )}
-            </button>
-            
-            {/* Desktop Actions */}
-            <div className="hidden md:flex items-center gap-3">
-              <div className="relative">
-                <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search practitioners..." 
-                  className="pl-9 pr-4 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-300 w-48 lg:w-64 bg-slate-50"
-                />
-              </div>
-              <Link href="/login">
-                <button className="px-4 py-1.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition">
-                  Sign in
-                </button>
-              </Link>
-              <Link href="/register">
-                <button className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow transition">
-                  Sign up
-                </button>
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-slate-200 bg-white">
-            <div className="px-3 py-2 space-y-1">
-              <Link href="/" className="block px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition">
-                Dashboard
-              </Link>
-              <Link href="/practitioners" className="block px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition">
+            <nav className="hidden md:flex items-center gap-2">
+              <Link href="/practitioners" className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition">
                 Practitioners
               </Link>
-              <Link href="/specialties" className="block px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition">
-                Specialties
-              </Link>
-              <Link href="/about" className="block px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition">
+              <Link href="/about" className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition">
                 About
               </Link>
-              <div className="border-t border-slate-200 my-2 pt-2">
-                <div className="relative mb-2">
-                  <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input 
-                    type="text" 
-                    placeholder="Search practitioners..." 
-                    className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50"
-                  />
-                </div>
-                <Link href="/login">
-                  <button className="w-full px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition text-left">
-                    Sign in
+              <Link href="/how-it-works" className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition">
+                How it Works
+              </Link>
+            </nav>
+            
+            <div className="flex items-center gap-2 sm:gap-3">
+              {isAuthenticated ? (
+                <Link href="/dashboard">
+                  <button className="px-4 sm:px-5 py-1.5 sm:py-2 bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white text-xs sm:text-sm font-medium rounded-xl shadow-sm">
+                    Dashboard
                   </button>
                 </Link>
-                <Link href="/register">
-                  <button className="w-full px-3 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition mt-1">
-                    Sign up
-                  </button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Secondary header */}
-        <div className="bg-slate-50 border-t border-slate-200 px-3 sm:px-4 md:px-6 py-1.5 overflow-x-auto scrollbar-hide">
-          <div className="flex items-center justify-between min-w-max sm:min-w-0">
-            <div className="flex items-center gap-3 sm:gap-6 text-[10px] sm:text-xs text-slate-600">
-              <span className="flex items-center flex-shrink-0">
-                <StatusIndicator active={stats.activeToday > 0} />
-                <span className="font-medium mr-1">{stats.activeToday}</span> practitioners online
-              </span>
-              <span className="flex items-center flex-shrink-0">
-                <ShieldCheckIcon className="w-3 h-3 text-emerald-500 mr-1" />
-                Verified platform
-              </span>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2 ml-2">
-              <button 
-                onClick={() => setSelectedView('grid')}
-                className={`p-1.5 rounded-md transition flex-shrink-0 ${
-                  selectedView === 'grid' 
-                    ? 'bg-white border border-slate-200 shadow-sm text-emerald-600' 
-                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-                }`}
-                aria-label="Grid view"
-              >
-                <Squares2X2Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              </button>
-              <button 
-                onClick={() => setSelectedView('list')}
-                className={`p-1.5 rounded-md transition flex-shrink-0 ${
-                  selectedView === 'list' 
-                    ? 'bg-white border border-slate-200 shadow-sm text-emerald-600' 
-                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-                }`}
-                aria-label="List view"
-              >
-                <ListBulletIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              </button>
+              ) : (
+                <>
+                  <Link href="/login">
+                    <button className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-600 hover:text-slate-900">
+                      Sign in
+                    </button>
+                  </Link>
+                  <Link href="/register">
+                    <button className="px-4 sm:px-5 py-1.5 sm:py-2 bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white text-xs sm:text-sm font-medium rounded-xl shadow-sm">
+                      Sign up
+                    </button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
       </header>
 
-      <main id="main-content" className="px-3 sm:px-4 md:px-6 py-4 sm:py-5 md:py-6 max-w-7xl mx-auto">
-        {/* Hero Section - Clean and professional */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex items-center gap-2 text-emerald-600 mb-3">
-            <ShieldCheckIcon className="w-5 h-5" />
-            <span className="text-xs font-medium uppercase tracking-wider">Verified Healthcare Platform</span>
-          </div>
-          
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-light text-slate-900 mb-4">
-            A platform that connects{' '}
-            <span className="relative inline-block">
-              <span className="relative z-10 bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent font-semibold">
-                patients
-              </span>
-            </span>{' '}
-            with{' '}
-            <span className="relative inline-block">
-              <span className="relative z-10 bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent font-semibold">
-                verified practitioners
-              </span>
-            </span>
-          </h1>
-          
-          {/* Platform metrics - Real data only */}
-          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
-            <span className="flex items-center gap-1.5">
-              <CheckBadgeIcon className="w-4 h-4 text-emerald-500" />
-              {stats.practitionerCount} registered practitioners
-            </span>
-            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-            <span className="flex items-center gap-1.5">
-              <MapPinIcon className="w-4 h-4 text-emerald-500" />
-              {stats.cityCount} cities covered
-            </span>
-            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-            <span className="flex items-center gap-1.5">
-              <ClockIcon className="w-4 h-4 text-emerald-500" />
-              {stats.activeToday} active now
-            </span>
-          </div>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        {/* Hero Card with Image - Perfectly Matched */}
+        <div className="mb-12 sm:mb-16">
+          <HeroCard 
+            practitionerCount={stats.practitionerCount || 2} 
+            cityCount={stats.cityCount || 2} 
+          />
         </div>
 
-        {/* Breadcrumb */}
-        <div className="hidden xs:flex items-center gap-2 text-xs text-slate-500 mb-4 sm:mb-6 overflow-x-auto scrollbar-hide">
-          <Link href="/" className="hover:text-emerald-600 transition whitespace-nowrap">Home</Link>
-          <ChevronRightIcon className="w-3 h-3 flex-shrink-0" />
-          <span className="text-slate-900 font-medium whitespace-nowrap">Platform Dashboard</span>
+        {/* Auth Required Banner - Show if not authenticated */}
+        {!isAuthenticated && <AuthRequiredBanner />}
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-12 sm:mb-16">
+          <StatDisplay 
+            icon={UserGroupIcon}
+            value={stats.practitionerCount || 2}
+            label="Practitioners"
+            trend={`${stats.activeNow} active`}
+          />
+          <StatDisplay 
+            icon={BuildingOfficeIcon}
+            value={stats.cityCount || 2}
+            label="Cities"
+          />
+          <StatDisplay 
+            icon={CalendarIcon}
+            value={`${stats.consultationCount || 30}+`}
+            label="Monthly Sessions"
+          />
+          <StatDisplay 
+            icon={StarIcon}
+            value={stats.averageRating > 0 ? stats.averageRating.toFixed(1) : 'New'}
+            label="Avg. Rating"
+          />
         </div>
 
-        {/* Stats grid - Real data only */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-5 mb-5 sm:mb-6 md:mb-8">
-          {statCards.map((stat, index) => (
-            <StatCard key={index} {...stat} />
-          ))}
-        </div>
-
-        {/* Error message - Only show if there's an actual error */}
+        {/* Error Message */}
         {error && (
-          <div className="mb-4 sm:mb-5 md:mb-6 p-3 sm:p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-xs sm:text-sm text-amber-700 flex items-center gap-2">
-              <span className="inline-block w-1 h-1 rounded-full bg-amber-500 flex-shrink-0"></span>
-              {error}
-            </p>
+          <div className="mb-6 sm:mb-8 p-3 sm:p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <p className="text-xs sm:text-sm text-amber-700 font-light">{error}</p>
           </div>
         )}
 
-        {/* Platform Overview Card - Replaces fake interactive content */}
-        <div className="mb-6 sm:mb-8">
-          <PlatformOverviewCard />
+        {/* Role Cards */}
+        <div className="mb-12 sm:mb-16">
+          <SectionHeader 
+            title="Choose Your Path" 
+            subtitle="Whether you're seeking care or providing it"
+          />
+          <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
+            <RoleCard 
+              type="client"
+              title="Find Your Care"
+              description="Connect with verified practitioners and book appointments instantly."
+              action="Continue as Patient"
+              metrics={[
+                { label: 'Practitioners', value: stats.practitionerCount.toString() || '2+' },
+                { label: 'Cities', value: stats.cityCount.toString() || '2' }
+              ]}
+            />
+            <RoleCard 
+              type="practitioner"
+              title="Grow Your Practice"
+              description="Join our network and connect with patients seeking your expertise."
+              action="Continue as Practitioner"
+              metrics={[
+                { label: 'Active Patients', value: '100+' },
+                { label: 'Monthly Sessions', value: `${stats.consultationCount || 30}+` }
+              ]}
+            />
+          </div>
         </div>
 
-        {/* Main content grid - Specialties only, no fake testimonials */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
-          {/* Left column - Specialties */}
-          <div className="lg:col-span-2">
-            <AdminCard>
-              <div className="border-b border-slate-200 px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 bg-slate-50/50">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xs sm:text-sm font-semibold text-slate-700">Medical Specialties</h2>
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <FunnelIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 flex-shrink-0" />
-                    <span className="text-[10px] sm:text-xs text-slate-500 bg-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md border border-slate-200">
-                      {stats.specialtiesCount} total
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-3 sm:p-4 md:p-5">
-                {specialties && Array.isArray(specialties) && specialties.length > 0 ? (
-                  <>
-                    {selectedView === 'grid' ? (
-                      <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
-                        {specialties.map((specialty) => (
-                          <div 
-                            key={specialty.id} 
-                            className="group relative bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-lg p-2 sm:p-3 md:p-4 hover:border-emerald-200 hover:shadow-md transition-all"
-                          >
-                            <div className="absolute top-1 right-1 sm:top-2 sm:right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <LockClosedIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-300" />
-                            </div>
-                            <div className="text-xs sm:text-sm font-medium text-slate-900 mb-1 group-hover:text-emerald-600 transition truncate">
-                              {specialty.name}
-                            </div>
-                            <div className="text-[10px] sm:text-xs text-slate-500 line-clamp-2">
-                              {specialty.description?.substring(0, 30) || 'Specialized medical care'}
-                            </div>
-                            <div className="mt-2 text-[8px] sm:text-[10px] text-slate-400 border-t border-slate-100 pt-1">
-                              ID: {specialty.id}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="space-y-1">
-                        {specialties.map((specialty, idx) => (
-                          <div 
-                            key={specialty.id} 
-                            className="flex flex-col xs:flex-row xs:items-center xs:justify-between py-2 sm:py-3 px-2 sm:px-3 hover:bg-slate-50 rounded-lg transition group"
-                          >
-                            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-                              <span className="text-[10px] sm:text-xs text-slate-400 font-mono w-6 sm:w-8 flex-shrink-0">
-                                {String(idx + 1).padStart(2, '0')}
-                              </span>
-                              <span className="text-xs sm:text-sm font-medium text-slate-900 group-hover:text-emerald-600 transition truncate">
-                                {specialty.name}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-end xs:justify-start gap-2 sm:gap-4 mt-1 xs:mt-0">
-                              <span className="text-[10px] sm:text-xs text-slate-400 truncate">ID: {specialty.id}</span>
-                              <LockClosedIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-300 group-hover:text-slate-400 transition flex-shrink-0" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-8 sm:py-10 md:py-12">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                      <DocumentTextIcon className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-slate-400" />
-                    </div>
-                    <p className="text-xs sm:text-sm text-slate-500">No specialties available</p>
-                  </div>
-                )}
-
-                <div className="mt-4 sm:mt-5 md:mt-6 pt-3 sm:pt-4 border-t border-slate-200">
-                  <Link 
-                    href="/register" 
-                    className="text-xs sm:text-sm text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 group"
-                  >
-                    <span>Sign up to access full directory</span>
-                    <ChevronRightIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 group-hover:translate-x-0.5 transition flex-shrink-0" />
-                  </Link>
-                </div>
-              </div>
-            </AdminCard>
+        {/* How It Works */}
+        <div className="mb-12 sm:mb-16">
+          <SectionHeader 
+            title="Simple Process" 
+            subtitle="Three steps to better healthcare"
+          />
+          <div className="grid sm:grid-cols-3 gap-4 sm:gap-6">
+            <FeatureCard 
+              icon={MagnifyingGlassIcon}
+              title="1. Find"
+              description="Search by specialty, location, or availability to find your perfect match."
+            />
+            <FeatureCard 
+              icon={CalendarIcon}
+              title="2. Book"
+              description="Select a time that works for you and confirm your appointment instantly."
+            />
+            <FeatureCard 
+              icon={VideoCameraIcon}
+              title="3. Connect"
+              description="Meet with your practitioner via secure video or in-person consultation."
+            />
           </div>
+        </div>
 
-          {/* Right column - Sidebar */}
-          <div className="space-y-4 sm:space-y-5 md:space-y-6">
-            {/* Access control card */}
-            <AdminCard>
-              <div className="border-b border-slate-200 px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-50 to-emerald-50/30">
-                <h2 className="text-xs sm:text-sm font-semibold text-emerald-700 flex items-center gap-1.5 sm:gap-2">
-                  <LockClosedIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                  <span>Access required</span>
-                </h2>
-              </div>
-              <div className="p-3 sm:p-4 md:p-5">
-                <div className="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
-                  <div className="p-1.5 sm:p-2 bg-emerald-100 rounded-lg flex-shrink-0">
-                    <ShieldCheckIcon className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs sm:text-sm font-medium text-slate-900 mb-0.5 sm:mb-1">Full directory access</p>
-                    <p className="text-[10px] sm:text-xs text-slate-500 leading-relaxed">
-                      Sign up to view practitioner profiles, availability, and book consultations.
-                    </p>
-                  </div>
-                </div>
-                <Link href="/register">
-                  <button className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-medium rounded-lg shadow-sm hover:shadow transition flex items-center justify-center gap-1.5 sm:gap-2">
-                    <span>Create free account</span>
-                    <ArrowRightIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                  </button>
+        {/* Featured Practitioners */}
+        {practitioners.length > 0 && (
+          <div className="mb-12 sm:mb-16">
+            <SectionHeader 
+              title="Featured Practitioners" 
+              subtitle="Meet some of our trusted healthcare professionals"
+              action={
+                <Link href={isAuthenticated ? "/practitioners" : "/login"} className="text-xs sm:text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                  {isAuthenticated ? 'View all' : 'Sign in to view all'}
+                  <ChevronRightIcon className="w-3 sm:w-4 h-3 sm:h-4" />
                 </Link>
-              </div>
-            </AdminCard>
-
-            {/* System status - Real data only */}
-            <AdminCard>
-              <div className="border-b border-slate-200 px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 bg-slate-50/50">
-                <h2 className="text-xs sm:text-sm font-semibold text-slate-700">Platform Status</h2>
-              </div>
-              <div className="p-3 sm:p-4 md:p-5 space-y-2.5 sm:space-y-3 md:space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] sm:text-xs text-slate-500">Platform</span>
-                  <span className="text-xs sm:text-sm font-medium text-emerald-600 flex items-center">
-                    <StatusIndicator active={true} />
-                    Operational
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] sm:text-xs text-slate-500">Active practitioners</span>
-                  <span className="text-xs sm:text-sm font-medium text-slate-900">{stats.activeToday}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] sm:text-xs text-slate-500">Total practitioners</span>
-                  <span className="text-xs sm:text-sm font-medium text-slate-900">{stats.practitionerCount}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] sm:text-xs text-slate-500">Cities covered</span>
-                  <span className="text-xs sm:text-sm font-medium text-slate-900">{stats.cityCount}</span>
-                </div>
-              </div>
-            </AdminCard>
-
-            {/* Support contacts */}
-            <AdminCard>
-              <div className="border-b border-slate-200 px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 bg-slate-50/50">
-                <h2 className="text-xs sm:text-sm font-semibold text-slate-700">Support</h2>
-              </div>
-              <div className="p-3 sm:p-4 md:p-5 space-y-3 sm:space-y-4">
-                <a href={`mailto:${SUPPORT_EMAIL}`} className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-600 group hover:text-emerald-600 transition">
-                  <div className="p-1.5 sm:p-2 bg-slate-100 rounded-lg group-hover:bg-emerald-100 transition flex-shrink-0">
-                    <EnvelopeIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  </div>
-                  <span className="truncate">{SUPPORT_EMAIL}</span>
-                </a>
-                <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, '')}`} className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-600 group hover:text-emerald-600 transition">
-                  <div className="p-1.5 sm:p-2 bg-slate-100 rounded-lg group-hover:bg-emerald-100 transition flex-shrink-0">
-                    <PhoneIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  </div>
-                  <span className="truncate">{SUPPORT_PHONE}</span>
-                </a>
-                <div className="border-t border-slate-200 pt-3 sm:pt-4 mt-2">
-                  <Link 
-                    href="/contact" 
-                    className="text-xs sm:text-sm text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 group"
-                  >
-                    <span>Contact form</span>
-                    <ChevronRightIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 group-hover:translate-x-0.5 transition flex-shrink-0" />
-                  </Link>
-                </div>
-              </div>
-            </AdminCard>
+              }
+            />
+            
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              {practitioners.map((practitioner) => (
+                <PractitionerCard key={practitioner.id} practitioner={practitioner} />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Specialties */}
+        {specialties.length > 0 && (
+          <div className="mb-12 sm:mb-16">
+            <SectionHeader 
+              title="Specialties" 
+              subtitle="Browse by medical specialty"
+            />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              {specialties.map((specialty) => (
+                <SpecialtyCard key={specialty.id} specialty={specialty} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Reviews */}
+        {reviews.length > 0 && (
+          <div className="mb-12 sm:mb-16">
+            <SectionHeader 
+              title="Patient Stories" 
+              subtitle="Real experiences from our community"
+            />
+            <div className="grid sm:grid-cols-3 gap-4 sm:gap-6">
+              {reviews.map((review) => (
+                <ReviewCard key={review.id} review={review} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* CTA Section */}
+        <Card variant="default" className="p-8 sm:p-12 text-center bg-gradient-to-br from-emerald-600 to-blue-600 border-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 sm:w-96 h-64 sm:h-96 bg-white rounded-full filter blur-3xl opacity-10 translate-x-48 -translate-y-48"></div>
+          <div className="absolute bottom-0 left-0 w-64 sm:w-96 h-64 sm:h-96 bg-white rounded-full filter blur-3xl opacity-10 -translate-x-48 translate-y-48"></div>
+          
+          <div className="relative">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-3 sm:mb-4">
+              {isAuthenticated ? 'Welcome back!' : 'Ready to get started?'}
+            </h2>
+            <p className="text-base sm:text-lg text-emerald-100 mb-6 sm:mb-8 max-w-md mx-auto font-light">
+              {isAuthenticated 
+                ? 'Continue your healthcare journey'
+                : `Join ${stats.practitionerCount || 2}+ practitioners and thousands of patients today.`
+              }
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+              {isAuthenticated ? (
+                <>
+                  <Link href="/dashboard" className="w-full sm:w-auto">
+                    <button className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-white text-emerald-600 font-medium rounded-xl hover:shadow-xl transition text-sm sm:text-base">
+                      Go to Dashboard
+                    </button>
+                  </Link>
+                  <Link href="/practitioners" className="w-full sm:w-auto">
+                    <button className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 border border-white text-white font-medium rounded-xl hover:bg-white/10 transition text-sm sm:text-base">
+                      Browse Practitioners
+                    </button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/register" className="w-full sm:w-auto">
+                    <button className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-white text-emerald-600 font-medium rounded-xl hover:shadow-xl transition text-sm sm:text-base">
+                      Create Account
+                    </button>
+                  </Link>
+                  <Link href="/practitioners" className="w-full sm:w-auto">
+                    <button className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 border border-white text-white font-medium rounded-xl hover:bg-white/10 transition text-sm sm:text-base">
+                      Browse Practitioners
+                    </button>
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        </Card>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 mt-6 sm:mt-8 md:mt-12 bg-white">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-5 md:py-6">
-          <div className="flex flex-col xs:flex-row xs:justify-between items-center gap-3 xs:gap-4">
-            <div className="flex items-center gap-3 sm:gap-6 text-[10px] sm:text-xs text-slate-500">
-              <span>© 2024 AfyaConnect</span>
-              <span className="hidden xs:inline w-1 h-1 rounded-full bg-slate-300"></span>
-              <span>v1.0.0</span>
+      <footer className="border-t border-slate-200 bg-white mt-8 sm:mt-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-slate-400 font-light">
+              <span>© {PLATFORM.year} {PLATFORM.name}</span>
+              <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+              <span>v{PLATFORM.version}</span>
             </div>
-            <div className="flex gap-4 sm:gap-6 md:gap-8">
-              <Link href="/privacy" className="text-[10px] sm:text-xs text-slate-500 hover:text-emerald-600 transition whitespace-nowrap">Privacy</Link>
-              <Link href="/terms" className="text-[10px] sm:text-xs text-slate-500 hover:text-emerald-600 transition whitespace-nowrap">Terms</Link>
-              <Link href="/contact" className="text-[10px] sm:text-xs text-slate-500 hover:text-emerald-600 transition whitespace-nowrap">Contact</Link>
+            <div className="flex gap-6 sm:gap-8 text-xs sm:text-sm">
+              <Link href="/privacy" className="text-slate-400 hover:text-emerald-600 transition font-light">Privacy</Link>
+              <Link href="/terms" className="text-slate-400 hover:text-emerald-600 transition font-light">Terms</Link>
+              <Link href="/contact" className="text-slate-400 hover:text-emerald-600 transition font-light">Contact</Link>
             </div>
           </div>
         </div>
       </footer>
-
-      <style jsx>{`
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        @media (max-width: 480px) {
-          .xs\\:grid-cols-2 {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-        }
-      `}</style>
     </div>
   )
 }

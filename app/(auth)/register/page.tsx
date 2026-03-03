@@ -12,7 +12,7 @@ export default function RegisterPage() {
             <span className="text-2xl font-bold text-white">NC</span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Join Nutri<span className="text-emerald-600 dark:text-emerald-400">Connect</span>
+            Join Afya<span className="text-emerald-600 dark:text-emerald-400">Connect</span>
           </h1>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
             Start your health journey with us today
@@ -53,7 +53,7 @@ export default function RegisterPage() {
             </Link>
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            © {new Date().getFullYear()} NutriConnect. All rights reserved.
+            © {new Date().getFullYear()} AfyaConnect. All rights reserved.
           </p>
         </div>
       </div>
