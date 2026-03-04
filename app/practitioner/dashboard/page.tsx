@@ -528,7 +528,7 @@ export default function PractitionerDashboardPage() {
           </CardBody>
         </Card>
         <Card>
-          <CardBody className="p-4">
+          <CardBody className="p-4 mb-3">
             <h3 className="text-sm font-medium mb-2">View Reviews</h3>
             <p className="text-xs text-slate-500 mb-3">See what clients are saying</p>
             <Link href="/practitioner/dashboard/reviews">
