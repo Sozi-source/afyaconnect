@@ -463,7 +463,7 @@ export default function PractitionerDashboardPage() {
 
       {/* Consultations Section */}
       <Card>
-        <CardHeader className="border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4">
+        <CardHeader className="border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-3">
           <h2 className="text-base sm:text-lg font-semibold text-slate-900">Your Consultations</h2>
         </CardHeader>
         <CardBody className="p-4 sm:p-6">
