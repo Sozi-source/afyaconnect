@@ -383,7 +383,7 @@ export default function ClientDashboardPage() {
                     <Button 
                       variant="outline" 
                       fullWidth 
-                      className="justify-start text-gray-700 hover:bg-emerald-50 hover:border-emerald-200"
+                      className="justify-start text-gray-700 hover:bg-emerald-50 hover:border-emerald-200 mb-2"
                     >
                       <UserGroupIcon className="h-5 w-5 mr-3 text-emerald-600" />
                       Find Practitioners

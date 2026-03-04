@@ -71,7 +71,7 @@ const Card = ({
   )
 }
 
-// Hero Card with Image - Perfectly Matched Sizes
+// Hero Card with Image - Perfectly Matched Sizes - ENHANCED DESIGN
 const HeroCard = ({ 
   practitionerCount, 
   cityCount 
@@ -81,107 +81,146 @@ const HeroCard = ({
 }) => (
   <div className="grid lg:grid-cols-2 gap-8 items-stretch max-w-6xl mx-auto">
     {/* Left Content - Same height as image */}
-    <Card variant="glass" className="p-8 sm:p-10 md:p-12 relative overflow-hidden h-full flex flex-col">
-      {/* Background decoration */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-100/30 to-blue-100/30 rounded-full blur-3xl -translate-y-32 translate-x-32"></div>
+    <Card variant="glass" className="p-8 sm:p-10 md:p-12 relative overflow-hidden h-full flex flex-col bg-gradient-to-br from-white to-emerald-50/30">
+      {/* Animated background decoration */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-emerald-200/30 to-blue-200/30 rounded-full blur-3xl -translate-y-48 translate-x-48 animate-pulse"></div>
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-emerald-200/20 to-blue-200/20 rounded-full blur-3xl translate-y-48 -translate-x-48"></div>
       
-      <div className="relative flex-1 flex flex-col">
-        {/* Trust Badge */}
-        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 bg-emerald-50 rounded-full mb-6 sm:mb-8 border border-emerald-100 w-fit">
-          <ShieldCheckIcon className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-emerald-600" />
-          <span className="text-xs sm:text-sm font-medium text-emerald-700 tracking-wide">
+      <div className="relative flex-1 flex flex-col z-10">
+        {/* Trust Badge - Enhanced */}
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-50 to-emerald-100/80 rounded-full mb-8 border border-emerald-200/50 shadow-sm w-fit">
+          <div className="p-1 bg-emerald-500 rounded-full">
+            <ShieldCheckIcon className="w-3.5 h-3.5 text-white" />
+          </div>
+          <span className="text-sm font-semibold text-emerald-800 tracking-wide">
             {practitionerCount}+ Verified Practitioners
+          </span>
+          <span className="flex h-2 w-2 relative">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
         </div>
         
-        {/* Main Headline */}
-        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-light tracking-tight text-slate-900 mb-4 sm:mb-6">
-          Your Health.{' '}
-          <span className="block sm:inline font-medium bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
+        {/* Main Headline - Enhanced */}
+        <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-7xl font-bold tracking-tight mb-6">
+          <span className="text-slate-900">Your Health.</span>{' '}
+          <span className="block sm:inline bg-gradient-to-r from-emerald-600 via-emerald-500 to-blue-600 bg-clip-text text-transparent font-extrabold">
             Connected.
           </span>
         </h1>
         
-        {/* Supporting Text */}
-        <p className="text-base sm:text-lg md:text-xl text-slate-500 mb-6 sm:mb-8 max-w-md font-light leading-relaxed">
+        {/* Supporting Text - Enhanced */}
+        <p className="text-lg sm:text-xl text-slate-600 mb-8 max-w-md font-light leading-relaxed">
           Book appointments instantly with verified practitioners across{' '}
-          <span className="font-medium text-slate-900">{cityCount} cities</span>.
+          <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg inline-block">
+            {cityCount} cities
+          </span>
         </p>
         
         {/* Spacer to push CTA down */}
         <div className="flex-1"></div>
         
-        {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-auto">
+        {/* CTA Buttons - Enhanced */}
+        <div className="flex flex-col sm:flex-row gap-4 mt-auto">
           <Link href="/register" className="w-full sm:w-auto flex-1">
-            <button className="group w-full px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all inline-flex items-center justify-center gap-2 text-sm sm:text-base">
-              <span>Get Started</span>
-              <ArrowRightIcon className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            <button className="group w-full px-8 py-4 bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 inline-flex items-center justify-center gap-3 text-base relative overflow-hidden">
+              <span className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></span>
+              <span className="relative">Get Started</span>
+              <ArrowRightIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform relative" />
             </button>
           </Link>
           <Link href="/how-it-works" className="w-full sm:w-auto flex-1">
-            <button className="group w-full px-6 sm:px-8 py-3 sm:py-4 border border-slate-300 hover:border-slate-400 text-slate-700 font-medium rounded-xl transition-all inline-flex items-center justify-center gap-2 text-sm sm:text-base">
-              <span>How it Works</span>
+            <button className="group w-full px-8 py-4 bg-white border-2 border-slate-200 hover:border-emerald-300 text-slate-700 font-semibold rounded-xl hover:shadow-lg transition-all duration-300 inline-flex items-center justify-center gap-2 text-base relative overflow-hidden">
+              <span className="absolute inset-0 bg-gradient-to-r from-emerald-50 to-blue-50 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></span>
+              <span className="relative">How it Works</span>
+              <ChevronRightIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform relative" />
             </button>
           </Link>
         </div>
         
-        {/* Trust Indicators */}
-        <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-6 sm:mt-8 text-xs sm:text-sm text-slate-400 font-light">
-          <span className="flex items-center gap-1">
-            <SparklesIcon className="w-3.5 h-3.5" />
+        {/* Trust Indicators - Enhanced */}
+        <div className="flex flex-wrap items-center gap-4 mt-8 text-sm">
+          <span className="flex items-center gap-2 text-slate-500">
+            <div className="p-1 bg-emerald-100 rounded-full">
+              <SparklesIcon className="w-4 h-4 text-emerald-600" />
+            </div>
             Free to join
           </span>
-          <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-          <span className="flex items-center gap-1">
-            <ShieldCheckIcon className="w-3.5 h-3.5" />
+          <span className="w-1 h-1 rounded-full bg-emerald-300"></span>
+          <span className="flex items-center gap-2 text-slate-500">
+            <div className="p-1 bg-emerald-100 rounded-full">
+              <ShieldCheckIcon className="w-4 h-4 text-emerald-600" />
+            </div>
             No hidden fees
           </span>
-          <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-          <span>Cancel anytime</span>
+          <span className="w-1 h-1 rounded-full bg-emerald-300"></span>
+          <span className="flex items-center gap-2 text-slate-500">
+            <div className="p-1 bg-emerald-100 rounded-full">
+              <ClockIcon className="w-4 h-4 text-emerald-600" />
+            </div>
+            Cancel anytime
+          </span>
         </div>
       </div>
     </Card>
 
-    {/* Right Image - Exact same height as card */}
-    <div className="hidden lg:block relative h-full">
+    {/* Right Image - Enhanced with better overlay and stats */}
+    <div className="hidden lg:block relative h-full group">
       <div className="relative rounded-3xl overflow-hidden shadow-2xl h-full">
         <Image 
           src="/images/hero.jpeg"
           alt="Healthcare professional consulting with patient in modern medical facility"
           fill
-          className="object-cover"
+          className="object-cover group-hover:scale-105 transition-transform duration-700"
           priority
           sizes="(max-width: 768px) 100vw, 50vw"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-emerald-900/30 via-transparent to-transparent"></div>
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-emerald-900/60 via-emerald-900/20 to-transparent"></div>
         
-        {/* Floating Stats Card */}
-        <div className="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md rounded-xl p-4 border border-white/20 shadow-xl">
+        {/* Floating Stats Card - Enhanced */}
+        <div className="absolute bottom-6 left-6 right-6 bg-white/95 backdrop-blur-md rounded-2xl p-5 border border-white/30 shadow-2xl">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                <VideoCameraIcon className="w-5 h-5 text-emerald-600" />
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+                <VideoCameraIcon className="w-6 h-6 text-white" />
               </div>
               <div>
-                <div className="text-sm font-medium text-slate-900">Live Consultation</div>
-                <div className="text-xs text-slate-500">with Dr. Sarah Chen</div>
+                <div className="text-base font-semibold text-slate-900">Live Consultation</div>
+                <div className="text-sm text-slate-500 flex items-center gap-1">
+                  with Dr. Sarah Chen
+                  <CheckBadgeIcon className="w-4 h-4 text-emerald-500" />
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <div className="flex -space-x-2">
-                <div className="w-6 h-6 rounded-full bg-blue-500 border-2 border-white"></div>
-                <div className="w-6 h-6 rounded-full bg-emerald-500 border-2 border-white"></div>
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 border-2 border-white shadow-md flex items-center justify-center text-white text-xs font-bold">JD</div>
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 border-2 border-white shadow-md flex items-center justify-center text-white text-xs font-bold">MK</div>
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 border-2 border-white shadow-md flex items-center justify-center text-white text-xs font-bold">+3</div>
               </div>
-              <span className="text-xs text-slate-500 ml-1">+2</span>
             </div>
+          </div>
+          
+          {/* Progress bar */}
+          <div className="mt-3 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full"></div>
           </div>
         </div>
       </div>
       
-      {/* Decorative elements */}
-      <div className="absolute -top-4 -right-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl"></div>
-      <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl"></div>
+      {/* Decorative elements - Enhanced */}
+      <div className="absolute -top-6 -right-6 w-32 h-32 bg-emerald-400/20 rounded-full blur-3xl animate-pulse"></div>
+      <div className="absolute -bottom-6 -left-6 w-40 h-40 bg-blue-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      
+      {/* Floating badges */}
+      <div className="absolute top-6 left-6 bg-white/90 backdrop-blur-md rounded-xl px-4 py-2 shadow-xl border border-white/30">
+        <div className="flex items-center gap-2">
+          <StarIconSolid className="w-4 h-4 text-amber-400" />
+          <span className="text-sm font-semibold text-slate-900">4.9</span>
+          <span className="text-xs text-slate-500">(128 reviews)</span>
+        </div>
+      </div>
     </div>
   </div>
 )

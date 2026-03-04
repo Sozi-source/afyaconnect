@@ -8,9 +8,6 @@ export default function RegisterPage() {
       <div className="w-full max-w-md">
         {/* Logo/Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl shadow-lg shadow-emerald-500/20 mb-4">
-            <span className="text-2xl font-bold text-white">NC</span>
-          </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Join Afya<span className="text-emerald-600 dark:text-emerald-400">Connect</span>
           </h1>
