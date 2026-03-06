@@ -5,7 +5,7 @@ import { DashboardSidebar } from '@/app/components/dashboard/DashboardSidebar'
 import { DashboardHeader } from '@/app/components/dashboard/DashboardHeader'
 import { DashboardMobileNav } from '@/app/components/dashboard/DashboardMobileNav'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
-import { useAuth } from '@/app/contexts/AuthContext'
+import { AuthProvider, useAuth } from '@/app/contexts/AuthContext'
 
 export default function ClientDashboardLayout({
   children,
@@ -55,6 +55,7 @@ export default function ClientDashboardLayout({
   }
 
   return (
+    <AuthProvider>
     <div className="min-h-screen bg-background">
       <DashboardSidebar 
         isOpen={sidebarOpen} 
@@ -75,5 +76,6 @@ export default function ClientDashboardLayout({
         <DashboardMobileNav />
       </div>
     </div>
+    </AuthProvider>
   )
 }

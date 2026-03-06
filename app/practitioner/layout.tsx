@@ -6,18 +6,17 @@ import { LazyDashboardSidebar } from '@/app/components/dashboard/LazyDashboardSi
 import { LazyDashboardHeader } from '@/app/components/dashboard/LazyDashboardHeader'
 import { DashboardMobileNav } from '@/app/components/dashboard/DashboardMobileNav'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
-import { useAuth } from '@/app/contexts/AuthContext'
+import { AuthProvider, useAuth } from '@/app/contexts/AuthContext'
 
-export default function PractitionerDashboardLayout({
-  children,
-}: {
+// Separate component that uses auth hooks
+function DashboardContent({ children, sidebarOpen, setSidebarOpen }: { 
   children: React.ReactNode
+  sidebarOpen: boolean
+  setSidebarOpen: (open: boolean) => void
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const { isLoading } = useAuth()
+  const [mounted, setMounted] = useState(false)
 
-  // Prevent hydration mismatch
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -57,5 +56,25 @@ export default function PractitionerDashboardLayout({
         <DashboardMobileNav />
       </div>
     </div>
+  )
+}
+
+// Main layout with provider
+export default function PractitionerDashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  return (
+    <AuthProvider>
+      <DashboardContent 
+        sidebarOpen={sidebarOpen} 
+        setSidebarOpen={setSidebarOpen}
+      >
+        {children}
+      </DashboardContent>
+    </AuthProvider>
   )
 }

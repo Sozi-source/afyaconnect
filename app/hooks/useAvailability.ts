@@ -8,91 +8,124 @@ export function useAvailability(practitionerId?: number) {
   const [error, setError] = useState<string | null>(null)
 
   const fetchAvailability = useCallback(async () => {
-  if (!practitionerId) {
-    console.log('⚠️ No practitioner ID')
-    return []
-  }
-  
-  setLoading(true)
-  setError(null)
-  
-  try {
-    console.log('📡 Fetching availability for practitioner:', practitionerId)
-    const response = await apiClient.availability.getAll(practitionerId)
-    console.log('📡 Raw API response:', response)
-    
-    // Handle paginated response from /practitioners/{id}/availability/
-    let availabilityList: Availability[] = []
-    
-    // The response might be the data directly or might have a results property
-    if (response && typeof response === 'object') {
-      if (Array.isArray(response)) {
-        // Direct array response
-        availabilityList = response
-        console.log(`📡 Found ${availabilityList.length} slots in array`)
-      } else if ('results' in response && Array.isArray(response.results)) {
-        // Paginated response with results array
-        availabilityList = response.results
-        console.log(`📡 Found ${availabilityList.length} slots in results`)
-      } else if ('data' in response && Array.isArray(response.data)) {
-        // Response with data property
-        availabilityList = response.data
-        console.log(`📡 Found ${availabilityList.length} slots in data`)
-      }
+    if (!practitionerId) {
+      setAvailability([])
+      return []
     }
     
-    console.log('📡 Setting availability with:', availabilityList.length, 'slots')
-    setAvailability(availabilityList)
-    return availabilityList
-  } catch (err: any) {
-    console.error('❌ Fetch error:', err)
-    setError(err.message || 'Failed to fetch availability')
-    return []
-  } finally {
-    setLoading(false)
-  }
-}, [practitionerId])
+    setLoading(true)
+    setError(null)
+    
+    try {
+      const response = await apiClient.availability.getAll(practitionerId)
+      
+      let availabilityList: Availability[] = []
+      
+      if (response && typeof response === 'object') {
+        if (Array.isArray(response)) {
+          availabilityList = response
+        } else if ('results' in response && Array.isArray(response.results)) {
+          availabilityList = response.results
+        } else if ('data' in response && Array.isArray(response.data)) {
+          availabilityList = response.data
+        }
+      }
+      
+      const invalidSlots = availabilityList.filter(slot => 
+        slot.practitioner && slot.practitioner !== practitionerId
+      )
+      
+      if (invalidSlots.length > 0) {
+        availabilityList = availabilityList.filter(slot => 
+          !slot.practitioner || slot.practitioner === practitionerId
+        )
+      }
+      
+      setAvailability(availabilityList)
+      return availabilityList
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch availability')
+      return []
+    } finally {
+      setLoading(false)
+    }
+  }, [practitionerId])
 
   const createSlot = useCallback(async (data: CreateAvailabilityData): Promise<Availability | null> => {
     try {
-      console.log('📡 Creating slot with data:', data)
-      const newSlot = await apiClient.availability.create(data)
-      console.log('📡 Create response:', newSlot)
+      if (!practitionerId) {
+        throw new Error('No practitioner ID available')
+      }
       
-      // Add the new slot to the list
+      const payload = {
+        ...data,
+        practitioner: practitionerId,
+      }
+      
+      const newSlot = await apiClient.availability.create(payload)
+      
+      if (newSlot.practitioner && newSlot.practitioner !== practitionerId) {
+        return null
+      }
+      
       setAvailability(prev => [...prev, newSlot])
       
       return newSlot
     } catch (err: any) {
-      console.error('❌ Create error:', err)
       setError(err.message || 'Failed to create slot')
       return null
     }
-  }, [])
+  }, [practitionerId])
 
   const bulkCreateSlots = useCallback(async (data: BulkAvailabilityData): Promise<Availability[]> => {
     try {
-      console.log('📡 Bulk creating slots:', data)
-      const newSlots = await apiClient.availability.createBulk(data)
-      console.log('📡 Bulk create response:', newSlots)
-      
-      if (Array.isArray(newSlots)) {
-        setAvailability(prev => [...prev, ...newSlots])
+      if (!practitionerId) {
+        throw new Error('No practitioner ID available')
       }
       
-      return newSlots
+      const payload: BulkAvailabilityData = {
+        ...data,
+        days: data.days,
+        start_time: data.start_time,
+        end_time: data.end_time,
+        is_available: data.is_available,
+        notes: data.notes
+      };
+      
+      const newSlots = await apiClient.availability.createBulk(payload)
+      
+      if (Array.isArray(newSlots)) {
+        const validSlots = newSlots.filter((slot: Availability) => 
+          !slot.practitioner || slot.practitioner === practitionerId
+        )
+        
+        setAvailability(prev => [...prev, ...validSlots])
+        return validSlots
+      }
+      
+      return []
     } catch (err: any) {
-      console.error('❌ Bulk create error:', err)
       setError(err.message || 'Failed to create slots')
       return []
     }
-  }, [])
+  }, [practitionerId])
 
   const updateSlot = useCallback(async (id: number, data: Partial<CreateAvailabilityData>): Promise<Availability | null> => {
     try {
-      console.log('📡 Updating slot:', id, data)
+      if (!practitionerId) {
+        throw new Error('No practitioner ID available')
+      }
+      
+      const slotToUpdate = availability.find(slot => slot.id === id)
+      if (slotToUpdate && slotToUpdate.practitioner && slotToUpdate.practitioner !== practitionerId) {
+        throw new Error('Cannot update slot from another practitioner')
+      }
+      
       const updated = await apiClient.availability.update(id, data)
-      console.log('📡 Update response:', updated)
+      
+      if (updated.practitioner && updated.practitioner !== practitionerId) {
+        return null
+      }
       
       setAvailability(prev => prev.map(slot => 
         slot.id === id ? updated : slot
@@ -100,32 +133,38 @@ export function useAvailability(practitionerId?: number) {
       
       return updated
     } catch (err: any) {
-      console.error('❌ Update error:', err)
       setError(err.message || 'Failed to update slot')
       return null
     }
-  }, [])
+  }, [practitionerId, availability])
 
   const deleteSlot = useCallback(async (id: number): Promise<boolean> => {
     try {
-      console.log('📡 Deleting slot:', id)
+      if (!practitionerId) {
+        throw new Error('No practitioner ID available')
+      }
+      
+      const slotToDelete = availability.find(slot => slot.id === id)
+      if (slotToDelete && slotToDelete.practitioner && slotToDelete.practitioner !== practitionerId) {
+        throw new Error('Cannot delete slot from another practitioner')
+      }
+      
       await apiClient.availability.delete(id)
-      console.log('📡 Delete successful')
       
       setAvailability(prev => prev.filter(slot => slot.id !== id))
       
       return true
     } catch (err: any) {
-      console.error('❌ Delete error:', err)
       setError(err.message || 'Failed to delete slot')
       return false
     }
-  }, [])
+  }, [practitionerId, availability])
 
-  // Auto-fetch on mount and when practitionerId changes
   useEffect(() => {
     if (practitionerId) {
       fetchAvailability()
+    } else {
+      setAvailability([])
     }
   }, [practitionerId, fetchAvailability])
 

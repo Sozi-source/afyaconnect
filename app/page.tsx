@@ -113,7 +113,7 @@ const HeroSection = ({
               <LockClosedIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </Link>
-          <Link href="/how-it-works" className="w-full sm:w-auto flex-1">
+          <Link href="#" className="w-full sm:w-auto flex-1">
             <button className="group w-full px-6 sm:px-8 py-3 sm:py-4 bg-white border-2 border-slate-200 hover:border-emerald-300 text-slate-700 font-semibold rounded-xl hover:shadow-lg transition-all duration-200 inline-flex items-center justify-center gap-2 text-sm sm:text-base">
               <span>How it Works</span>
               <ChevronRightIcon className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
@@ -596,7 +596,7 @@ export default function LandingPage() {
               <Link href="#specialties" className="px-3 lg:px-4 py-2 text-sm text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition">
                 Specialties
               </Link>
-              <Link href="/how-it-works" className="px-3 lg:px-4 py-2 text-sm text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition">
+              <Link href="#" className="px-3 lg:px-4 py-2 text-sm text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition">
                 How it Works
               </Link>
             </nav>

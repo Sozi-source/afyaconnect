@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { AuthProvider } from '../contexts/AuthContext'
 
 export default function AuthLayout({
   children,
@@ -6,6 +7,7 @@ export default function AuthLayout({
   children: React.ReactNode
 }) {
   return (
+    <AuthProvider>
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-950">
       {/* Simple Header */}
       <div className="fixed top-0 left-0 right-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 z-10">
@@ -39,5 +41,6 @@ export default function AuthLayout({
         © {new Date().getFullYear()} AfyaConnect. All rights reserved.
       </footer>
     </div>
+    </AuthProvider>
   )
 }
