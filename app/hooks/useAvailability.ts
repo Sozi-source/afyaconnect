@@ -1,8 +1,10 @@
 import { useState, useCallback, useEffect } from 'react'
 import { apiClient } from '@/app/lib/api'
+import { useAuth } from '@/app/contexts/AuthContext'
 import type { Availability, CreateAvailabilityData, BulkAvailabilityData } from '@/app/types'
 
 export function useAvailability(practitionerId?: number) {
+  const { user } = useAuth()
   const [availability, setAvailability] = useState<Availability[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -17,17 +19,21 @@ export function useAvailability(practitionerId?: number) {
     setError(null)
     
     try {
-      const response = await apiClient.availability.getAll(practitionerId)
+      const isOwnAvailability = user?.practitioner?.id === practitionerId
       
       let availabilityList: Availability[] = []
       
-      if (response && typeof response === 'object') {
-        if (Array.isArray(response)) {
-          availabilityList = response
-        } else if ('results' in response && Array.isArray(response.results)) {
-          availabilityList = response.results
-        } else if ('data' in response && Array.isArray(response.data)) {
-          availabilityList = response.data
+      if (isOwnAvailability) {
+        const response = await apiClient.availability.getMyAvailability()
+        availabilityList = Array.isArray(response) ? response : []
+      } else {
+        const response = await apiClient.availability.getPractitionerAvailability(practitionerId)
+        if (response && typeof response === 'object') {
+          if ('results' in response && Array.isArray(response.results)) {
+            availabilityList = response.results
+          } else if (Array.isArray(response)) {
+            availabilityList = response
+          }
         }
       }
       
@@ -49,7 +55,7 @@ export function useAvailability(practitionerId?: number) {
     } finally {
       setLoading(false)
     }
-  }, [practitionerId])
+  }, [practitionerId, user])
 
   const createSlot = useCallback(async (data: CreateAvailabilityData): Promise<Availability | null> => {
     try {
@@ -83,16 +89,7 @@ export function useAvailability(practitionerId?: number) {
         throw new Error('No practitioner ID available')
       }
       
-      const payload: BulkAvailabilityData = {
-        ...data,
-        days: data.days,
-        start_time: data.start_time,
-        end_time: data.end_time,
-        is_available: data.is_available,
-        notes: data.notes
-      };
-      
-      const newSlots = await apiClient.availability.createBulk(payload)
+      const newSlots = await apiClient.availability.createBulk(data)
       
       if (Array.isArray(newSlots)) {
         const validSlots = newSlots.filter((slot: Availability) => 

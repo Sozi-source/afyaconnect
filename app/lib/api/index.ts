@@ -430,163 +430,166 @@ export const apiClient = {
     }
   },
 
-  // ==================== AVAILABILITY ====================
-  availability: {
-    /**
-     * Get availability slots for a practitioner
-     * @param practitionerId - Optional practitioner ID to filter by
-     * @returns Array of availability slots or paginated response with results array
-     */
-    getAll: async (practitionerId?: number): Promise<Availability[] | PaginatedResponse<Availability>> => {
-      return measurePerformance(async () => {
-        if (practitionerId) {
-          // This endpoint returns paginated results with {count, results}
-          const response = await publicApi.get<PaginatedResponse<Availability>>(`/practitioners/${practitionerId}/availability/`)
-          return response.data
-        }
-        const response = await api.get<Availability[]>('/availability/')
+// ==================== AVAILABILITY ====================
+availability: {
+  getAll: async (practitionerId?: number): Promise<Availability[] | PaginatedResponse<Availability>> => {
+    return measurePerformance(async () => {
+      if (practitionerId) {
+        const response = await publicApi.get<PaginatedResponse<Availability>>(`/practitioners/${practitionerId}/availability/`)
         return response.data
-      }, 'Get All Availability')
-    },
+      }
+      const response = await api.get<Availability[]>('/availability/')
+      return response.data
+    }, 'Get All Availability')
+  },
 
-    getOne: async (id: number): Promise<Availability> => {
-      return measurePerformance(async () => {
-        const response = await api.get<Availability>(`/availability/${id}/`)
-        return response.data
-      }, `Get Availability ${id}`)
-    },
+  getOne: async (id: number): Promise<Availability> => {
+    return measurePerformance(async () => {
+      const response = await api.get<Availability>(`/availability/${id}/`)
+      return response.data
+    }, `Get Availability ${id}`)
+  },
 
-    create: async (data: CreateAvailabilityData): Promise<Availability> => {
-      return measurePerformance(async () => {
-        // Ensure time format includes seconds
-        const payload = {
-          ...data,
-          start_time: data.start_time.includes(':') && data.start_time.split(':').length === 2 
-            ? `${data.start_time}:00` 
-            : data.start_time,
-          end_time: data.end_time.includes(':') && data.end_time.split(':').length === 2 
-            ? `${data.end_time}:00` 
-            : data.end_time,
-        }
-        const response = await api.post<Availability>('/availability/', payload)
-        return response.data
-      }, 'Create Availability Slot')
-    },
+  create: async (data: CreateAvailabilityData): Promise<Availability> => {
+    return measurePerformance(async () => {
+      const payload = {
+        ...data,
+        start_time: data.start_time.includes(':') && data.start_time.split(':').length === 2 
+          ? `${data.start_time}:00` 
+          : data.start_time,
+        end_time: data.end_time.includes(':') && data.end_time.split(':').length === 2 
+          ? `${data.end_time}:00` 
+          : data.end_time,
+      }
+      const response = await api.post<Availability>('/availability/', payload)
+      return response.data
+    }, 'Create Availability Slot')
+  },
 
-    createBulk: async (data: BulkAvailabilityData): Promise<Availability[]> => {
-      console.group(`📦 Bulk Availability Creation - ${data.days.length} days`)
-      console.log('Payload:', data)
-      
+  createBulk: async (data: BulkAvailabilityData): Promise<Availability[]> => {
+    console.group(`📦 Bulk Availability Creation - ${data.days.length} days`)
+    console.log('Payload:', data)
+    
+    try {
       try {
-        // First try the bulk endpoint
-        try {
-          const response = await api.post<Availability[]>('/availability/bulk/', data)
-          console.log(`✅ Bulk endpoint successful - ${response.data.length} slots created`)
-          console.groupEnd()
-          return response.data
-        } catch (bulkError: any) {
-          if (bulkError.response?.status === 404) {
-            console.log('⚠️ Bulk endpoint not found (404), falling back to individual creation...')
+        const response = await api.post<Availability[]>('/availability/bulk/', data)
+        console.log(`✅ Bulk endpoint successful - ${response.data.length} slots created`)
+        console.groupEnd()
+        return response.data
+      } catch (bulkError: any) {
+        if (bulkError.response?.status === 404) {
+          console.log('⚠️ Bulk endpoint not found (404), falling back to individual creation...')
+          
+          const results: Availability[] = []
+          const errors: Error[] = []
+          
+          for (let i = 0; i < data.days.length; i++) {
+            const day = data.days[i]
+            console.log(`Creating slot ${i + 1}/${data.days.length} for day ${day}`)
             
-            const results: Availability[] = []
-            const errors: Error[] = []
-            
-            for (let i = 0; i < data.days.length; i++) {
-              const day = data.days[i]
-              console.log(`Creating slot ${i + 1}/${data.days.length} for day ${day}`)
+            try {
+              const startTime = data.start_time.includes(':') && data.start_time.split(':').length === 2 
+                ? `${data.start_time}:00` 
+                : data.start_time
+              const endTime = data.end_time.includes(':') && data.end_time.split(':').length === 2 
+                ? `${data.end_time}:00` 
+                : data.end_time
               
-              try {
-                // Ensure time format includes seconds
-                const startTime = data.start_time.includes(':') && data.start_time.split(':').length === 2 
-                  ? `${data.start_time}:00` 
-                  : data.start_time
-                const endTime = data.end_time.includes(':') && data.end_time.split(':').length === 2 
-                  ? `${data.end_time}:00` 
-                  : data.end_time
-                
-                const response = await api.post<Availability>('/availability/', {
-                  recurrence_type: 'weekly',
-                  day_of_week: day,
-                  start_time: startTime,
-                  end_time: endTime,
-                  is_available: data.is_available ?? true,
-                  notes: data.notes
-                })
-                
-                results.push(response.data)
-                
-                if (i < data.days.length - 1) {
-                  await new Promise(resolve => setTimeout(resolve, 500))
-                }
-                
-              } catch (slotError: any) {
-                console.error(`❌ Failed to create slot for day ${day}:`, slotError.message)
-                errors.push(slotError)
+              const response = await api.post<Availability>('/availability/', {
+                recurrence_type: 'weekly',
+                day_of_week: day,
+                start_time: startTime,
+                end_time: endTime,
+                is_available: data.is_available ?? true,
+                notes: data.notes
+              })
+              
+              results.push(response.data)
+              
+              if (i < data.days.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 500))
               }
+              
+            } catch (slotError: any) {
+              console.error(`❌ Failed to create slot for day ${day}:`, slotError.message)
+              errors.push(slotError)
             }
-            
-            console.log(`✅ Created ${results.length}/${data.days.length} slots individually`)
-            if (errors.length > 0) {
-              console.warn(`⚠️ Failed to create ${errors.length} slots`)
-            }
-            
-            console.groupEnd()
-            
-            if (results.length === 0) {
-              throw new Error('Failed to create any slots. Please try again.')
-            }
-            
-            return results
           }
           
-          throw bulkError
-        }
-      } catch (error) {
-        console.error('❌ Bulk creation failed:', error)
-        console.groupEnd()
-        throw error
-      }
-    },
-
-    update: async (id: number, data: Partial<CreateAvailabilityData>): Promise<Availability> => {
-      return measurePerformance(async () => {
-        // Ensure time format includes seconds if provided
-        const payload = { ...data }
-        if (payload.start_time && payload.start_time.includes(':') && payload.start_time.split(':').length === 2) {
-          payload.start_time = `${payload.start_time}:00`
-        }
-        if (payload.end_time && payload.end_time.includes(':') && payload.end_time.split(':').length === 2) {
-          payload.end_time = `${payload.end_time}:00`
+          console.log(`✅ Created ${results.length}/${data.days.length} slots individually`)
+          if (errors.length > 0) {
+            console.warn(`⚠️ Failed to create ${errors.length} slots`)
+          }
+          
+          console.groupEnd()
+          
+          if (results.length === 0) {
+            throw new Error('Failed to create any slots. Please try again.')
+          }
+          
+          return results
         }
         
-        const response = await api.patch<Availability>(`/availability/${id}/`, payload)
-        return response.data
-      }, `Update Availability ${id}`)
-    },
-
-    delete: async (id: number): Promise<void> => {
-      return measurePerformance(async () => {
-        await api.delete(`/availability/${id}/`)
-      }, `Delete Availability ${id}`)
-    },
-
-    checkSlot: async (practitionerId: number, date: string, time: string): Promise<CheckSlotResponse> => {
-      return measurePerformance(async () => {
-        const response = await publicApi.get<CheckSlotResponse>(
-          `/availability/check/${practitionerId}/?date=${date}&time=${time}`
-        )
-        return response.data
-      }, `Check Slot for Practitioner ${practitionerId}`)
-    },
-
-    getSlots: async (practitionerId: number, date: string): Promise<TimeSlot[]> => {
-      return measurePerformance(async () => {
-        const response = await publicApi.get<TimeSlot[]>(`/availability/slots/${practitionerId}/?date=${date}`)
-        return response.data
-      }, `Get Slots for Practitioner ${practitionerId} on ${date}`)
+        throw bulkError
+      }
+    } catch (error) {
+      console.error('❌ Bulk creation failed:', error)
+      console.groupEnd()
+      throw error
     }
   },
 
+  update: async (id: number, data: Partial<CreateAvailabilityData>): Promise<Availability> => {
+    return measurePerformance(async () => {
+      const payload = { ...data }
+      if (payload.start_time && payload.start_time.includes(':') && payload.start_time.split(':').length === 2) {
+        payload.start_time = `${payload.start_time}:00`
+      }
+      if (payload.end_time && payload.end_time.includes(':') && payload.end_time.split(':').length === 2) {
+        payload.end_time = `${payload.end_time}:00`
+      }
+      
+      const response = await api.patch<Availability>(`/availability/${id}/`, payload)
+      return response.data
+    }, `Update Availability ${id}`)
+  },
+
+  delete: async (id: number): Promise<void> => {
+    return measurePerformance(async () => {
+      await api.delete(`/availability/${id}/`)
+    }, `Delete Availability ${id}`)
+  },
+
+  checkSlot: async (practitionerId: number, date: string, time: string): Promise<CheckSlotResponse> => {
+    return measurePerformance(async () => {
+      const response = await publicApi.get<CheckSlotResponse>(
+        `/availability/check/${practitionerId}/?date=${date}&time=${time}`
+      )
+      return response.data
+    }, `Check Slot for Practitioner ${practitionerId}`)
+  },
+
+  getSlots: async (practitionerId: number, date: string): Promise<TimeSlot[]> => {
+    return measurePerformance(async () => {
+      const response = await publicApi.get<TimeSlot[]>(`/availability/slots/${practitionerId}/?date=${date}`)
+      return response.data
+    }, `Get Slots for Practitioner ${practitionerId} on ${date}`)
+  },
+
+  getMyAvailability: async (): Promise<Availability[]> => {
+    return measurePerformance(async () => {
+      const response = await api.get<Availability[]>('/availability/')
+      return response.data
+    }, 'Get My Availability')
+  },
+  
+  getPractitionerAvailability: async (practitionerId: number): Promise<PaginatedResponse<Availability>> => {
+    return measurePerformance(async () => {
+      const response = await publicApi.get<PaginatedResponse<Availability>>(`/practitioners/${practitionerId}/availability/`)
+      return response.data
+    }, `Get Practitioner ${practitionerId} Availability`)
+  },
+},
   // ==================== SPECIALTIES ====================
   specialties: {
     getAll: async (): Promise<Specialty[]> => {
