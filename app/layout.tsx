@@ -1,6 +1,6 @@
-// app/layout.tsx
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
+import { Providers } from './providers'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -20,7 +20,6 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
 }
 
-// This must be a server component - NO 'use client' here
 export default function RootLayout({
   children,
 }: {
@@ -33,7 +32,9 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/images/icons/ac-192x192.webp" />
       </head>
       <body className={`${inter.className} antialiased`} suppressHydrationWarning>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )

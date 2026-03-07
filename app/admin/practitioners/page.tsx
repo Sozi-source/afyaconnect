@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useAuth } from '@/app/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -12,13 +12,13 @@ import {
   BriefcaseIcon,
   CurrencyDollarIcon,
   AcademicCapIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import { apiClient } from '@/app/lib/api'
 import { toast } from 'react-hot-toast'
 import type { Practitioner } from '@/app/types'
-import { AlertCircleIcon } from 'lucide-react'
 
 interface ExtendedUser {
   id: number
@@ -26,8 +26,23 @@ interface ExtendedUser {
   is_staff?: boolean
 }
 
-export default function AdminPractitionersPage() {
-  const { user, isAuthenticated } = useAuth()
+// Loading component
+function AdminPractitionersLoading() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="relative">
+        <div className="animate-spin rounded-full h-12 w-12 sm:h-14 sm:w-14 border-4 border-emerald-200 border-t-emerald-600"></div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <UserIcon className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 animate-pulse" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Main content component
+function AdminPractitionersContent() {
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const extendedUser = user as ExtendedUser | null
   const [pending, setPending] = useState<Practitioner[]>([])
@@ -37,19 +52,22 @@ export default function AdminPractitionersPage() {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending')
 
+  // Handle authentication and authorization
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login')
-      return
-    }
-    
-    if (!extendedUser?.is_staff) {
-      router.push('/client/dashboard')
-      return
-    }
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.push('/login?redirect=' + encodeURIComponent('/admin/practitioners'))
+        return
+      }
+      
+      if (!extendedUser?.is_staff) {
+        router.push('/client/dashboard')
+        return
+      }
 
-    loadData()
-  }, [isAuthenticated, extendedUser, router])
+      loadData()
+    }
+  }, [isAuthenticated, authLoading, extendedUser, router])
 
   const loadData = async () => {
     try {
@@ -118,12 +136,18 @@ export default function AdminPractitionersPage() {
     }
   }
 
+  // Show loading while checking auth
+  if (authLoading) {
+    return <AdminPractitionersLoading />
+  }
+
+  // If not authenticated or not staff, return null (redirect will happen via useEffect)
+  if (!isAuthenticated || !extendedUser?.is_staff) {
+    return null
+  }
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
-      </div>
-    )
+    return <AdminPractitionersLoading />
   }
 
   return (
@@ -140,7 +164,7 @@ export default function AdminPractitionersPage() {
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
           <div className="flex items-start gap-3">
-            <AlertCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
+            <XCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           </div>
         </div>
@@ -326,5 +350,14 @@ export default function AdminPractitionersPage() {
         </div>
       )}
     </div>
+  )
+}
+
+// Main export with Suspense boundary
+export default function AdminPractitionersPage() {
+  return (
+    <Suspense fallback={<AdminPractitionersLoading />}>
+      <AdminPractitionersContent />
+    </Suspense>
   )
 }

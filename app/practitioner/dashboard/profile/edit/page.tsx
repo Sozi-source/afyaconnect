@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/app/lib/api'
 import { Button } from '@/app/components/ui/Buttons'
@@ -17,7 +17,8 @@ import {
   EnvelopeIcon,
   CheckCircleIcon,
   XCircleIcon,
-  InformationCircleIcon
+  InformationCircleIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 import { useAuth } from '@/app/contexts/AuthContext'
 import type { UserProfile } from '@/app/types'
@@ -37,9 +38,24 @@ interface ExtendedAuthUser {
   role?: string
 }
 
-export default function ProfileEditPage() {
+// Loading component
+function ProfileEditLoading() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="relative">
+        <div className="animate-spin rounded-full h-12 w-12 sm:h-14 sm:w-14 border-4 border-emerald-200 border-t-emerald-600"></div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <UserIcon className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 animate-pulse" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Main content component
+function ProfileEditContent() {
   const router = useRouter()
-  const { user: authUser } = useAuth()
+  const { user: authUser, isAuthenticated, isLoading: authLoading } = useAuth()
   const extendedAuthUser = authUser as ExtendedAuthUser | null
   const [activeTab, setActiveTab] = useState('profile')
   const [loading, setLoading] = useState(true)
@@ -63,9 +79,18 @@ export default function ProfileEditPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // Handle authentication
   useEffect(() => {
-    fetchProfileData()
-  }, [])
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login?redirect=' + encodeURIComponent('/client/dashboard/profile/edit'))
+    }
+  }, [isAuthenticated, authLoading, router])
+
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      fetchProfileData()
+    }
+  }, [isAuthenticated, authLoading])
 
   const fetchProfileData = async () => {
     try {
@@ -223,17 +248,18 @@ export default function ProfileEditPage() {
     }
   }
 
+  // Show loading while checking auth
+  if (authLoading) {
+    return <ProfileEditLoading />
+  }
+
+  // If not authenticated, return null (redirect will happen via useEffect)
+  if (!isAuthenticated || !extendedAuthUser) {
+    return null
+  }
+
   if (loading) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="relative">
-          <div className="animate-spin rounded-full h-12 w-12 sm:h-14 sm:w-14 border-4 border-emerald-200 border-t-emerald-600"></div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <UserIcon className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 animate-pulse" />
-          </div>
-        </div>
-      </div>
-    )
+    return <ProfileEditLoading />
   }
 
   const tabs = [
@@ -550,5 +576,14 @@ export default function ProfileEditPage() {
         </form>
       )}
     </div>
+  )
+}
+
+// Main export with Suspense boundary
+export default function ProfileEditPage() {
+  return (
+    <Suspense fallback={<ProfileEditLoading />}>
+      <ProfileEditContent />
+    </Suspense>
   )
 }

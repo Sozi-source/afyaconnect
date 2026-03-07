@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useAuth } from '@/app/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -39,7 +39,6 @@ import type {
   ApplicationStatus,
   ApplicationStatusResponse 
 } from '@/app/types'
-import { RefreshCwIcon } from 'lucide-react'
 
 interface ExtendedUser {
   id: number
@@ -124,7 +123,6 @@ const ApplicationStatusCard = ({ status, application, onRefresh }: {
 
   return (
     <Card className={`border ${config.border} ${config.bg} shadow-md mb-6 relative overflow-hidden`}>
-      {/* Decorative accent */}
       <div className={`absolute top-0 left-0 w-1 h-full ${config.button.split(' ')[0]}`}></div>
       <CardBody className="p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pl-2">
@@ -154,15 +152,6 @@ const ApplicationStatusCard = ({ status, application, onRefresh }: {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {onRefresh && (
-              <button
-                onClick={onRefresh}
-                className="p-2 text-slate-500 hover:text-slate-700 hover:bg-white rounded-lg transition"
-                title="Refresh status"
-              >
-                <RefreshCwIcon className="w-4 h-4" />
-              </button>
-            )}
             <Link 
               href={status === 'draft' || status === 'info_needed' 
                 ? '/practitioner/application' 
@@ -182,7 +171,7 @@ const ApplicationStatusCard = ({ status, application, onRefresh }: {
 }
 
 // Application Start Card (for users with no application)
-const ApplicationStartCard = ({ onRefresh }: { onRefresh?: () => void }) => {
+const ApplicationStartCard = () => {
   return (
     <Card className="border border-emerald-200 bg-gradient-to-r from-emerald-50 to-emerald-50/30 shadow-md mb-6 relative overflow-hidden">
       <div className="absolute top-0 left-0 w-1 h-full bg-emerald-600"></div>
@@ -215,36 +204,38 @@ const ApplicationStartCard = ({ onRefresh }: { onRefresh?: () => void }) => {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {onRefresh && (
-              <button
-                onClick={onRefresh}
-                className="p-2 text-emerald-600 hover:text-emerald-700 hover:bg-white rounded-lg transition"
-                title="Refresh status"
-              >
-                <RefreshCwIcon className="w-4 h-4" />
-              </button>
-            )}
-            <Link href="/practitioner/application" className="sm:flex-shrink-0">
-              <Button className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm px-5 py-2.5 shadow-sm hover:shadow-md transition-all">
-                Start Application
-                <ArrowRightIcon className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
-          </div>
+          <Link href="/practitioner/application" className="sm:flex-shrink-0">
+            <Button className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm px-5 py-2.5 shadow-sm hover:shadow-md transition-all">
+              Start Application
+              <ArrowRightIcon className="w-4 h-4 ml-2" />
+            </Button>
+          </Link>
         </div>
       </CardBody>
     </Card>
   )
 }
 
-// Main Dashboard Component
-export default function PractitionerDashboardPage() {
+// Loading component
+function DashboardLoading() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="relative">
+        <div className="animate-spin rounded-full h-12 w-12 sm:h-14 sm:w-14 border-4 border-emerald-200 border-t-emerald-600"></div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <SparklesIcon className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 animate-pulse" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Main Dashboard Content Component
+function DashboardContent() {
   const { user, isAuthenticated, isLoading, refreshUser } = useAuth()
   const router = useRouter()
   const extendedUser = user as ExtendedUser | null
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [metrics, setMetrics] = useState<any>(null)
   const [recentConsultations, setRecentConsultations] = useState<Consultation[]>([])
   const [application, setApplication] = useState<PractitionerApplication | null>(null)
@@ -252,11 +243,11 @@ export default function PractitionerDashboardPage() {
   const [hasApplication, setHasApplication] = useState(false)
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login')
-      return
-    }
-    if (isAuthenticated) {
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.push('/login')
+        return
+      }
       fetchDashboardData()
     }
   }, [isAuthenticated, isLoading, router])
@@ -291,63 +282,23 @@ export default function PractitionerDashboardPage() {
       console.error('Error fetching dashboard data:', error)
     } finally {
       setLoading(false)
-      setRefreshing(false)
     }
   }
 
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true)
-    await refreshUser()
-    await fetchDashboardData()
-  }, [refreshUser])
-
   if (isLoading || loading) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="relative">
-          <div className="animate-spin rounded-full h-12 w-12 sm:h-14 sm:w-14 border-4 border-emerald-200 border-t-emerald-600"></div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <SparklesIcon className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 animate-pulse" />
-          </div>
-        </div>
-      </div>
-    )
+    return <DashboardLoading />
+  }
+
+  if (!isAuthenticated || !extendedUser) {
+    return null
   }
 
   // Show application section if not verified
   const showApplicationSection = !extendedUser?.is_verified
 
-  // Get verification badge configuration
-  const getVerificationBadge = () => {
-    if (extendedUser?.is_verified) {
-      return {
-        text: 'Verified Practitioner',
-        color: 'bg-teal-100 text-teal-800',
-        icon: CheckCircleIcon
-      }
-    } else {
-      let statusText = 'Pending Verification'
-      if (hasApplication) {
-        if (applicationStatus === 'pending') statusText = 'Application Under Review'
-        else if (applicationStatus === 'draft') statusText = 'Complete Application'
-        else if (applicationStatus === 'info_needed') statusText = 'Action Required'
-        else if (applicationStatus === 'rejected') statusText = 'Application Rejected'
-      }
-      
-      return {
-        text: statusText,
-        color: 'bg-amber-100 text-amber-800',
-        icon: ClockIcon
-      }
-    }
-  }
-
-  const badge = getVerificationBadge()
-  const BadgeIcon = badge.icon
-
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-5 md:py-6 space-y-5 sm:space-y-6">
-      {/* Header with Refresh Button */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
@@ -362,8 +313,6 @@ export default function PractitionerDashboardPage() {
             })}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-      </div>
       </div>
 
       {/* Application Section - Only shown if not verified */}
@@ -373,10 +322,9 @@ export default function PractitionerDashboardPage() {
             <ApplicationStatusCard 
               status={applicationStatus} 
               application={application}
-              onRefresh={handleRefresh}
             />
           ) : (
-            <ApplicationStartCard onRefresh={handleRefresh} />
+            <ApplicationStartCard />
           )}
         </>
       )}
@@ -540,5 +488,14 @@ export default function PractitionerDashboardPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+// Main export with Suspense boundary
+export default function PractitionerDashboardPage() {
+  return (
+    <Suspense fallback={<DashboardLoading />}>
+      <DashboardContent />
+    </Suspense>
   )
 }

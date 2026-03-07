@@ -1,3 +1,4 @@
+// app/client/dashboard/layout.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -7,11 +8,8 @@ import { DashboardMobileNav } from '@/app/components/dashboard/DashboardMobileNa
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import { AuthProvider, useAuth } from '@/app/contexts/AuthContext'
 
-export default function ClientDashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+// Inner component that uses useAuth
+function ClientDashboardContent({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const { user, isLoading } = useAuth()
@@ -55,7 +53,6 @@ export default function ClientDashboardLayout({
   }
 
   return (
-    <AuthProvider>
     <div className="min-h-screen bg-background">
       <DashboardSidebar 
         isOpen={sidebarOpen} 
@@ -76,6 +73,20 @@ export default function ClientDashboardLayout({
         <DashboardMobileNav />
       </div>
     </div>
+  )
+}
+
+// Main layout component that provides AuthProvider
+export default function ClientDashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <AuthProvider>
+      <ClientDashboardContent>
+        {children}
+      </ClientDashboardContent>
     </AuthProvider>
   )
 }

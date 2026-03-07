@@ -67,8 +67,8 @@ export function useAvailability(practitionerId?: number) {
       
       console.log('Creating slot with data:', data)
       
-      // Pass practitionerId as FIRST argument, data as SECOND argument
-      const newSlot = await apiClient.availability.create(practitionerId, data)
+      // FIXED: Only pass data, not practitionerId (practitioner ID comes from auth token)
+      const newSlot = await apiClient.availability.create(data)
       
       // Verify the created slot belongs to this practitioner
       if (newSlot.practitioner && newSlot.practitioner !== practitionerId) {
@@ -94,8 +94,8 @@ export function useAvailability(practitionerId?: number) {
       
       console.log('Bulk creating slots with data:', data)
       
-      // Pass practitionerId as FIRST argument, data as SECOND argument
-      const newSlots = await apiClient.availability.createBulk(practitionerId, data)
+      // FIXED: Only pass data, not practitionerId (practitioner ID comes from auth token)
+      const newSlots = await apiClient.availability.createBulk(data)
       
       if (Array.isArray(newSlots)) {
         // Filter to only slots that belong to this practitioner

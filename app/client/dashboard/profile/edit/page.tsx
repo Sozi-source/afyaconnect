@@ -1,4 +1,4 @@
-// app/client/dashboard/profile/edit/page.tsx
+// app/components/client/dashboard/profile/edit/EditProfilePage.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -24,7 +24,7 @@ import { toast } from 'react-hot-toast'
 import type { UserProfile } from '@/app/types'
 
 export default function EditProfilePage() {
-  const { user, isAuthenticated, isLoading, refreshUserProfile } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading, refreshUserProfile } = useAuth()
   const router = useRouter()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -40,15 +40,24 @@ export default function EditProfilePage() {
     bio: '',
   })
 
+  // Handle auth loading state
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-200 border-t-primary-600"></div>
+      </div>
+    )
+  }
+
+  // Redirect if not authenticated
+  if (!isAuthenticated || !user) {
+    router.push('/login')
+    return null
+  }
+
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login')
-      return
-    }
-    if (isAuthenticated) {
-      loadProfile()
-    }
-  }, [isLoading, isAuthenticated, router])
+    loadProfile()
+  }, [])
 
   useEffect(() => {
     if (user) {
@@ -81,6 +90,7 @@ export default function EditProfilePage() {
     } catch (error: any) {
       console.error('Error loading profile:', error)
       setError(error.message || 'Failed to load profile')
+      toast.error('Failed to load profile')
     } finally {
       setLoading(false)
     }
@@ -124,7 +134,7 @@ export default function EditProfilePage() {
     }
   }
 
-  if (isLoading || loading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-200 border-t-primary-600"></div>

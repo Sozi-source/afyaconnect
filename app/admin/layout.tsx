@@ -1,3 +1,4 @@
+// app/admin/layout.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -20,11 +21,8 @@ interface ExtendedUser {
   is_staff?: boolean
 }
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+// Inner component that uses useAuth
+function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
   const { user, isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
@@ -35,14 +33,14 @@ export default function AdminLayout({
   }, [])
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && mounted) {
       if (!isAuthenticated) {
         router.push('/login')
       } else if (!extendedUser?.is_staff) {
         router.push('/client/dashboard')
       }
     }
-  }, [isLoading, isAuthenticated, extendedUser, router])
+  }, [isLoading, isAuthenticated, extendedUser, router, mounted])
 
   if (!mounted || isLoading) {
     return (
@@ -121,4 +119,16 @@ export default function AdminLayout({
       </main>
     </div>
   )
+}
+
+// Main layout component
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return 
+  <AdminLayoutContent>{
+    children}
+  </AdminLayoutContent>
 }

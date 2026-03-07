@@ -24,27 +24,36 @@ import type { Consultation, ClientMetrics } from '@/app/types'
 import { TrendingDownIcon, TrendingUpIcon } from 'lucide-react'
 
 export default function ClientMetricsPage() {
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const [metrics, setMetrics] = useState<ClientMetrics | null>(null)
   const [recentActivity, setRecentActivity] = useState<Consultation[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Handle auth loading state
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-200 border-t-primary-600"></div>
+      </div>
+    )
+  }
+
+  // Redirect if not authenticated
+  if (!isAuthenticated || !user) {
+    router.push('/login')
+    return null
+  }
+
+  // Check user role
+  if (user.role !== 'client') {
+    router.push('/practitioner/dashboard')
+    return null
+  }
+
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login')
-      return
-    }
-
-    if (!isLoading && user?.role !== 'client') {
-      router.push('/practitioner/dashboard')
-      return
-    }
-
-    if (isAuthenticated) {
-      fetchMetrics()
-    }
-  }, [isLoading, isAuthenticated, user, router])
+    fetchMetrics()
+  }, [])
 
   const fetchMetrics = async () => {
     setLoading(true)
@@ -86,7 +95,7 @@ export default function ClientMetricsPage() {
     }
   }
 
-  if (isLoading || loading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-200 border-t-primary-600"></div>
@@ -94,16 +103,12 @@ export default function ClientMetricsPage() {
     )
   }
 
-  if (!isAuthenticated || user?.role !== 'client') {
-    return null
-  }
-
   const completionRate = metrics?.total_consultations 
     ? Math.round((metrics.completed_consultations / metrics.total_consultations) * 100)
     : 0
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-4 py-4 sm:py-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/client/dashboard">
