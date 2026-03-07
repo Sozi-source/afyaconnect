@@ -1,3 +1,4 @@
+// app/components/practitioner/dashboard/PractitionerDashboardPage.tsx
 'use client'
 
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -24,7 +25,9 @@ import {
   PencilSquareIcon,
   EyeIcon,
   AcademicCapIcon,
-  UserCircleIcon
+  UserCircleIcon,
+  ChevronRightIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
@@ -37,6 +40,7 @@ import type {
   ApplicationStatus,
   ApplicationStatusResponse 
 } from '@/app/types'
+import { MenuIcon } from 'lucide-react'
 
 interface ExtendedUser {
   id: number
@@ -49,14 +53,33 @@ interface ExtendedUser {
 
 type StatColor = 'emerald' | 'blue' | 'purple' | 'amber'
 
-// Application Status Card Component - Enhanced visibility
+// Mobile Menu Component
+const MobileMenu = ({ isOpen, onClose, children }: { isOpen: boolean; onClose: () => void; children: React.ReactNode }) => {
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-50 lg:hidden">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div className="fixed right-0 top-0 bottom-0 w-64 bg-white shadow-xl p-4 overflow-y-auto">
+        <div className="flex justify-end mb-4">
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg">
+            <XMarkIcon className="h-5 w-5 text-slate-600" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// Application Status Card Component - Enhanced for mobile
 const ApplicationStatusCard = ({ status, application }: { status: ApplicationStatus; application?: PractitionerApplication | null }) => {
   const statusConfig = {
     draft: {
       icon: PencilSquareIcon,
       title: 'Complete Your Application',
       message: 'Finish your application to get verified',
-      action: 'Continue Application',
+      action: 'Continue',
       color: 'slate',
       bg: 'bg-slate-50',
       border: 'border-slate-200',
@@ -68,7 +91,7 @@ const ApplicationStatusCard = ({ status, application }: { status: ApplicationSta
       icon: ClockIcon,
       title: 'Application Under Review',
       message: "We're reviewing your information",
-      action: 'View Application',
+      action: 'View',
       color: 'amber',
       bg: 'bg-amber-50',
       border: 'border-amber-200',
@@ -104,7 +127,7 @@ const ApplicationStatusCard = ({ status, application }: { status: ApplicationSta
       icon: InformationCircleIcon,
       title: 'Additional Info Required',
       message: application?.admin_notes || 'Admin requested more details',
-      action: 'Update Application',
+      action: 'Update',
       color: 'blue',
       bg: 'bg-blue-50',
       border: 'border-blue-200',
@@ -118,32 +141,31 @@ const ApplicationStatusCard = ({ status, application }: { status: ApplicationSta
   const Icon = config.icon
 
   return (
-    <Card className={`border ${config.border} ${config.bg} shadow-md mb-6 relative overflow-hidden`}>
-      {/* Decorative accent */}
+    <Card className={`border ${config.border} ${config.bg} shadow-sm mb-4 relative overflow-hidden`}>
       <div className={`absolute top-0 left-0 w-1 h-full ${config.button.split(' ')[0]}`}></div>
-      <CardBody className="p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pl-2">
-          <div className="flex items-start gap-4">
-            <div className={`p-3 rounded-xl ${config.iconBg} border ${config.border} flex-shrink-0 shadow-sm`}>
-              <Icon className={`w-6 h-6 sm:w-7 sm:h-7 ${config.text}`} />
+      <CardBody className="p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pl-2">
+          <div className="flex items-start gap-3">
+            <div className={`p-2 rounded-lg ${config.iconBg} border ${config.border} flex-shrink-0`}>
+              <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${config.text}`} />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className={`text-base sm:text-lg font-semibold ${config.text} mb-1`}>
+              <h3 className={`text-sm sm:text-base font-semibold ${config.text} mb-0.5`}>
                 {config.title}
               </h3>
-              <p className="text-xs sm:text-sm text-slate-600">
+              <p className="text-xs sm:text-sm text-slate-600 line-clamp-2">
                 {config.message}
               </p>
               {status === 'rejected' && application?.rejection_reason && (
-                <div className="mt-3 text-xs sm:text-sm text-rose-700 bg-rose-100 p-3 rounded-lg border border-rose-200">
-                  <span className="font-semibold block mb-1">Reason for rejection:</span>
-                  {application.rejection_reason}
+                <div className="mt-2 text-xs text-rose-700 bg-rose-100 p-2 rounded-lg border border-rose-200">
+                  <span className="font-semibold block mb-0.5">Reason:</span>
+                  <span className="line-clamp-3">{application.rejection_reason}</span>
                 </div>
               )}
               {status === 'info_needed' && application?.admin_notes && (
-                <div className="mt-3 text-xs sm:text-sm text-blue-700 bg-blue-100 p-3 rounded-lg border border-blue-200">
-                  <span className="font-semibold block mb-1">Admin notes:</span>
-                  {application.admin_notes}
+                <div className="mt-2 text-xs text-blue-700 bg-blue-100 p-2 rounded-lg border border-blue-200">
+                  <span className="font-semibold block mb-0.5">Admin notes:</span>
+                  <span className="line-clamp-3">{application.admin_notes}</span>
                 </div>
               )}
             </div>
@@ -152,11 +174,11 @@ const ApplicationStatusCard = ({ status, application }: { status: ApplicationSta
             href={status === 'draft' || status === 'info_needed' 
               ? '/practitioner/application' 
               : `/practitioner/application/${application?.id || ''}`} 
-            className="sm:flex-shrink-0"
+            className="sm:flex-shrink-0 w-full sm:w-auto"
           >
-            <Button className={`w-full sm:w-auto ${config.button} text-white text-xs sm:text-sm px-5 py-2.5 shadow-sm hover:shadow-md transition-all`}>
+            <Button className={`w-full sm:w-auto ${config.button} text-white text-xs px-4 py-2 shadow-sm`}>
               {config.action}
-              <ArrowRightIcon className="w-4 h-4 ml-2" />
+              <ArrowRightIcon className="w-3.5 h-3.5 ml-1.5" />
             </Button>
           </Link>
         </div>
@@ -165,7 +187,7 @@ const ApplicationStatusCard = ({ status, application }: { status: ApplicationSta
   )
 }
 
-// Stat Card Component
+// Stat Card Component - Mobile optimized
 const StatCard = ({ title, value, icon: Icon, trend, subtitle, color }: { 
   title: string
   value: string | number
@@ -183,29 +205,29 @@ const StatCard = ({ title, value, icon: Icon, trend, subtitle, color }: {
 
   return (
     <Card className="border-slate-200/60 shadow-sm hover:shadow-md transition-all">
-      <CardBody className="p-4 sm:p-5">
-        <div className="flex items-center justify-between mb-2 sm:mb-3">
-          <p className="text-[10px] sm:text-xs text-slate-500 uppercase tracking-wider truncate">{title}</p>
-          <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${colorClasses[color]}`}>
-            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+      <CardBody className="p-3 sm:p-4">
+        <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+          <p className="text-[10px] sm:text-xs text-slate-500 uppercase tracking-wider truncate pr-2">{title}</p>
+          <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${colorClasses[color]}`}>
+            <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
           </div>
         </div>
-        <p className="text-lg sm:text-xl font-semibold text-slate-800 truncate">{value}</p>
+        <p className="text-base sm:text-lg font-semibold text-slate-800 truncate">{value}</p>
         {trend && (
-          <p className="text-[10px] sm:text-xs text-emerald-600 mt-1 flex items-center gap-1">
+          <p className="text-[9px] sm:text-xs text-emerald-600 mt-1 flex items-center gap-1">
             <span className="inline-block w-1 h-1 rounded-full bg-emerald-400"></span>
-            {trend}
+            <span className="truncate">{trend}</span>
           </p>
         )}
         {subtitle && (
-          <p className="text-[10px] sm:text-xs text-slate-500 mt-1 truncate">{subtitle}</p>
+          <p className="text-[9px] sm:text-xs text-slate-500 mt-1 truncate">{subtitle}</p>
         )}
       </CardBody>
     </Card>
   )
 }
 
-// Quick Action Card
+// Quick Action Card - Mobile optimized
 const QuickActionCard = ({ href, icon: Icon, title, description, color }: { 
   href: string
   icon: React.ElementType
@@ -223,44 +245,44 @@ const QuickActionCard = ({ href, icon: Icon, title, description, color }: {
   return (
     <Link href={href} className="block group">
       <Card className="border-slate-200/60 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer h-full">
-        <CardBody className="p-4 sm:p-5">
-          <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center mb-3 transition-all duration-300 ${colorClasses[color]}`}>
-            <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+        <CardBody className="p-3 sm:p-4">
+          <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center mb-2 transition-all duration-300 ${colorClasses[color]}`}>
+            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </div>
-          <h3 className="text-sm sm:text-base font-medium text-slate-800 group-hover:text-emerald-600 transition-colors">
+          <h3 className="text-xs sm:text-sm font-medium text-slate-800 group-hover:text-emerald-600 transition-colors line-clamp-1">
             {title}
           </h3>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 line-clamp-2">{description}</p>
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 line-clamp-2">{description}</p>
         </CardBody>
       </Card>
     </Link>
   )
 }
 
-// Review Card Component
+// Review Card Component - Mobile optimized
 const ReviewCard = ({ review }: { review: any }) => (
-  <div className="flex items-start gap-3 p-3 sm:p-4 bg-slate-50 rounded-xl hover:bg-emerald-50/50 transition-colors border border-transparent hover:border-emerald-200">
-    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm flex-shrink-0">
+  <div className="flex items-start gap-2 p-2 sm:p-3 bg-slate-50 rounded-lg hover:bg-emerald-50/50 transition-colors border border-transparent hover:border-emerald-200">
+    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center text-white text-[10px] sm:text-xs font-bold shadow-sm flex-shrink-0">
       {review.client_name?.split(' ').map((n: string) => n[0]).join('') || 'U'}
     </div>
     <div className="flex-1 min-w-0">
-      <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1 xs:gap-2">
-        <p className="text-xs sm:text-sm font-medium text-slate-800 truncate">{review.client_name || 'Anonymous'}</p>
-        <div className="flex">
+      <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1">
+        <p className="text-[10px] sm:text-xs font-medium text-slate-800 truncate">{review.client_name || 'Anonymous'}</p>
+        <div className="flex gap-0.5">
           {[1,2,3,4,5].map(star => (
             <StarIcon 
               key={star} 
-              className={`h-2.5 w-2.5 sm:h-3 sm:w-3 ${
+              className={`h-2 w-2 sm:h-2.5 sm:w-2.5 ${
                 star <= review.rating ? 'text-amber-400 fill-current' : 'text-slate-300'
               }`} 
             />
           ))}
         </div>
       </div>
-      <p className="text-xs sm:text-sm text-slate-600 mt-2 line-clamp-2">
+      <p className="text-[9px] sm:text-xs text-slate-600 mt-1 line-clamp-2">
         "{review.comment || 'No comment'}"
       </p>
-      <p className="text-[10px] sm:text-xs text-slate-400 mt-2">
+      <p className="text-[8px] sm:text-[10px] text-slate-400 mt-1">
         {review.created_at ? new Date(review.created_at).toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric'
@@ -271,8 +293,10 @@ const ReviewCard = ({ review }: { review: any }) => (
 )
 
 export default function PractitionerDashboardPage() {
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
+  const [isMounted, setIsMounted] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const extendedUser = user as ExtendedUser | null
   const [loading, setLoading] = useState(true)
   const [metrics, setMetrics] = useState<PractitionerMetrics | null>(null)
@@ -284,24 +308,43 @@ export default function PractitionerDashboardPage() {
   const [notifications, setNotifications] = useState<any[]>([])
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login')
-      return
-    }
-    
-    if (extendedUser?.role !== 'practitioner') {
-      router.push('/client/dashboard')
-      return
-    }
+    setIsMounted(true)
+  }, [])
 
+  if (authLoading || !isMounted) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center px-4">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-3 border-emerald-200 border-t-emerald-600"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-600 rounded-full animate-pulse"></div>
+            </div>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500">Loading dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated || !user) {
+    router.push('/login')
+    return null
+  }
+
+  if (extendedUser?.role !== 'practitioner') {
+    router.push('/client/dashboard')
+    return null
+  }
+
+  useEffect(() => {
     fetchDashboardData()
-  }, [isAuthenticated, extendedUser, router])
+  }, [])
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
       
-      // Fetch application status
       const appStatusResponse: ApplicationStatusResponse = await apiClient.practitioners.applications.getStatus()
       setHasApplication(appStatusResponse.hasApplication)
       
@@ -310,11 +353,9 @@ export default function PractitionerDashboardPage() {
         setApplicationStatus(appStatusResponse.application.status)
       }
       
-      // Fetch consultations
       const consultationsData = await apiClient.consultations.getMyPractitionerConsultations()
       const consultations = extractResults<Consultation>(consultationsData)
       
-      // Calculate metrics
       const total = consultations.length
       const upcoming = consultations.filter(c => c.status === 'booked').length
       const completed = consultations.filter(c => c.status === 'completed').length
@@ -322,7 +363,6 @@ export default function PractitionerDashboardPage() {
       
       const uniqueClients = new Set(consultations.map(c => c.client)).size
       
-      // Calculate earnings (estimate based on hourly rate)
       let hourlyRate = 2500
       try {
         const practitionerProfile = await apiClient.practitioners.getMyProfile()
@@ -348,7 +388,6 @@ export default function PractitionerDashboardPage() {
 
       setRecentConsultations(consultations.slice(0, 5))
       
-      // Fetch reviews if available
       try {
         const reviewsData = await apiClient.reviews.getByPractitioner(extendedUser?.id || 0)
         setRecentReviews(reviewsData.slice(0, 3))
@@ -356,7 +395,6 @@ export default function PractitionerDashboardPage() {
         console.log('No reviews available')
       }
 
-      // Fetch notifications
       try {
         const notifs = await apiClient.notifications.getAll()
         setNotifications(notifs.slice(0, 3))
@@ -374,11 +412,11 @@ export default function PractitionerDashboardPage() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <div className="flex flex-col items-center gap-4 text-center">
+        <div className="flex flex-col items-center gap-3 text-center">
           <div className="relative">
-            <div className="animate-spin rounded-full h-12 w-12 sm:h-14 sm:w-14 border-4 border-emerald-200 border-t-emerald-600"></div>
+            <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-3 border-emerald-200 border-t-emerald-600"></div>
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-emerald-600 rounded-full animate-pulse"></div>
+              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-600 rounded-full animate-pulse"></div>
             </div>
           </div>
           <p className="text-xs sm:text-sm text-slate-500">Loading practice dashboard...</p>
@@ -404,13 +442,11 @@ export default function PractitionerDashboardPage() {
 
   const unreadNotifications = notifications.filter(n => !n.is_read).length
 
-  // Determine if we should show application card
   const showApplicationCard = hasApplication && 
     applicationStatus && 
     applicationStatus !== 'approved' && 
     !extendedUser?.is_verified
 
-  // Get welcome message based on verification status
   const getWelcomeMessage = () => {
     if (extendedUser?.is_verified) {
       return {
@@ -442,38 +478,97 @@ export default function PractitionerDashboardPage() {
   const welcomeMsg = getWelcomeMessage()
   const WelcomeIcon = welcomeMsg.icon
 
-  return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-5 md:py-6 space-y-5 sm:space-y-6 md:space-y-8 overflow-x-hidden">
-      {/* Application Status Banner - Enhanced visibility */}
-      {showApplicationCard && applicationStatus && (
-        <ApplicationStatusCard status={applicationStatus} application={application} />
-      )}
+  // Quick actions for mobile menu
+  const mobileQuickActions = [
+    { href: '/practitioner/dashboard/availability', icon: ClockIcon, title: 'Availability' },
+    { href: '/practitioner/dashboard/consultations', icon: CalendarIcon, title: 'Schedule' },
+    { href: '/practitioner/dashboard/earnings', icon: ChartBarIcon, title: 'Earnings' },
+    { href: '/practitioner/application', icon: DocumentTextIcon, title: 'Application' },
+    { href: '/practitioner/dashboard/notifications', icon: BellIcon, title: 'Notifications', badge: unreadNotifications },
+    { href: '/practitioner/dashboard/settings', icon: UserCircleIcon, title: 'Settings' },
+  ]
 
-      {/* Header Section with Color-Coded Welcome */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  return (
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6 space-y-4 sm:space-y-5 md:space-y-6 overflow-x-hidden">
+      {/* Mobile Header with Menu Button */}
+      <div className="flex items-center justify-between lg:hidden mb-2">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+            {extendedUser?.first_name?.[0]}{extendedUser?.last_name?.[0]}
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Welcome back</p>
+            <p className="text-sm font-semibold text-slate-800">Dr. {extendedUser?.first_name}</p>
+          </div>
+        </div>
+        <button 
+          onClick={() => setMobileMenuOpen(true)}
+          className="p-2 hover:bg-slate-100 rounded-lg"
+        >
+          <MenuIcon className="h-5 w-5 text-slate-600" />
+        </button>
+      </div>
+
+      {/* Mobile Menu */}
+      <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)}>
+        <div className="space-y-3">
+          <div className="pb-3 border-b border-slate-200">
+            <p className="text-xs font-medium text-slate-400 mb-2">Quick Actions</p>
+            {mobileQuickActions.map((action) => (
+              <Link
+                key={action.href}
+                href={action.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg"
+              >
+                <div className="flex items-center gap-2">
+                  <action.icon className="h-4 w-4 text-slate-500" />
+                  <span className="text-sm text-slate-700">{action.title}</span>
+                </div>
+                {action.badge && action.badge > 0 && (
+                  <span className="bg-rose-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+                    {action.badge}
+                  </span>
+                )}
+              </Link>
+            ))}
+          </div>
+          <div className="pt-2">
+            <p className="text-xs text-slate-400 mb-2">Account</p>
+            <div className="p-3 bg-slate-50 rounded-lg">
+              <p className="text-xs font-medium text-slate-800">{extendedUser?.email}</p>
+              <p className="text-[10px] text-slate-500 mt-1">
+                {extendedUser?.is_verified ? '✓ Verified' : '○ Not verified'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </MobileMenu>
+
+      {/* Desktop Header - Hidden on mobile */}
+      <div className="hidden lg:flex lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-emerald-600 mb-2">
             <SparklesIcon className="h-4 w-4 flex-shrink-0" />
-            <span className="text-[10px] sm:text-xs font-medium uppercase tracking-wider">Practice Overview</span>
+            <span className="text-xs font-medium uppercase tracking-wider">Practice Overview</span>
           </div>
           
-          {/* Welcome message with colored background */}
           <div className={`inline-flex items-center gap-3 ${welcomeMsg.bg} px-4 py-2 rounded-lg mb-2`}>
             <div className={`p-2 rounded-full ${welcomeMsg.bg} border-2 border-white shadow-sm`}>
               <WelcomeIcon className={`h-5 w-5 ${welcomeMsg.color}`} />
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-slate-800">
+              <h1 className="text-2xl font-semibold text-slate-800">
                 Dr. {extendedUser?.first_name || 'Practitioner'}
               </h1>
-              <p className={`text-xs sm:text-sm font-medium ${welcomeMsg.color}`}>
+              <p className={`text-sm font-medium ${welcomeMsg.color}`}>
                 {welcomeMsg.title}
               </p>
             </div>
           </div>
           
-          <p className="text-xs sm:text-sm text-slate-500 mt-2 flex items-center gap-2 flex-wrap">
-            <ShieldCheckIcon className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+          <p className="text-sm text-slate-500 mt-2 flex items-center gap-2">
+            <ShieldCheckIcon className="h-3.5 w-3.5 text-emerald-500" />
             {extendedUser?.is_verified ? (
               <span>✓ Verified account · Accepting new patients</span>
             ) : hasApplication ? (
@@ -484,10 +579,10 @@ export default function PractitionerDashboardPage() {
           </p>
         </div>
         
-        <div className="flex flex-col xs:flex-row gap-2 sm:gap-3">
-          <Link href="/practitioner/dashboard/notifications" className="relative inline-block">
-            <Button variant="outline" className="px-3 py-2 text-xs sm:text-sm border-slate-200 hover:bg-slate-50">
-              <BellIcon className="h-4 w-4 mr-1.5" />
+        <div className="flex gap-3">
+          <Link href="/practitioner/dashboard/notifications" className="relative">
+            <Button variant="outline" className="px-4 py-2 text-sm border-slate-200 hover:bg-slate-50">
+              <BellIcon className="h-4 w-4 mr-2" />
               Notifications
               {unreadNotifications > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[10px] rounded-full flex items-center justify-center animate-pulse">
@@ -497,16 +592,21 @@ export default function PractitionerDashboardPage() {
             </Button>
           </Link>
           <Link href="/practitioner/dashboard/availability">
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm px-4 py-2 shadow-sm shadow-emerald-200/50 w-full xs:w-auto">
-              <ClockIcon className="h-4 w-4 mr-1.5 flex-shrink-0" />
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm px-4 py-2 shadow-sm">
+              <ClockIcon className="h-4 w-4 mr-2" />
               Set Availability
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* Application Status Banner */}
+      {showApplicationCard && applicationStatus && (
+        <ApplicationStatusCard status={applicationStatus} application={application} />
+      )}
+
+      {/* Stats Grid - Responsive columns */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         <StatCard
           title="Total Earnings"
           value={`KES ${metrics?.total_earnings?.toLocaleString() || 0}`}
@@ -537,10 +637,10 @@ export default function PractitionerDashboardPage() {
         />
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions - Responsive grid */}
       <div>
-        <h2 className="text-base sm:text-lg font-semibold text-slate-800 mb-3 sm:mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <h2 className="text-sm sm:text-base font-semibold text-slate-800 mb-2 sm:mb-3 px-1">Quick Actions</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           <QuickActionCard
             href="/practitioner/dashboard/availability"
             icon={ClockIcon}
@@ -583,57 +683,57 @@ export default function PractitionerDashboardPage() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
         {/* Left Column - Schedule & Activity */}
-        <div className="lg:col-span-2 space-y-5 sm:space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-5">
           {/* Today's Schedule */}
           <Card className="border-slate-200/60 shadow-sm">
-            <CardBody className="p-4 sm:p-5 md:p-6">
-              <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-2 mb-4">
+            <CardBody className="p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h2 className="text-base sm:text-lg font-semibold text-slate-800">Today's Schedule</h2>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-1">Your upcoming appointments</p>
+                  <h2 className="text-sm sm:text-base font-semibold text-slate-800">Today's Schedule</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Your upcoming appointments</p>
                 </div>
-                <Link href="/practitioner/dashboard/consultations" className="text-xs sm:text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1 self-start xs:self-auto">
+                <Link href="/practitioner/dashboard/consultations" className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
                   View all
-                  <ArrowRightIcon className="h-3.5 w-3.5" />
+                  <ArrowRightIcon className="h-3 w-3" />
                 </Link>
               </div>
               
               {upcomingConsultations.length > 0 ? (
-                <div className="space-y-2 sm:space-y-3">
+                <div className="space-y-2">
                   {upcomingConsultations.map((item) => (
                     <Link 
                       key={item.id} 
                       href={`/practitioner/dashboard/consultations/${item.id}`}
-                      className="block p-3 sm:p-4 bg-slate-50 rounded-xl hover:bg-emerald-50/50 transition-colors border border-transparent hover:border-emerald-200"
+                      className="block p-2 sm:p-3 bg-slate-50 rounded-lg hover:bg-emerald-50/50 transition-colors border border-transparent hover:border-emerald-200"
                     >
-                      <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-2 xs:gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full flex-shrink-0"></div>
                           <div className="min-w-0">
-                            <p className="text-xs sm:text-sm font-medium text-slate-800 truncate">{item.client}</p>
-                            <p className="text-[10px] sm:text-xs text-slate-500 truncate">{item.type}</p>
+                            <p className="text-xs font-medium text-slate-800 truncate">{item.client}</p>
+                            <p className="text-[10px] text-slate-500">{item.type}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 xs:gap-4 text-right ml-4 xs:ml-0">
+                        <div className="flex items-center gap-2 text-right flex-shrink-0">
                           <div>
-                            <p className="text-xs sm:text-sm font-medium text-slate-800">{item.time}</p>
-                            <p className="text-[10px] sm:text-xs text-slate-500">{item.date}</p>
+                            <p className="text-xs font-medium text-slate-800">{item.time}</p>
+                            <p className="text-[9px] text-slate-500">{item.date}</p>
                           </div>
-                          <ArrowRightIcon className="h-3.5 w-3.5 text-slate-400" />
+                          <ChevronRightIcon className="h-3 w-3 text-slate-400" />
                         </div>
                       </div>
                     </Link>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 sm:py-10">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <CalendarIcon className="h-6 w-6 sm:h-7 sm:w-7 text-slate-400" />
+                <div className="text-center py-6">
+                  <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <CalendarIcon className="h-5 w-5 text-slate-400" />
                   </div>
-                  <p className="text-xs sm:text-sm text-slate-500">No upcoming consultations</p>
-                  <Link href="/practitioner/dashboard/availability" className="mt-3 inline-block">
+                  <p className="text-xs text-slate-500">No upcoming consultations</p>
+                  <Link href="/practitioner/dashboard/availability" className="mt-2 inline-block">
                     <Button size="sm" className="bg-emerald-600 text-white text-xs px-3 py-1.5">
                       Set Availability
                     </Button>
@@ -645,29 +745,29 @@ export default function PractitionerDashboardPage() {
 
           {/* Recent Reviews */}
           <Card className="border-slate-200/60 shadow-sm">
-            <CardBody className="p-4 sm:p-5 md:p-6">
-              <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-2 mb-4">
+            <CardBody className="p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h2 className="text-base sm:text-lg font-semibold text-slate-800">Recent Reviews</h2>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-1">What clients are saying</p>
+                  <h2 className="text-sm sm:text-base font-semibold text-slate-800">Recent Reviews</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">What clients are saying</p>
                 </div>
-                <Link href="/practitioner/dashboard/reviews" className="text-xs sm:text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1 self-start xs:self-auto">
+                <Link href="/practitioner/dashboard/reviews" className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
                   View all
-                  <ArrowRightIcon className="h-3.5 w-3.5" />
+                  <ArrowRightIcon className="h-3 w-3" />
                 </Link>
               </div>
               
               {recentReviews.length > 0 ? (
-                <div className="space-y-3 sm:space-y-4">
+                <div className="space-y-2">
                   {recentReviews.map((review) => (
                     <ReviewCard key={review.id} review={review} />
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 sm:py-10">
-                  <StarIcon className="h-10 w-10 sm:h-12 sm:w-12 text-slate-300 mx-auto mb-3" />
-                  <p className="text-xs sm:text-sm text-slate-500">No reviews yet</p>
-                  <p className="text-[10px] sm:text-xs text-slate-400 mt-1">Reviews appear after completed consultations</p>
+                <div className="text-center py-6">
+                  <StarIcon className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-xs text-slate-500">No reviews yet</p>
+                  <p className="text-[9px] text-slate-400 mt-1">Reviews appear after completed consultations</p>
                 </div>
               )}
             </CardBody>
@@ -675,46 +775,46 @@ export default function PractitionerDashboardPage() {
         </div>
 
         {/* Right Column - Summary & Notifications */}
-        <div className="space-y-5 sm:space-y-6">
+        <div className="space-y-4 sm:space-y-5">
           {/* Weekly Summary */}
-          <Card className="border-slate-200/60 shadow-sm h-full">
-            <CardBody className="p-4 sm:p-5 md:p-6">
-              <h2 className="text-base sm:text-lg font-semibold text-slate-800 mb-4">Weekly Summary</h2>
-              <div className="space-y-3 sm:space-y-4">
+          <Card className="border-slate-200/60 shadow-sm">
+            <CardBody className="p-3 sm:p-4">
+              <h2 className="text-sm sm:text-base font-semibold text-slate-800 mb-3">Weekly Summary</h2>
+              <div className="space-y-2.5">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs sm:text-sm text-slate-500">Completed</span>
-                  <span className="text-sm sm:text-base font-semibold text-slate-800">{metrics?.completed_consultations || 0}</span>
+                  <span className="text-xs text-slate-500">Completed</span>
+                  <span className="text-sm font-semibold text-slate-800">{metrics?.completed_consultations || 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs sm:text-sm text-slate-500">Upcoming</span>
-                  <span className="text-sm sm:text-base font-semibold text-emerald-600">{metrics?.upcoming_consultations || 0}</span>
+                  <span className="text-xs text-slate-500">Upcoming</span>
+                  <span className="text-sm font-semibold text-emerald-600">{metrics?.upcoming_consultations || 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs sm:text-sm text-slate-500">Cancelled</span>
-                  <span className="text-sm sm:text-base font-semibold text-rose-600">{metrics?.cancelled_consultations || 0}</span>
+                  <span className="text-xs text-slate-500">Cancelled</span>
+                  <span className="text-sm font-semibold text-rose-600">{metrics?.cancelled_consultations || 0}</span>
                 </div>
-                <div className="pt-3 sm:pt-4 mt-2 border-t border-slate-200">
+                <div className="pt-2.5 mt-2 border-t border-slate-200">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs sm:text-sm font-medium text-slate-600">Earnings this week</span>
-                    <span className="text-base sm:text-lg font-bold text-emerald-600">
+                    <span className="text-xs font-medium text-slate-600">Earnings this week</span>
+                    <span className="text-sm font-bold text-emerald-600">
                       KES {(metrics?.total_earnings || 0).toLocaleString()}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-xs sm:text-sm text-slate-500">Completion rate</span>
-                    <span className="text-sm font-medium text-slate-800">{metrics?.completion_rate?.toFixed(1)}%</span>
+                  <div className="flex justify-between items-center mt-1.5">
+                    <span className="text-xs text-slate-500">Completion rate</span>
+                    <span className="text-xs font-medium text-slate-800">{metrics?.completion_rate?.toFixed(1)}%</span>
                   </div>
                 </div>
               </div>
             </CardBody>
           </Card>
 
-          {/* Quick Stats Card - Application Status */}
+          {/* Verification Status Card */}
           <Card className="border-slate-200/60 shadow-sm bg-gradient-to-br from-emerald-50 to-emerald-50/30">
-            <CardBody className="p-4 sm:p-5">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 bg-emerald-100 rounded-lg">
-                  <ShieldCheckIcon className="h-5 w-5 text-emerald-600" />
+            <CardBody className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 bg-emerald-100 rounded-lg">
+                  <ShieldCheckIcon className="h-4 w-4 text-emerald-600" />
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-slate-800">Verification Status</h3>
@@ -725,70 +825,69 @@ export default function PractitionerDashboardPage() {
               </div>
               
               {!extendedUser?.is_verified && hasApplication && applicationStatus && (
-                <div className="mt-3 space-y-2">
-                  <div className={`p-3 rounded-lg border ${
+                <div className="mt-2 space-y-2">
+                  <div className={`p-2 rounded-lg border ${
                     applicationStatus === 'pending' ? 'bg-amber-50 border-amber-200' :
                     applicationStatus === 'draft' ? 'bg-slate-50 border-slate-200' :
                     applicationStatus === 'info_needed' ? 'bg-blue-50 border-blue-200' :
                     applicationStatus === 'rejected' ? 'bg-rose-50 border-rose-200' :
                     'bg-emerald-50 border-emerald-200'
                   }`}>
-                    <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-1.5 text-xs">
                       {applicationStatus === 'pending' && (
                         <>
-                          <ClockIcon className="h-4 w-4 text-amber-500" />
-                          <span className="text-slate-700 font-medium">Application under review</span>
+                          <ClockIcon className="h-3.5 w-3.5 text-amber-500" />
+                          <span className="text-slate-700">Under review</span>
                         </>
                       )}
                       {applicationStatus === 'draft' && (
                         <>
-                          <PencilSquareIcon className="h-4 w-4 text-slate-500" />
-                          <span className="text-slate-700 font-medium">Complete your application</span>
+                          <PencilSquareIcon className="h-3.5 w-3.5 text-slate-500" />
+                          <span className="text-slate-700">Complete application</span>
                         </>
                       )}
                       {applicationStatus === 'info_needed' && (
                         <>
-                          <InformationCircleIcon className="h-4 w-4 text-blue-500" />
-                          <span className="text-slate-700 font-medium">Additional info required</span>
+                          <InformationCircleIcon className="h-3.5 w-3.5 text-blue-500" />
+                          <span className="text-slate-700">Info required</span>
                         </>
                       )}
                       {applicationStatus === 'rejected' && (
                         <>
-                          <XCircleIcon className="h-4 w-4 text-rose-500" />
-                          <span className="text-slate-700 font-medium">Application rejected</span>
+                          <XCircleIcon className="h-3.5 w-3.5 text-rose-500" />
+                          <span className="text-slate-700">Rejected</span>
                         </>
                       )}
                     </div>
                   </div>
                   <Link href="/practitioner/application">
-                    <Button variant="outline" className="w-full text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50">
-                      View Application Details
-                      <ArrowRightIcon className="w-3.5 h-3.5 ml-1.5" />
+                    <Button variant="outline" className="w-full text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50 py-2">
+                      View Details
+                      <ArrowRightIcon className="w-3 h-3 ml-1" />
                     </Button>
                   </Link>
                 </div>
               )}
               
               {!hasApplication && !extendedUser?.is_verified && (
-                <div className="mt-3">
+                <div className="mt-2">
                   <Link href="/practitioner/application">
-                    <Button className="w-full bg-emerald-600 text-white text-xs py-2.5 shadow-sm hover:shadow-md transition-all">
-                      <AcademicCapIcon className="w-4 h-4 mr-2" />
+                    <Button className="w-full bg-emerald-600 text-white text-xs py-2 shadow-sm">
+                      <AcademicCapIcon className="w-3.5 h-3.5 mr-1.5" />
                       Start Application
-                      <ArrowRightIcon className="w-3.5 h-3.5 ml-2" />
                     </Button>
                   </Link>
-                  <p className="text-[10px] text-slate-500 text-center mt-2">
-                    Get verified to start accepting bookings
+                  <p className="text-[9px] text-slate-500 text-center mt-1.5">
+                    Get verified to accept bookings
                   </p>
                 </div>
               )}
 
               {extendedUser?.is_verified && (
-                <div className="mt-3 p-3 bg-emerald-100 rounded-lg border border-emerald-200">
-                  <div className="flex items-center gap-2 text-xs text-emerald-700">
-                    <CheckCircleIcon className="h-4 w-4" />
-                    <span className="font-medium">Your account is verified and active</span>
+                <div className="mt-2 p-2 bg-emerald-100 rounded-lg border border-emerald-200">
+                  <div className="flex items-center gap-1.5 text-xs text-emerald-700">
+                    <CheckCircleIcon className="h-3.5 w-3.5" />
+                    <span>Verified and active</span>
                   </div>
                 </div>
               )}
@@ -798,17 +897,18 @@ export default function PractitionerDashboardPage() {
       </div>
 
       {/* Mobile Scroll Hint */}
-      <div className="flex justify-center mt-4 sm:hidden">
-        <div className="bg-slate-100 px-3 py-1.5 rounded-full text-[10px] text-slate-500 flex items-center gap-1.5">
+      <div className="flex justify-center mt-3 sm:hidden">
+        <div className="bg-slate-100 px-2.5 py-1 rounded-full text-[9px] text-slate-500 flex items-center gap-1">
           <span className="inline-block w-1 h-1 rounded-full bg-slate-400"></span>
-          Swipe for more options
+          Swipe for more
           <span className="inline-block w-1 h-1 rounded-full bg-slate-400"></span>
         </div>
       </div>
 
+      {/* Custom breakpoint for extra small screens */}
       <style jsx>{`
-        @media (max-width: 480px) {
-          .xs\\:grid-cols-2 {
+        @media (max-width: 380px) {
+          .grid-cols-2 {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
         }
