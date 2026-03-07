@@ -17,12 +17,13 @@ import {
   DocumentTextIcon,
   CheckCircleIcon,
   XCircleIcon,
-  PencilIcon,
   ChevronRightIcon,
-  EnvelopeIcon
+  EnvelopeIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline'
 import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
+import VideoCall from '@/app/components/consultation/VideoCall'
 import { apiClient } from '@/app/lib/api'
 import type { Consultation } from '@/app/types'
 
@@ -34,7 +35,7 @@ interface ExtendedUser {
   role?: string
 }
 
-export default function ConsultationDetailPage() {
+export default function ClientConsultationDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { user, isAuthenticated } = useAuth()
@@ -44,6 +45,7 @@ export default function ConsultationDetailPage() {
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const [isCancelling, setIsCancelling] = useState(false)
+  const [showVideoCall, setShowVideoCall] = useState(false)
 
   const id = params.id as string
 
@@ -70,8 +72,10 @@ export default function ConsultationDetailPage() {
   const handleCancel = async () => {
     setIsCancelling(true)
     try {
+      // Use updateStatus instead of update
       await apiClient.consultations.updateStatus(parseInt(id), 'cancelled')
-      setConsultation(prev => prev ? { ...prev, status: 'cancelled' } : null)
+      // Refetch to get updated data
+      await fetchConsultation()
       setShowCancelModal(false)
     } catch (error) {
       console.error('Error cancelling consultation:', error)
@@ -85,7 +89,13 @@ export default function ConsultationDetailPage() {
   }
 
   const handleJoinCall = () => {
-    window.open(`/call/${id}`, '_blank')
+    setShowVideoCall(true)
+  }
+
+  const handleLeaveCall = () => {
+    setShowVideoCall(false)
+    // Refresh consultation data in case anything changed during the call
+    fetchConsultation()
   }
 
   const handleWriteReview = () => {
@@ -120,7 +130,6 @@ export default function ConsultationDetailPage() {
     )
   }
 
-  const isPractitioner = extendedUser?.role === 'practitioner'
   const isUpcoming = consultation.status === 'booked'
   const isCompleted = consultation.status === 'completed'
   const isCancelled = consultation.status === 'cancelled'
@@ -150,6 +159,21 @@ export default function ConsultationDetailPage() {
   }
 
   const statusStyles = getStatusStyles()
+
+  // If video call is active, show full-screen video
+  if (showVideoCall) {
+    return (
+      <div className="fixed inset-0 z-50 bg-white">
+        <VideoCall
+          roomId={`consultation-${id}`}
+          userId={`client-${user?.id}`}
+          userName={`${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Client'}
+          userRole="client"
+          onLeave={handleLeaveCall}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -199,24 +223,16 @@ export default function ConsultationDetailPage() {
             </CardHeader>
             <CardBody className="p-6">
               <div className="space-y-6">
-                {/* Participant */}
+                {/* Practitioner Info */}
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm">
-                    {isPractitioner ? consultation.client_name?.[0] : consultation.practitioner_name?.[0] || 'U'}
+                    {consultation.practitioner_name?.[0] || 'P'}
                   </div>
                   <div>
                     <p className="font-semibold text-neutral-900">
-                      {isPractitioner ? consultation.client_name : consultation.practitioner_name || 'Unknown'}
+                      Dr. {consultation.practitioner_name || 'Unknown'}
                     </p>
-                    <p className="text-sm text-neutral-500">
-                      {isPractitioner ? 'Client' : 'Practitioner'}
-                    </p>
-                    {consultation.client_email && (
-                      <p className="text-xs text-neutral-400 mt-1 flex items-center">
-                        <EnvelopeIcon className="h-3 w-3 mr-1" />
-                        {consultation.client_email}
-                      </p>
-                    )}
+                    <p className="text-sm text-neutral-500">Practitioner</p>
                   </div>
                 </div>
 
@@ -243,7 +259,7 @@ export default function ConsultationDetailPage() {
 
                 {/* Notes */}
                 <div className="pt-4 border-t border-neutral-200">
-                  <p className="text-xs text-neutral-500 mb-2">Notes</p>
+                  <p className="text-xs text-neutral-500 mb-2">Your Notes</p>
                   <div className="bg-neutral-50 p-4 rounded-xl">
                     <p className="text-sm text-neutral-700">
                       {consultation.client_notes || 'No notes provided'}
@@ -270,7 +286,7 @@ export default function ConsultationDetailPage() {
               <div className="flex justify-between items-center">
                 <h2 className="text-lg font-semibold text-neutral-900">Messages</h2>
                 <Link 
-                  href={`/dashboard/messages?consultation=${id}`} 
+                  href={`/client/dashboard/messages?consultation=${id}`} 
                   className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
                 >
                   View all
@@ -282,11 +298,11 @@ export default function ConsultationDetailPage() {
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 bg-neutral-200 rounded-full flex items-center justify-center text-xs font-bold text-neutral-700 flex-shrink-0">
-                    {isPractitioner ? 'MW' : 'JO'}
+                    {consultation.practitioner_name?.[0] || 'P'}
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-neutral-900">
-                      {isPractitioner ? 'Mary Wanjiku' : 'Dr. James Omondi'}
+                      Dr. {consultation.practitioner_name}
                     </p>
                     <p className="text-xs text-neutral-500 mt-1">
                       Looking forward to our session!
@@ -294,10 +310,12 @@ export default function ConsultationDetailPage() {
                     <p className="text-xs text-neutral-400 mt-1">2 hours ago</p>
                   </div>
                 </div>
-                <Button variant="outline" fullWidth className="border-neutral-200 text-neutral-700 hover:bg-neutral-50">
-                  <ChatBubbleLeftIcon className="h-4 w-4 mr-2" />
-                  Send a Message
-                </Button>
+                <Link href={`/client/dashboard/messages/new?recipient=${consultation.practitioner}&consultation=${id}`}>
+                  <Button variant="outline" fullWidth className="border-neutral-200 text-neutral-700 hover:bg-neutral-50">
+                    <ChatBubbleLeftIcon className="h-4 w-4 mr-2" />
+                    Send a Message
+                  </Button>
+                </Link>
               </div>
             </CardBody>
           </Card>
@@ -361,7 +379,7 @@ export default function ConsultationDetailPage() {
                   </Button>
                 </>
               )}
-              {isCompleted && (
+              {isCompleted && !consultation.has_review && (
                 <Button
                   fullWidth
                   variant="outline"
@@ -372,7 +390,7 @@ export default function ConsultationDetailPage() {
                   Leave a Review
                 </Button>
               )}
-              {isCompleted && !isPractitioner && (
+              {isCompleted && (
                 <Link href={`/client/dashboard/consultations/book?practitioner=${consultation.practitioner}`}>
                   <Button
                     fullWidth
@@ -394,7 +412,11 @@ export default function ConsultationDetailPage() {
                 <div className="space-y-3 text-sm">
                   <p className="flex items-center gap-3 text-primary-700">
                     <VideoCameraIcon className="h-5 w-5 text-primary-500" />
-                    <span>Meeting link appears 5 minutes before start</span>
+                    <span>Click "Join Video Call" to start</span>
+                  </p>
+                  <p className="flex items-center gap-3 text-primary-700">
+                    <ShieldCheckIcon className="h-5 w-5 text-primary-500" />
+                    <span>End-to-end encrypted</span>
                   </p>
                   <p className="flex items-center gap-3 text-primary-700">
                     <ClockIcon className="h-5 w-5 text-primary-500" />
