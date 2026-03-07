@@ -1,174 +1,85 @@
-// import axios from 'axios'
-
-// const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://osozi.pythonanywhere.com'
-
-// // Create two separate instances
-// const api = axios.create({
-//   baseURL: API_BASE_URL,
-//   headers: {
-//     'Content-Type': 'application/json',
-//   },
-//   timeout: 10000,
-// })
-
-// // Public instance for registration, login, etc. - NO AUTH HEADERS
-// export const publicApi = axios.create({
-//   baseURL: API_BASE_URL,
-//   headers: {
-//     'Content-Type': 'application/json',
-//   },
-//   timeout: 10000,
-// })
-
-// // Request interceptor - adds token to EVERY request (only for main api instance)
-// api.interceptors.request.use(
-//   (config) => {
-//     if (typeof window !== 'undefined') {
-//       const token = localStorage.getItem('authToken')
-//       if (token) {
-//         config.headers.Authorization = `Token ${token}`
-//         console.log(`🔑 Token added to request: ${config.url}`)
-//       } else {
-//         console.log(`🔍 No token for request: ${config.url}`)
-//       }
-//     }
-//     return config
-//   },
-//   (error) => {
-//     return Promise.reject(error)
-//   }
-// )
-
-// // Response interceptor - handles errors globally for both instances
-// const responseInterceptor = (error: any) => {
-//   const errorResponse = {
-//     url: error.config?.url,
-//     method: error.config?.method,
-//     status: error.response?.status,
-//     statusText: error.response?.statusText,
-//     data: error.response?.data,
-//     headers: error.response?.headers,
-//     message: error.message
-//   }
-  
-//   console.error('❌ Response error DETAILS:', errorResponse)
-  
-//   if (error.response?.data) {
-//     console.log('🔴 SERVER ERROR RESPONSE:', JSON.stringify(error.response.data, null, 2))
-//   }
-  
-//   if (error.response?.status === 401 && typeof window !== 'undefined') {
-//     console.log('🔒 401 Unauthorized - clearing token')
-//     localStorage.removeItem('authToken')
-//     localStorage.removeItem('user')
-    
-//     if (!window.location.pathname.includes('/login')) {
-//       window.location.href = '/login'
-//     }
-//   }
-  
-//   const message = error.response?.data?.detail || 
-//                   error.response?.data?.error || 
-//                   error.response?.data?.message ||
-//                   error.message
-//   return Promise.reject(new Error(message))
-// }
-
-// // Add response interceptor to both instances
-// api.interceptors.response.use(
-//   (response) => {
-//     console.log(`✅ Response ${response.config.url}:`, response.status)
-//     return response
-//   },
-//   responseInterceptor
-// )
-
-// publicApi.interceptors.response.use(
-//   (response) => {
-//     console.log(`✅ Public Response ${response.config.url}:`, response.status)
-//     return response
-//   },
-//   responseInterceptor
-// )
-
-// // Set default auth header if token exists on page load
-// if (typeof window !== 'undefined') {
-//   const token = localStorage.getItem('authToken')
-//   if (token) {
-//     api.defaults.headers.common['Authorization'] = `Token ${token}`
-//     console.log('✅ Default Authorization header set on init')
-//   }
-// }
-
-// export default api
-
 import axios from 'axios'
+
+// ==============================================================================
+// API CONFIGURATION
+// ==============================================================================
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://osozi.pythonanywhere.com'
 
-// Create two separate instances with increased timeout
+// Create authenticated API instance (with token)
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000, // Increased to 30 seconds
+  timeout: 30000, // 30 seconds
 })
 
-// Public instance for registration, login, etc.
+// Create public API instance (no token - for login, register, etc.)
 export const publicApi = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000, // Increased to 30 seconds
+  timeout: 30000,
 })
 
-// Request interceptor - adds token to EVERY request (only for main api instance)
+// ==============================================================================
+// REQUEST INTERCEPTORS
+// ==============================================================================
+
+// Add auth token to every request (authenticated API only)
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('authToken')
       if (token) {
         config.headers.Authorization = `Token ${token}`
-        console.log(`🔑 Token added to request: ${config.url}`)
+        console.log(`🔑 Token added: ${config.method?.toUpperCase()} ${config.url}`)
       } else {
-        console.log(`🔍 No token for request: ${config.url}`)
+        console.log(`🔍 No token: ${config.method?.toUpperCase()} ${config.url}`)
       }
     }
     return config
   },
-  (error) => {
-    return Promise.reject(error)
-  }
+  (error) => Promise.reject(error)
 )
 
-// Response interceptor - handles errors globally for both instances
-const responseInterceptor = (error: any) => {
-  const errorResponse = {
+// ==============================================================================
+// RESPONSE INTERCEPTORS
+// ==============================================================================
+
+/**
+ * Global error handler for API responses
+ */
+const handleResponseError = (error: any) => {
+  // Log detailed error information
+  const errorDetails = {
     url: error.config?.url,
     method: error.config?.method,
     status: error.response?.status,
     statusText: error.response?.statusText,
     data: error.response?.data,
-    headers: error.response?.headers,
     message: error.message,
     code: error.code
   }
   
-  console.error('❌ Response error DETAILS:', errorResponse)
-  
+  console.error('❌ API Error:', errorDetails)
+
+  // Handle timeout errors
   if (error.code === 'ECONNABORTED') {
     console.error('⏱️ Request timeout - server took too long to respond')
-    return Promise.reject(new Error('timeout of 30000ms exceeded'))
+    return Promise.reject(new Error('Request timeout. Please try again.'))
   }
-  
+
+  // Log server error response if available
   if (error.response?.data) {
-    console.log('🔴 SERVER ERROR RESPONSE:', JSON.stringify(error.response.data, null, 2))
+    console.log('🔴 Server response:', JSON.stringify(error.response.data, null, 2))
   }
-  
+
+  // Handle 401 Unauthorized - clear session and redirect to login
   if (error.response?.status === 401 && typeof window !== 'undefined') {
-    console.log('🔒 401 Unauthorized - clearing token')
+    console.log('🔒 401 Unauthorized - clearing session')
     localStorage.removeItem('authToken')
     localStorage.removeItem('user')
     
@@ -176,37 +87,43 @@ const responseInterceptor = (error: any) => {
       window.location.href = '/login'
     }
   }
-  
+
+  // Extract meaningful error message
   const message = error.response?.data?.detail || 
                   error.response?.data?.error || 
                   error.response?.data?.message ||
                   error.message
+
   return Promise.reject(new Error(message))
 }
 
-// Add response interceptor to both instances
+// Add response interceptors to both instances
 api.interceptors.response.use(
   (response) => {
-    console.log(`✅ Response ${response.config.url}:`, response.status)
+    console.log(`✅ ${response.config.method?.toUpperCase()} ${response.config.url}: ${response.status}`)
     return response
   },
-  responseInterceptor
+  handleResponseError
 )
 
 publicApi.interceptors.response.use(
   (response) => {
-    console.log(`✅ Public Response ${response.config.url}:`, response.status)
+    console.log(`✅ PUBLIC ${response.config.method?.toUpperCase()} ${response.config.url}: ${response.status}`)
     return response
   },
-  responseInterceptor
+  handleResponseError
 )
+
+// ==============================================================================
+// INITIALIZATION
+// ==============================================================================
 
 // Set default auth header if token exists on page load
 if (typeof window !== 'undefined') {
   const token = localStorage.getItem('authToken')
   if (token) {
     api.defaults.headers.common['Authorization'] = `Token ${token}`
-    console.log('✅ Default Authorization header set on init')
+    console.log('✅ Auth token initialized from localStorage')
   }
 }
 

@@ -2,24 +2,23 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/app/contexts/AuthContext'
-import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
+import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
-import { PractitionerAvailabilityManager } from '@/app/components/practitioners/availability/PractitionerAvailabilityManager'
+import { SetAvailability } from '@/app/components/practitioners/availability/SetAvailability'
+import { ViewAvailability } from '@/app/components/practitioners/availability/ViewAvailability'
+import type { Availability } from '@/app/types'
+import { apiClient } from '@/app/lib/api'
 import { 
-  CalendarIcon, 
-  ClockIcon, 
+  CalendarDaysIcon,
   UserCircleIcon,
-  ArrowLeftOnRectangleIcon,
   ShieldCheckIcon,
   ExclamationTriangleIcon,
   ArrowPathIcon,
-  InformationCircleIcon,
-  CheckBadgeIcon,
-  BellAlertIcon,
-  ChartPieIcon,
-  Cog6ToothIcon,
-  Bars3Icon,
-  ArrowLeftEndOnRectangleIcon
+  ClockIcon,
+  CheckCircleIcon,
+  PlusCircleIcon,
+  ListBulletIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 
@@ -27,31 +26,65 @@ export default function AvailabilityPage() {
   const { user, isLoading: authLoading } = useAuth()
   const [isMounted, setIsMounted] = useState(false)
   const [practitionerId, setPractitionerId] = useState<number | null>(null)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [availabilitySlots, setAvailabilitySlots] = useState<Availability[]>([])
+  const [loading, setLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<'overview' | 'schedule'>('overview')
 
   useEffect(() => {
     setIsMounted(true)
   }, [])
 
   useEffect(() => {
-    if (user) {
-      const id = user?.practitioner?.id || 3
-      setPractitionerId(id)
+    if (user?.practitioner?.id) {
+      setPractitionerId(user.practitioner.id)
     }
   }, [user])
 
+  const loadAvailability = async () => {
+    if (!practitionerId) return
+    
+    setLoading(true)
+    try {
+      const response = await apiClient.availability.getMyAvailability()
+      const slots = Array.isArray(response) ? response : []
+      setAvailabilitySlots(slots)
+    } catch (error) {
+      console.error('Failed to load slots:', error)
+      setAvailabilitySlots([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadAvailability()
+  }, [practitionerId])
+
+  const handleSlotsAdded = async (newSlots: Availability[]) => {
+    if (!Array.isArray(newSlots)) return
+    
+    setAvailabilitySlots(prev => [...prev, ...newSlots])
+    await loadAvailability()
+  }
+
+  const handleSlotDeleted = async (deletedId: number) => {
+    await loadAvailability()
+  }
+
+  const handleRefresh = () => {
+    loadAvailability()
+  }
+
   if (authLoading || !isMounted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-blue-50 flex items-center justify-center p-4">
         <div className="text-center">
           <div className="relative">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin mx-auto shadow-xl"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <CalendarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-emerald-600 animate-pulse" />
-            </div>
+            <div className="w-20 h-20 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+            <CalendarDaysIcon className="w-8 h-8 text-emerald-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           </div>
-          <p className="mt-4 sm:mt-6 text-xs sm:text-sm text-slate-600 font-medium bg-white/80 backdrop-blur-sm px-3 sm:px-4 py-2 rounded-full shadow-sm">
-            Loading your availability...
+          <p className="mt-6 text-sm font-medium text-emerald-700 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm">
+            Loading your schedule...
           </p>
         </div>
       </div>
@@ -60,21 +93,20 @@ export default function AvailabilityPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-emerald-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md transform transition-all hover:scale-[1.02] hover:shadow-2xl shadow-xl border-0 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/5 to-blue-600/5"></div>
-          <CardBody className="p-6 sm:p-8 relative">
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-blue-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-0 shadow-2xl rounded-2xl overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/10 to-blue-600/10"></div>
+          <CardBody className="p-8 relative">
             <div className="text-center">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg transform rotate-3 hover:rotate-0 transition-transform">
-                <UserCircleIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+              <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg transform rotate-3 hover:rotate-0 transition-transform">
+                <UserCircleIcon className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">Welcome Back</h2>
-              <p className="text-xs sm:text-sm text-slate-600 mb-6 sm:mb-8 px-4">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+              <p className="text-sm text-gray-600 mb-8">
                 Sign in to manage your availability schedule
               </p>
-              <Link href="/login" className="block">
-                <Button className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-2.5 sm:py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 text-sm sm:text-base">
-                  <ArrowLeftEndOnRectangleIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-2 inline-block" />
+              <Link href="/login">
+                <Button className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5">
                   Sign In to Continue
                 </Button>
               </Link>
@@ -88,25 +120,51 @@ export default function AvailabilityPage() {
   if (user.role !== 'practitioner' && !user.is_staff) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-orange-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md border-0 shadow-2xl overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-600/5 to-orange-600/5"></div>
-          <CardBody className="p-6 sm:p-8 relative">
+        <Card className="w-full max-w-md border-0 shadow-2xl rounded-2xl overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-600/10 to-orange-600/10"></div>
+          <CardBody className="p-8 relative">
             <div className="text-center">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg transform -rotate-3 hover:rotate-0 transition-transform">
-                <ShieldCheckIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+              <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg transform -rotate-3 hover:rotate-0 transition-transform">
+                <ShieldCheckIcon className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">Access Restricted</h2>
-              <p className="text-xs sm:text-sm text-slate-600 mb-3">
-                This area is only accessible to practitioners.
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Restricted</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                This area is only for practitioners.
               </p>
-              <div className="bg-amber-50 px-3 py-2 rounded-full inline-block mb-6">
-                <p className="text-xs text-amber-600">
+              <div className="bg-amber-50 px-4 py-2 rounded-full inline-block mb-6">
+                <p className="text-sm text-amber-600">
                   Current role: <span className="font-semibold capitalize">{user.role}</span>
                 </p>
               </div>
-              <Link href={`/${user.role}/dashboard`} className="block">
-                <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2.5 sm:py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 text-sm sm:text-base">
-                  Go to Your Dashboard
+              <Link href={`/${user.role}/dashboard`}>
+                <Button variant="outline" className="w-full border-2 hover:border-amber-300 hover:bg-amber-50 py-3 rounded-xl">
+                  Go to Dashboard
+                </Button>
+              </Link>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!practitionerId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-orange-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-0 shadow-2xl rounded-2xl overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-600/10 to-orange-600/10"></div>
+          <CardBody className="p-8 relative">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <ExclamationTriangleIcon className="w-10 h-10 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">No Practitioner Profile</h2>
+              <p className="text-sm text-gray-600 mb-8">
+                Complete your practitioner profile to start managing availability.
+              </p>
+              <Link href="/practitioner/application">
+                <Button className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 py-3 rounded-xl">
+                  Complete Profile
                 </Button>
               </Link>
             </div>
@@ -117,201 +175,169 @@ export default function AvailabilityPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 py-3 sm:py-4 md:py-6 px-3 sm:px-4 lg:px-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header Section - Mobile Optimized */}
-        <div className="mb-4 sm:mb-6 bg-white rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl border border-slate-200/80 overflow-hidden backdrop-blur-sm">
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/5 via-transparent to-blue-600/5"></div>
-          <div className="relative p-4 sm:p-6">
-            <div className="flex flex-col gap-4">
-              {/* Top Row - Logo and Mobile Menu */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="p-2 sm:p-2.5 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl sm:rounded-1.5xl shadow-lg">
-                      <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                    </div>
-                    <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-2.5 sm:h-2.5 bg-emerald-500 rounded-full border-2 border-white animate-pulse"></div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight truncate">
-                      Availability Management
-                    </h1>
-                  </div>
-                </div>
-                
-                {/* Mobile Menu Button */}
-                <button
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="lg:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                  aria-label="Toggle menu"
-                >
-                  <Bars3Icon className="w-5 h-5 text-slate-600" />
-                </button>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50/30">
+      {/* Header with gradient */}
+      <div className="bg-white border-b border-gray-200/80 sticky top-0 z-10 backdrop-blur-sm bg-white/90">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg">
+                <CalendarDaysIcon className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Availability</h1>
+                <p className="text-sm text-gray-500 flex items-center gap-2">
+                  <span>Manage your practice hours</span>
+                  <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                  <span className="text-emerald-600 font-medium">{availabilitySlots.length} active slots</span>
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRefresh}
+                className="flex items-center gap-2 border-gray-300 hover:border-emerald-400 hover:bg-emerald-50"
+              >
+                <ArrowPathIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Refresh</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-                {/* Desktop Quick Actions - Hidden on mobile */}
-                <div className="hidden lg:flex items-center gap-3">
-                  <button className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
-                    <BellAlertIcon className="w-4 h-4" />
-                  </button>
-                  <button className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
-                    <ChartPieIcon className="w-4 h-4" />
-                  </button>
-                  <button className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
-                    <Cog6ToothIcon className="w-4 h-4" />
-                  </button>
+      {/* Main content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <Card className="border-0 shadow-md hover:shadow-lg transition-shadow">
+            <CardBody className="p-5">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-emerald-100 rounded-xl">
+                  <ClockIcon className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Total Slots</p>
+                  <p className="text-2xl font-bold text-gray-900">{availabilitySlots.length}</p>
                 </div>
               </div>
+            </CardBody>
+          </Card>
 
-              {/* Subtitle - Always visible */}
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-xs sm:text-sm text-slate-600">Manage your weekly schedule</p>
-                {user.practitioner && (
-                  <span className="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">
-                    <ClockIcon className="w-3 h-3 mr-1" />
-                    Active
+          <Card className="border-0 shadow-md hover:shadow-lg transition-shadow">
+            <CardBody className="p-5">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-blue-100 rounded-xl">
+                  <CalendarDaysIcon className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Days Covered</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {new Set(availabilitySlots.map(s => s.day_of_week)).size}
+                  </p>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card className="border-0 shadow-md hover:shadow-lg transition-shadow">
+            <CardBody className="p-5">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-purple-100 rounded-xl">
+                  <CheckCircleIcon className="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Status</p>
+                  <p className="text-lg font-semibold text-green-600">Active</p>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'overview'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'bg-white text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <ListBulletIcon className="w-4 h-4 inline-block mr-2" />
+            Overview
+          </button>
+          <button
+            onClick={() => setActiveTab('schedule')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'schedule'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'bg-white text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <CalendarDaysIcon className="w-4 h-4 inline-block mr-2" />
+            Schedule
+          </button>
+        </div>
+
+        {/* Content area */}
+        <div className="space-y-6">
+          {/* Quick add card */}
+          <Card className="border-0 shadow-xl overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/5 via-transparent to-blue-600/5"></div>
+            <CardBody className="p-6 relative">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <PlusCircleIcon className="w-5 h-5 text-emerald-600" />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">Add Availability</h2>
+              </div>
+              
+              <SetAvailability 
+                practitionerId={practitionerId}
+                onSlotsAdded={handleSlotsAdded}
+              />
+            </CardBody>
+          </Card>
+
+          {/* View card */}
+          <Card className="border-0 shadow-xl overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 via-transparent to-purple-600/5"></div>
+            <CardBody className="p-6 relative">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <CalendarDaysIcon className="w-5 h-5 text-blue-600" />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">Current Schedule</h2>
+                {availabilitySlots.length > 0 && (
+                  <span className="ml-auto text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
+                    {availabilitySlots.length} active
                   </span>
                 )}
               </div>
-
-              {/* Mobile Menu Dropdown */}
-              {mobileMenuOpen && (
-                <div className="lg:hidden mt-3 pt-3 border-t border-slate-200">
-                  <div className="flex items-center justify-between">
-                    <div className="bg-gradient-to-br from-slate-50 to-white rounded-lg px-3 py-2 border border-slate-200 shadow-sm flex-1 mr-2">
-                      <p className="text-[10px] text-slate-500 mb-0.5">Status</p>
-                      <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                        </span>
-                        Available
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
-                        <BellAlertIcon className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
-                        <Cog6ToothIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Desktop Status - Hidden on mobile */}
-              <div className="hidden lg:flex items-center justify-between mt-2">
-                <div className="flex items-center gap-4">
-                  <div className="bg-gradient-to-br from-slate-50 to-white rounded-lg px-3 py-2 border border-slate-200 shadow-sm">
-                    <p className="text-xs text-slate-500 mb-1">Current Status</p>
-                    <p className="text-sm font-semibold text-emerald-700 flex items-center gap-1.5">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                      </span>
-                      Available for bookings
-                    </p>
-                  </div>
-                  <div className="h-8 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent"></div>
-                  <div className="flex items-center gap-1.5 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 shadow-sm">
-                    <CheckBadgeIcon className="w-4 h-4 text-emerald-600" />
-                    <span className="text-xs font-medium text-emerald-700">Live</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content - Responsive */}
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl border border-slate-200/80 overflow-hidden backdrop-blur-sm">
-          <div className="absolute inset-0 bg-gradient-to-b from-emerald-600/5 via-transparent to-transparent pointer-events-none"></div>
-          
-          {/* Practitioner ID Bar - Mobile Optimized */}
-          <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-emerald-50/80 via-white to-blue-50/80 border-b border-slate-200/80">
-            <div className="flex flex-col xs:flex-row xs:items-center gap-2 xs:gap-0 xs:justify-between">
-              <div className="flex items-center gap-2 text-xs sm:text-sm">
-                <CalendarIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 flex-shrink-0" />
-                <span className="text-slate-600">ID:</span>
-                <span className="font-mono font-semibold text-slate-900 bg-white px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border border-slate-200 shadow-sm text-xs">
-                  {practitionerId}
-                </span>
-              </div>
               
-              {/* Quick Actions - Always visible but stacked on mobile */}
-              <div className="flex items-center gap-2 self-end xs:self-auto">
-                <button className="p-1.5 sm:p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
-                  <BellAlertIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                </button>
-                <button className="p-1.5 sm:p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
-                  <ChartPieIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                </button>
-                <button className="p-1.5 sm:p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
-                  <Cog6ToothIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Content Area - Responsive Padding */}
-          <div className="p-3 sm:p-4 md:p-5 lg:p-6">
-            {practitionerId ? (
-              <div className="animate-in fade-in duration-500">
-                <PractitionerAvailabilityManager initialPractitionerId={practitionerId} />
-              </div>
-            ) : (
-              <div className="text-center py-8 sm:py-12 md:py-16">
-                <div className="relative inline-block">
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg transform rotate-3">
-                    <ExclamationTriangleIcon className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 text-amber-600" />
-                  </div>
-                  <div className="absolute -top-1 -right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-amber-500 rounded-full border-2 border-white animate-pulse"></div>
-                </div>
-                <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-2">ID Not Found</h3>
-                <p className="text-xs sm:text-sm text-slate-500 mb-4 sm:mb-6 max-w-xs mx-auto px-4">
-                  Unable to load availability settings. Please refresh.
-                </p>
-                <Button 
-                  onClick={() => window.location.reload()} 
-                  variant="outline"
-                  className="inline-flex items-center text-xs sm:text-sm px-4 sm:px-6 py-2 sm:py-2.5 border-2 hover:border-emerald-300 hover:bg-emerald-50 transition-all"
-                >
-                  <ArrowPathIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
-                  Refresh
-                </Button>
-              </div>
-            )}
-          </div>
+              <ViewAvailability 
+                slots={availabilitySlots}
+                loading={loading}
+                onSlotDeleted={handleSlotDeleted}
+              />
+            </CardBody>
+          </Card>
         </div>
 
-        {/* Help Section - Mobile Optimized */}
-        <div className="mt-4 sm:mt-6 relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-emerald-600/20 to-blue-600/20 rounded-xl sm:rounded-2xl blur opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <div className="relative bg-gradient-to-br from-emerald-50 via-white to-blue-50 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-5 border border-emerald-200/80 shadow-md">
-            <div className="flex flex-col xs:flex-row items-start gap-3 sm:gap-4">
-              <div className="p-2 sm:p-2.5 bg-white rounded-lg sm:rounded-xl shadow-md flex-shrink-0">
-                <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm font-semibold text-emerald-900 mb-1">Need help?</p>
-                <p className="text-[10px] sm:text-xs text-emerald-700/80 leading-relaxed">
-                  Set your weekly recurring schedule and manage time slots. Changes reflect immediately.
-                  <Link href="/help/availability" className="inline-flex items-center ml-1 text-emerald-600 hover:text-emerald-700 font-medium">
-                    Learn more
-                    <span className="ml-1">→</span>
-                  </Link>
-                </p>
-              </div>
-            </div>
+        {/* Footer */}
+        <div className="mt-8 flex items-center justify-between text-xs text-gray-400 border-t border-gray-200 pt-4">
+          <div className="flex items-center gap-2">
+            <SparklesIcon className="w-4 h-4" />
+            <span>Schedule syncs automatically</span>
           </div>
-        </div>
-
-        {/* Footer Stats - Mobile Optimized */}
-        <div className="mt-3 sm:mt-4 flex flex-wrap items-center justify-end gap-2 sm:gap-4 text-[10px] sm:text-xs text-slate-400">
-          <span>Updated: Today</span>
-          <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-          <span>Time zone: EAT</span>
+          <div className="flex items-center gap-2">
+            <span>Time zone: {Intl.DateTimeFormat().resolvedOptions().timeZone}</span>
+          </div>
         </div>
       </div>
     </div>

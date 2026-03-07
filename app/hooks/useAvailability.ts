@@ -37,11 +37,13 @@ export function useAvailability(practitionerId?: number) {
         }
       }
       
+      // Filter out any slots that don't belong to this practitioner
       const invalidSlots = availabilityList.filter(slot => 
         slot.practitioner && slot.practitioner !== practitionerId
       )
       
       if (invalidSlots.length > 0) {
+        console.warn(`⚠️ Found ${invalidSlots.length} slots that don't belong to practitioner ${practitionerId}, filtering them out`)
         availabilityList = availabilityList.filter(slot => 
           !slot.practitioner || slot.practitioner === practitionerId
         )
@@ -63,14 +65,14 @@ export function useAvailability(practitionerId?: number) {
         throw new Error('No practitioner ID available')
       }
       
-      const payload = {
-        ...data,
-        practitioner: practitionerId,
-      }
+      console.log('Creating slot with data:', data)
       
-      const newSlot = await apiClient.availability.create(payload)
+      // Pass practitionerId as FIRST argument, data as SECOND argument
+      const newSlot = await apiClient.availability.create(practitionerId, data)
       
+      // Verify the created slot belongs to this practitioner
       if (newSlot.practitioner && newSlot.practitioner !== practitionerId) {
+        console.error('Created slot belongs to wrong practitioner:', newSlot)
         return null
       }
       
@@ -78,6 +80,7 @@ export function useAvailability(practitionerId?: number) {
       
       return newSlot
     } catch (err: any) {
+      console.error('Failed to create slot:', err)
       setError(err.message || 'Failed to create slot')
       return null
     }
@@ -89,12 +92,20 @@ export function useAvailability(practitionerId?: number) {
         throw new Error('No practitioner ID available')
       }
       
-      const newSlots = await apiClient.availability.createBulk(data)
+      console.log('Bulk creating slots with data:', data)
+      
+      // Pass practitionerId as FIRST argument, data as SECOND argument
+      const newSlots = await apiClient.availability.createBulk(practitionerId, data)
       
       if (Array.isArray(newSlots)) {
+        // Filter to only slots that belong to this practitioner
         const validSlots = newSlots.filter((slot: Availability) => 
           !slot.practitioner || slot.practitioner === practitionerId
         )
+        
+        if (validSlots.length !== newSlots.length) {
+          console.warn(`⚠️ ${newSlots.length - validSlots.length} slots were created for wrong practitioner`)
+        }
         
         setAvailability(prev => [...prev, ...validSlots])
         return validSlots
@@ -102,6 +113,7 @@ export function useAvailability(practitionerId?: number) {
       
       return []
     } catch (err: any) {
+      console.error('Failed to bulk create slots:', err)
       setError(err.message || 'Failed to create slots')
       return []
     }
@@ -113,6 +125,7 @@ export function useAvailability(practitionerId?: number) {
         throw new Error('No practitioner ID available')
       }
       
+      // Verify the slot belongs to this practitioner before updating
       const slotToUpdate = availability.find(slot => slot.id === id)
       if (slotToUpdate && slotToUpdate.practitioner && slotToUpdate.practitioner !== practitionerId) {
         throw new Error('Cannot update slot from another practitioner')
@@ -120,6 +133,7 @@ export function useAvailability(practitionerId?: number) {
       
       const updated = await apiClient.availability.update(id, data)
       
+      // Verify the updated slot still belongs to this practitioner
       if (updated.practitioner && updated.practitioner !== practitionerId) {
         return null
       }
@@ -130,6 +144,7 @@ export function useAvailability(practitionerId?: number) {
       
       return updated
     } catch (err: any) {
+      console.error('Failed to update slot:', err)
       setError(err.message || 'Failed to update slot')
       return null
     }
@@ -141,6 +156,7 @@ export function useAvailability(practitionerId?: number) {
         throw new Error('No practitioner ID available')
       }
       
+      // Verify the slot belongs to this practitioner before deleting
       const slotToDelete = availability.find(slot => slot.id === id)
       if (slotToDelete && slotToDelete.practitioner && slotToDelete.practitioner !== practitionerId) {
         throw new Error('Cannot delete slot from another practitioner')
@@ -152,6 +168,7 @@ export function useAvailability(practitionerId?: number) {
       
       return true
     } catch (err: any) {
+      console.error('Failed to delete slot:', err)
       setError(err.message || 'Failed to delete slot')
       return false
     }
