@@ -1,128 +1,127 @@
+// app/components/practitioner/profile/PractitionerProfile.tsx
 'use client'
 
-import { Practitioner } from '@/app/types'
-import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
+import { Practitioner, UserProfile } from '@/app/types'
+import { Card, CardBody } from '@/app/components/ui/Card'
 import { Badge } from '@/app/components/ui/Badge'
+import { Button } from '@/app/components/ui/Buttons'
 import { 
   MapPinIcon, 
   CurrencyDollarIcon, 
   EnvelopeIcon,
   CalendarIcon,
-  CheckBadgeIcon
-} from '@heroicons/react/24/solid'
-import { motion } from 'framer-motion'
-import Router, { useRouter } from 'next/navigation'
+  BriefcaseIcon,
+  PhoneIcon,
+  StarIcon
+} from '@heroicons/react/24/outline'
+import { useRouter } from 'next/navigation'
+import { formatCurrency } from '@/app/lib/utils'
 
 interface PractitionerProfileProps {
   practitioner: Practitioner
+  profile?: UserProfile | null
 }
 
-export const PractitionerProfile = ({ practitioner }: PractitionerProfileProps) => {
-  const fullName = `${practitioner.first_name || ''} ${practitioner.last_name || ''}`.trim() || 'Practitioner'
-  const specialties = practitioner.specialties?.map(s => s.name).join(', ') || 'No specialties listed'
-
+export const PractitionerProfile = ({ practitioner, profile }: PractitionerProfileProps) => {
   const router = useRouter()
+  
+  const fullName = `Dr. ${practitioner.first_name || ''} ${practitioner.last_name || ''}`.trim()
+  const initials = `${practitioner.first_name?.[0] || ''}${practitioner.last_name?.[0] || ''}` || 'DR'
+  const specialties = practitioner.specialties?.map(s => s.name).join(' • ') || 'General Practitioner'
+  const isVerified = practitioner.is_verified || false
+
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Header Card */}
+    <div className="space-y-5">
+      {/* Profile Header Card */}
       <Card>
-        <CardBody className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                  {fullName}
-                </h1>
-                {practitioner.is_verified && (
-                  <Badge variant="success" className="flex items-center gap-1 text-xs sm:text-sm px-2 py-1">
-                    <CheckBadgeIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-                    Verified
-                  </Badge>
-                )}
-              </div>
-              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-3 sm:mb-4">
-                {specialties}
-              </p>
-              
-              <div className="flex flex-wrap gap-3 sm:gap-4 text-xs sm:text-sm">
-                {practitioner.city && (
-                  <div className="flex items-center text-gray-500 dark:text-gray-400">
-                    <MapPinIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-1 flex-shrink-0" />
-                    <span>{practitioner.city}</span>
-                  </div>
-                )}
-                <div className="flex items-center text-gray-500 dark:text-gray-400">
-                  <CurrencyDollarIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-1 flex-shrink-0" />
-                  <span>{practitioner.currency} {practitioner.hourly_rate}/hr</span>
-                </div>
-                {practitioner.years_of_experience !== undefined && (
-                  <div className="flex items-center text-gray-500 dark:text-gray-400">
-                    <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-1 flex-shrink-0" />
-                    <span>{practitioner.years_of_experience}+ years</span>
-                  </div>
-                )}
-              </div>
+        <CardBody className="p-5">
+          <div className="flex items-start gap-4">
+            {/* Avatar */}
+            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-semibold text-xl border-2 border-emerald-200">
+              {initials}
             </div>
             
-            <div className="flex flex-col xs:flex-row gap-2">
-              <button className="px-4 sm:px-6 py-2.5 sm:py-2 bg-blue-600 text-white text-sm sm:text-base rounded-xl hover:bg-blue-700 transition active:scale-95"
-              onClick={()=>router.push('/client/dashboard/consultations')}>
-                View Consultation
-              </button>
-              <button className="px-4 sm:px-6 py-2.5 sm:py-2 border border-gray-300 dark:border-gray-600 text-sm sm:text-base rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition active:scale-95">
-                Contact
-              </button>
+            {/* Basic Info */}
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-1">
+                <h1 className="text-xl font-semibold text-gray-900">{fullName}</h1>
+                {isVerified && (
+                  <Badge variant="success" className="text-xs px-2 py-0.5">Verified</Badge>
+                )}
+              </div>
+              <p className="text-sm text-gray-600 mb-2">{specialties}</p>
+              
+              {/* Meta Info */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500">
+                {practitioner.city && (
+                  <span className="flex items-center gap-1">
+                    <MapPinIcon className="h-3.5 w-3.5" />
+                    {practitioner.city}
+                  </span>
+                )}
+                <span className="flex items-center gap-1">
+                  <BriefcaseIcon className="h-3.5 w-3.5" />
+                  {practitioner.years_of_experience || 0} years
+                </span>
+                <span className="flex items-center gap-1">
+                  <CurrencyDollarIcon className="h-3.5 w-3.5" />
+                  {practitioner.currency || 'KES'} {formatCurrency(practitioner.hourly_rate || 0)}/hr
+                </span>
+              </div>
             </div>
           </div>
         </CardBody>
       </Card>
 
       {/* Bio Card */}
-      <Card>
-        <CardHeader>
-          <h2 className="text-lg sm:text-xl font-semibold">About</h2>
-        </CardHeader>
-        <CardBody className="p-4 sm:p-6">
-          <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 whitespace-pre-line">
-            {practitioner.bio || 'No bio provided.'}
-          </p>
-        </CardBody>
-      </Card>
-
-      {/* Specialties Card */}
-      {practitioner.specialties && practitioner.specialties.length > 0 && (
+      {practitioner.bio && (
         <Card>
-          <CardHeader>
-            <h2 className="text-lg sm:text-xl font-semibold">Specialties</h2>
-          </CardHeader>
-          <CardBody className="p-4 sm:p-6">
-            <div className="flex flex-wrap gap-2">
-              {practitioner.specialties.map((specialty) => (
-                <Badge key={specialty.id} variant="primary" className="px-2 sm:px-3 py-1 text-xs sm:text-sm">
-                  {specialty.name}
-                </Badge>
-              ))}
-            </div>
+          <CardBody className="p-5">
+            <h2 className="text-sm font-medium text-gray-700 mb-2">About</h2>
+            <p className="text-sm text-gray-600 leading-relaxed">{practitioner.bio}</p>
           </CardBody>
         </Card>
       )}
 
-      {/* Contact Info Card */}
+      {/* Contact Card */}
       <Card>
-        <CardHeader>
-          <h2 className="text-lg sm:text-xl font-semibold">Contact Information</h2>
-        </CardHeader>
-        <CardBody className="p-4 sm:p-6">
-          <div className="space-y-3">
-            <div className="flex items-center text-sm sm:text-base text-gray-600 dark:text-gray-400">
-              <EnvelopeIcon className="h-5 w-5 sm:h-5 sm:w-5 mr-3 text-gray-400 flex-shrink-0" />
-              <a href={`mailto:${practitioner.email}`} className="hover:text-blue-600 truncate">
+        <CardBody className="p-5">
+          <h2 className="text-sm font-medium text-gray-700 mb-3">Contact</h2>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <EnvelopeIcon className="h-4 w-4 text-gray-400" />
+              <a href={`mailto:${practitioner.email}`} className="hover:text-emerald-600">
                 {practitioner.email}
               </a>
             </div>
+            {profile?.phone && (
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <PhoneIcon className="h-4 w-4 text-gray-400" />
+                <a href={`tel:${profile.phone}`} className="hover:text-emerald-600">
+                  {profile.phone}
+                </a>
+              </div>
+            )}
           </div>
         </CardBody>
       </Card>
+
+      {/* Actions */}
+      <div className="flex gap-3">
+        <Button 
+          onClick={() => router.push('/practitioner/dashboard/consultations')}
+          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+        >
+          View Consultations
+        </Button>
+        <Button 
+          variant="outline" 
+          onClick={() => router.push('/practitioner/dashboard/settings')}
+          className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+        >
+          Settings
+        </Button>
+      </div>
     </div>
   )
 }

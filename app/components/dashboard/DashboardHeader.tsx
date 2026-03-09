@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -28,15 +28,18 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   const pathname = usePathname()
   const { user, logout } = useAuth()
   const { theme, setTheme } = useTheme()
+  
+  // 👇 Use a ref to track if this is the first mount
+  const isFirstRender = useRef(true)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Log when user changes
-  useEffect(() => {
-    console.log('🔄 DashboardHeader - user updated:', user)
-  }, [user])
+  // ❌ REMOVE THIS ENTIRE useEffect - it's causing the loop!
+  // useEffect(() => {
+  //   console.log('🔄 DashboardHeader - user updated:', user)
+  // }, [user])
 
   if (!mounted || !user) {
     return null

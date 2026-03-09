@@ -1,3 +1,4 @@
+// app/lib/api/index.ts
 import api, { publicApi } from './client'
 import type {
   // User types
@@ -65,6 +66,17 @@ import type {
   Message
 } from '@/app/types'
 
+// ==============================================================================
+// CONFIGURATION
+// ==============================================================================
+
+// Enable detailed logging only in development and when explicitly enabled
+const ENABLE_API_LOGGING = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_ENABLE_API_LOGS === 'true'
+// Throttle logs to prevent console spam (only log every 5 seconds for repeated calls)
+const LOG_THROTTLE_MS = 5000
+
+// Simple throttle cache
+const logThrottleCache: Record<string, number> = {}
 
 // ==============================================================================
 // HELPER FUNCTIONS
@@ -83,19 +95,50 @@ const buildQueryString = (params?: Record<string, any>): string => {
   return query.toString() ? `?${query.toString()}` : ''
 }
 
+/**
+ * Performance measurement with throttled logging to prevent console spam
+ */
 const measurePerformance = async <T>(
   fn: () => Promise<T>,
   operation: string
 ): Promise<T> => {
   const start = performance.now()
+  
   try {
     const result = await fn()
     const duration = Math.round(performance.now() - start)
-    console.log(`📊 ${operation} completed in ${duration}ms`)
+    
+    // Only log in development with throttling
+    if (ENABLE_API_LOGGING) {
+      const now = Date.now()
+      const lastLog = logThrottleCache[operation] || 0
+      
+      // Log if:
+      // 1. It's been more than LOG_THROTTLE_MS since last log for this operation
+      // 2. The operation took more than 500ms (slow operations are worth noting)
+      if (now - lastLog > LOG_THROTTLE_MS || duration > 500) {
+        console.log(`📊 ${operation} completed in ${duration}ms`)
+        logThrottleCache[operation] = now
+      }
+    }
+    
     return result
   } catch (error) {
     const duration = Math.round(performance.now() - start)
-    console.error(`📊 ${operation} failed after ${duration}ms`)
+    
+    // Always log errors in development, throttle in production
+    if (process.env.NODE_ENV === 'development') {
+      console.error(`📊 ${operation} failed after ${duration}ms:`, error)
+    } else if (ENABLE_API_LOGGING) {
+      // Throttled error logging in production
+      const now = Date.now()
+      const lastLog = logThrottleCache[`error-${operation}`] || 0
+      if (now - lastLog > LOG_THROTTLE_MS * 2) {
+        console.error(`📊 ${operation} failed after ${duration}ms`)
+        logThrottleCache[`error-${operation}`] = now
+      }
+    }
+    
     throw error
   }
 }
@@ -129,7 +172,10 @@ export const apiClient = {
   auth: {
     login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
       return measurePerformance(async () => {
-        console.log('🔐 Attempting login with:', credentials.email)
+        // Only log login attempts in development
+        if (ENABLE_API_LOGGING) {
+          console.log('🔐 Attempting login with:', credentials.email)
+        }
         const response = await publicApi.post<AuthResponse>('/login/', {
           email: credentials.email,
           password: credentials.password
@@ -420,7 +466,10 @@ export const apiClient = {
   availability: {
     getMyAvailability: async (): Promise<Availability[]> => {
       return measurePerformance(async () => {
-        console.log('📡 Fetching my availability from /availability/')
+        // Only log in development with throttling
+        if (ENABLE_API_LOGGING) {
+          console.log('📡 Fetching my availability')
+        }
         const response = await api.get<Availability[] | PaginatedResponse<Availability>>('/availability/')
         
         if (Array.isArray(response.data)) {
@@ -431,14 +480,16 @@ export const apiClient = {
           }
         }
         
-        console.warn('⚠️ Unexpected response format:', response.data)
+        // Only log warnings in development
+        if (ENABLE_API_LOGGING) {
+          console.warn('⚠️ Unexpected response format:', response.data)
+        }
         return []
       }, 'Get My Availability')
     },
 
     getPractitionerAvailability: async (practitionerId: number): Promise<PaginatedResponse<Availability>> => {
       return measurePerformance(async () => {
-        console.log(`📡 Fetching public availability for practitioner ${practitionerId}`)
         const response = await publicApi.get<PaginatedResponse<Availability>>(`/practitioners/${practitionerId}/availability/`)
         return response.data
       }, `Get Practitioner ${practitionerId} Availability`)
@@ -457,7 +508,10 @@ export const apiClient = {
           throw new Error('No data provided for availability creation')
         }
 
-        console.log('📝 Creating availability slot:', data)
+        // Only log in development
+        if (ENABLE_API_LOGGING) {
+          console.log('📝 Creating availability slot')
+        }
 
         const payload: any = {
           recurrence_type: data.recurrence_type,
@@ -482,19 +536,18 @@ export const apiClient = {
           payload.notes = data.notes
         }
 
-        console.log('📤 Sending payload:', payload)
         const response = await api.post<Availability>('/availability/', payload)
         return response.data
       }, 'Create Availability Slot')
     },
 
     createBulk: async (data: BulkAvailabilityData): Promise<Availability[]> => {
-      console.group(`📦 Bulk Availability Creation - ${data?.days?.length || 0} days`)
-      console.log('Data:', data)
+      // Only log in development
+      if (ENABLE_API_LOGGING) {
+        console.log(`📦 Bulk Availability Creation - ${data?.days?.length || 0} days`)
+      }
 
       if (!data?.days?.length) {
-        console.error('❌ No days selected')
-        console.groupEnd()
         throw new Error('No days selected for bulk creation')
       }
 
@@ -506,7 +559,6 @@ export const apiClient = {
 
       for (let i = 0; i < data.days.length; i++) {
         const day = data.days[i]
-        console.log(`Creating slot ${i + 1}/${data.days.length} for day ${day}`)
 
         try {
           const slotPayload = {
@@ -525,13 +577,16 @@ export const apiClient = {
             await new Promise(resolve => setTimeout(resolve, 300))
           }
         } catch (slotError: any) {
-          console.error(`❌ Failed to create slot for day ${day}:`, slotError.message)
+          if (ENABLE_API_LOGGING) {
+            console.error(`❌ Failed to create slot for day ${day}:`, slotError.message)
+          }
           errors.push(slotError)
         }
       }
 
-      console.log(`✅ Created ${results.length}/${data.days.length} slots`)
-      console.groupEnd()
+      if (ENABLE_API_LOGGING) {
+        console.log(`✅ Created ${results.length}/${data.days.length} slots`)
+      }
 
       if (results.length === 0) {
         throw new Error('Failed to create any slots. Please try again.')
@@ -555,16 +610,15 @@ export const apiClient = {
 
     delete: async (id: number): Promise<void> => {
       return measurePerformance(async () => {
-        console.log(`🗑️ Deleting availability ${id}`)
         try {
           await api.delete(`/availability/${id}/`)
-          console.log(`✅ Deleted availability ${id}`)
+          if (ENABLE_API_LOGGING) {
+            console.log(`✅ Deleted availability ${id}`)
+          }
         } catch (error: any) {
-          console.error(`❌ Delete failed for ${id}:`, {
-            status: error.response?.status,
-            data: error.response?.data,
-            message: error.message
-          })
+          if (ENABLE_API_LOGGING) {
+            console.error(`❌ Delete failed for ${id}:`, error.message)
+          }
           throw error
         }
       }, `Delete Availability ${id}`)
@@ -587,7 +641,16 @@ export const apiClient = {
     },
 
     getAll: async (practitionerId?: number): Promise<Availability[] | PaginatedResponse<Availability>> => {
-      console.warn('⚠️ getAll() is deprecated. Use getMyAvailability() or getPractitionerAvailability()')
+      // Only log warning in development with throttling
+      if (ENABLE_API_LOGGING) {
+        const now = Date.now()
+        const lastLog = logThrottleCache['deprecated-getAll'] || 0
+        if (now - lastLog > LOG_THROTTLE_MS) {
+          console.warn('⚠️ getAll() is deprecated. Use getMyAvailability() or getPractitionerAvailability()')
+          logThrottleCache['deprecated-getAll'] = now
+        }
+      }
+      
       return measurePerformance(async () => {
         if (practitionerId) {
           return apiClient.availability.getPractitionerAvailability(practitionerId)
