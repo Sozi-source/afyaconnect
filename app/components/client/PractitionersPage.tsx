@@ -635,15 +635,15 @@ function PractitionerCard({ practitioner, index, isFavorite, onToggleFavorite }:
                 View Profile
               </Button>
             </Link>
-            <Link href={`/client/dashboard/consultations/book?practitioner=${practitioner.id}`} className="flex-1">
-              <Button
-                size="sm"
-                fullWidth
-                className="text-sm bg-teal-600 hover:bg-teal-700 text-white"
-              >
-                Book
-              </Button>
-            </Link>
+            <Link href={`/client/dashboard/practitioners/${practitioner.id}/book`} className="flex-1">
+            <Button
+              size="sm"
+              fullWidth
+              className="text-sm bg-teal-600 hover:bg-teal-700 text-white"
+            >
+              Book
+            </Button>
+          </Link>
           </div>
         </CardBody>
       </Card>

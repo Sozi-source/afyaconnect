@@ -19,7 +19,9 @@ interface Props {
 }
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-const DAY_COLORS = [
+
+// Pre-defined color classes for day borders
+const DAY_BORDER_COLORS = [
   'border-l-emerald-500',
   'border-l-blue-500',
   'border-l-indigo-500',
@@ -29,7 +31,7 @@ const DAY_COLORS = [
   'border-l-orange-500'
 ]
 
-// Distinct colors for slot cards
+// Pre-defined color classes for slot cards
 const SLOT_COLORS = [
   'bg-emerald-50 hover:bg-emerald-100 border-emerald-200',
   'bg-blue-50 hover:bg-blue-100 border-blue-200',
@@ -65,7 +67,7 @@ export function ViewAvailability({ slots = [], loading, onSlotDeleted }: Props) 
       await apiClient.availability.delete(id)
       onSlotDeleted(id)
     } catch (error: any) {
-      setError(error.message || 'Failed to delete slot. Please try again.')
+      setError(error.response?.data?.message || error.message || 'Failed to delete slot. Please try again.')
       setTimeout(() => setError(null), 3000)
     } finally {
       setDeletingId(null)
@@ -168,7 +170,7 @@ export function ViewAvailability({ slots = [], loading, onSlotDeleted }: Props) 
             return (
               <div
                 key={dayIndex}
-                className={`bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow ${DAY_COLORS[dayIndex]} border-l-4`}
+                className={`bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow ${DAY_BORDER_COLORS[dayIndex]} border-l-4`}
               >
                 {/* Day header */}
                 <div className="px-3 py-2 bg-white/50 border-b border-gray-100">

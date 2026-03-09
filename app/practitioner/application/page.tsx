@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ApplicationStatus } from '@/app/components/practitioners/ApplicationStatus'
 import { ApplicationForm } from '@/app/components/practitioners/ApplicationForm'
 import { apiClient } from '@/app/lib/api'
-import type { PractitionerApplication } from '@/app/types'
+import type { PractitionerApplication, ApplicationStatusResponse } from '@/app/types'
 import { 
   BriefcaseIcon, 
   CheckCircleIcon, 
@@ -15,7 +15,8 @@ import {
   DocumentTextIcon,
   ArrowLeftIcon,
   ShieldCheckIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  InformationCircleIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 
@@ -23,8 +24,10 @@ export default function PractitionerApplicationPage() {
   const { user, isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
   const [application, setApplication] = useState<PractitionerApplication | null>(null)
+  const [status, setStatus] = useState<ApplicationStatusResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -44,28 +47,56 @@ export default function PractitionerApplicationPage() {
 
   const checkApplicationStatus = async () => {
     try {
-      const status = await apiClient.practitioners.applications.getStatus()
+      setLoading(true)
+      setError(null)
       
-      if (status.hasApplication) {
-        const appData = await apiClient.practitioners.applications.getMine()
-        setApplication(appData)
-        // Auto-show form for draft or info_needed
-        if (appData.status === 'draft' || appData.status === 'info_needed') {
-          setShowForm(true)
+      // First check if application exists
+      const statusData = await apiClient.practitioners.applications.getStatus()
+      setStatus(statusData)
+      
+      if (statusData.hasApplication) {
+        // Only fetch full application if it exists
+        try {
+          const appData = await apiClient.practitioners.applications.getMine()
+          setApplication(appData)
+          
+          // Auto-show form for draft or info_needed
+          if (appData.status === 'draft' || appData.status === 'info_needed') {
+            setShowForm(true)
+          }
+        } catch (appError: any) {
+          // If getMine fails but status says hasApplication, log but don't show error
+          console.error('Failed to fetch application details:', appError)
+          setError('Could not load application details. Please try refreshing.')
         }
       } else {
-        setShowForm(true)
+        // No application exists - ready to create one
+        setApplication(null)
       }
     } catch (error) {
       console.error('Failed to check application status:', error)
+      setError('Failed to load application status. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleApplicationComplete = () => {
-    checkApplicationStatus()
+  const handleApplicationComplete = async () => {
+    // Refresh data after form submission
+    await checkApplicationStatus()
     setShowForm(false)
+  }
+
+  const handleStartApplication = () => {
+    setShowForm(true)
+  }
+
+  const handleCancelForm = () => {
+    if (application) {
+      setShowForm(false)
+    } else {
+      router.push('/practitioner/dashboard')
+    }
   }
 
   if (isLoading || loading) {
@@ -86,7 +117,28 @@ export default function PractitionerApplicationPage() {
     return null
   }
 
-  // Determine status color and icon
+  // Error display
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50/30 py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+            <ExclamationTriangleIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <button
+              onClick={checkApplicationStatus}
+              className="px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Determine status color and icon for display
   const getStatusInfo = () => {
     if (!application) return null
     switch (application.status) {
@@ -97,7 +149,7 @@ export default function PractitionerApplicationPage() {
       case 'rejected':
         return { color: 'red', icon: ExclamationTriangleIcon, bg: 'bg-red-50', text: 'text-red-700' }
       case 'info_needed':
-        return { color: 'blue', icon: DocumentTextIcon, bg: 'bg-blue-50', text: 'text-blue-700' }
+        return { color: 'blue', icon: InformationCircleIcon, bg: 'bg-blue-50', text: 'text-blue-700' }
       default:
         return { color: 'gray', icon: DocumentTextIcon, bg: 'bg-gray-50', text: 'text-gray-700' }
     }
@@ -145,7 +197,8 @@ export default function PractitionerApplicationPage() {
         </div>
 
         <AnimatePresence mode="wait">
-          {!application && !showForm ? (
+          {/* No application and not showing form */}
+          {!application && !showForm && (
             <motion.div
               key="welcome"
               initial={{ opacity: 0, y: 20 }}
@@ -207,7 +260,7 @@ export default function PractitionerApplicationPage() {
                 </div>
 
                 <button
-                  onClick={() => setShowForm(true)}
+                  onClick={handleStartApplication}
                   className="w-full md:w-auto px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-medium hover:from-emerald-700 hover:to-teal-700 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 mx-auto"
                 >
                   <BriefcaseIcon className="w-5 h-5" />
@@ -219,7 +272,10 @@ export default function PractitionerApplicationPage() {
                 </p>
               </div>
             </motion.div>
-          ) : application && !showForm ? (
+          )}
+
+          {/* Have application and not showing form */}
+          {application && !showForm && (
             <motion.div
               key="status"
               initial={{ opacity: 0, y: 20 }}
@@ -286,7 +342,10 @@ export default function PractitionerApplicationPage() {
                 </motion.div>
               )}
             </motion.div>
-          ) : showForm && (
+          )}
+
+          {/* Showing form (either new or editing) */}
+          {showForm && (
             <motion.div
               key="form"
               initial={{ opacity: 0, y: 20 }}
@@ -307,13 +366,7 @@ export default function PractitionerApplicationPage() {
                 <ApplicationForm
                   initialData={application}
                   onSubmit={handleApplicationComplete}
-                  onCancel={() => {
-                    if (application) {
-                      setShowForm(false)
-                    } else {
-                      router.push('/practitioner/dashboard')
-                    }
-                  }}
+                  onCancel={handleCancelForm}
                 />
               </div>
             </motion.div>

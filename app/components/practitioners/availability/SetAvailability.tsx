@@ -18,15 +18,31 @@ interface Props {
   onSlotsAdded: (slots: Availability[]) => void
 }
 
-const DAYS = [
-  { id: 0, label: 'Mon', fullName: 'Monday', color: 'emerald' },
-  { id: 1, label: 'Tue', fullName: 'Tuesday', color: 'blue' },
-  { id: 2, label: 'Wed', fullName: 'Wednesday', color: 'indigo' },
-  { id: 3, label: 'Thu', fullName: 'Thursday', color: 'purple' },
-  { id: 4, label: 'Fri', fullName: 'Friday', color: 'pink' },
-  { id: 5, label: 'Sat', fullName: 'Saturday', color: 'amber' },
-  { id: 6, label: 'Sun', fullName: 'Sunday', color: 'orange' },
+// Pre-defined color classes instead of dynamic ones
+const DAY_STYLES = [
+  { selected: 'bg-emerald-50 border-emerald-500 text-emerald-700', hover: 'hover:border-emerald-300' },
+  { selected: 'bg-blue-50 border-blue-500 text-blue-700', hover: 'hover:border-blue-300' },
+  { selected: 'bg-indigo-50 border-indigo-500 text-indigo-700', hover: 'hover:border-indigo-300' },
+  { selected: 'bg-purple-50 border-purple-500 text-purple-700', hover: 'hover:border-purple-300' },
+  { selected: 'bg-pink-50 border-pink-500 text-pink-700', hover: 'hover:border-pink-300' },
+  { selected: 'bg-amber-50 border-amber-500 text-amber-700', hover: 'hover:border-amber-300' },
+  { selected: 'bg-orange-50 border-orange-500 text-orange-700', hover: 'hover:border-orange-300' },
 ]
+
+const DAYS = [
+  { id: 0, label: 'Mon', fullName: 'Monday', style: DAY_STYLES[0] },
+  { id: 1, label: 'Tue', fullName: 'Tuesday', style: DAY_STYLES[1] },
+  { id: 2, label: 'Wed', fullName: 'Wednesday', style: DAY_STYLES[2] },
+  { id: 3, label: 'Thu', fullName: 'Thursday', style: DAY_STYLES[3] },
+  { id: 4, label: 'Fri', fullName: 'Friday', style: DAY_STYLES[4] },
+  { id: 5, label: 'Sat', fullName: 'Saturday', style: DAY_STYLES[5] },
+  { id: 6, label: 'Sun', fullName: 'Sunday', style: DAY_STYLES[6] },
+]
+
+// Helper to format time for API (adds seconds)
+const formatTimeForAPI = (time: string): string => {
+  return time.includes(':') ? `${time}:00` : time
+}
 
 export function SetAvailability({ practitionerId, onSlotsAdded }: Props) {
   const [selectedDays, setSelectedDays] = useState<number[]>([])
@@ -75,38 +91,57 @@ export function SetAvailability({ practitionerId, onSlotsAdded }: Props) {
 
     try {
       const createdSlots: Availability[] = []
+      const errors: string[] = []
       
       for (const day of selectedDays) {
-        const slotData: CreateAvailabilityData = {
-          recurrence_type: 'weekly',
-          day_of_week: day as any,
-          start_time: startTime,
-          end_time: endTime,
-          is_available: true
+        try {
+          const slotData: CreateAvailabilityData = {
+            recurrence_type: 'weekly',
+            day_of_week: day as any,
+            start_time: formatTimeForAPI(startTime),
+            end_time: formatTimeForAPI(endTime),
+            is_available: true
+          }
+          
+          const slot = await apiClient.availability.create(slotData)
+          createdSlots.push(slot)
+          
+          // Small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100))
+        } catch (error: any) {
+          console.error(`Failed to create slot for day ${day}:`, error)
+          errors.push(`Day ${DAYS.find(d => d.id === day)?.fullName}: ${error.message}`)
         }
-        
-        const slot = await apiClient.availability.create(slotData)
-        createdSlots.push(slot)
       }
       
-      setMessage({ 
-        text: `Successfully added ${createdSlots.length} slot${createdSlots.length === 1 ? '' : 's'}`,
-        type: 'success' 
-      })
+      if (createdSlots.length > 0) {
+        setMessage({ 
+          text: `Successfully added ${createdSlots.length} slot${createdSlots.length === 1 ? '' : 's'}`,
+          type: 'success' 
+        })
+        
+        onSlotsAdded(createdSlots)
+        setSelectedDays([])
+      }
       
-      onSlotsAdded(createdSlots)
-      setSelectedDays([])
+      if (errors.length > 0) {
+        console.warn('Some slots failed:', errors)
+        if (createdSlots.length === 0) {
+          setMessage({ 
+            text: `Failed to create slots: ${errors[0]}`,
+            type: 'error' 
+          })
+        }
+      }
     } catch (error: any) {
-      setMessage({ text: error.message || 'Failed to save slots', type: 'error' })
+      console.error('Error in handleSave:', error)
+      setMessage({ 
+        text: error.response?.data?.message || error.message || 'Failed to save slots', 
+        type: 'error' 
+      })
     } finally {
       setIsSaving(false)
     }
-  }
-
-  const getDayColor = (dayId: number, isSelected: boolean) => {
-    const day = DAYS.find(d => d.id === dayId)
-    if (!day) return 'gray'
-    return isSelected ? day.color : 'gray'
   }
 
   return (
@@ -155,7 +190,6 @@ export function SetAvailability({ practitionerId, onSlotsAdded }: Props) {
             <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
               {DAYS.map(day => {
                 const isSelected = selectedDays.includes(day.id)
-                const color = getDayColor(day.id, isSelected)
                 
                 return (
                   <button
@@ -164,7 +198,7 @@ export function SetAvailability({ practitionerId, onSlotsAdded }: Props) {
                     className={`
                       relative group flex flex-col items-center p-2 sm:p-3 rounded-xl transition-all
                       ${isSelected 
-                        ? `bg-${color}-50 border-2 border-${color}-500 shadow-md` 
+                        ? day.style.selected
                         : 'bg-gray-50 border-2 border-transparent hover:border-gray-300 hover:bg-gray-100'
                       }
                       focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2
@@ -174,20 +208,20 @@ export function SetAvailability({ practitionerId, onSlotsAdded }: Props) {
                   >
                     <span className={`
                       text-xs sm:text-sm font-semibold
-                      ${isSelected ? `text-${color}-700` : 'text-gray-700'}
+                      ${isSelected ? day.style.selected.split(' ')[2] : 'text-gray-700'}
                     `}>
                       {day.label}
                     </span>
                     <span className={`
                       text-[10px] sm:text-xs mt-0.5
-                      ${isSelected ? `text-${color}-600` : 'text-gray-400'}
+                      ${isSelected ? day.style.selected.split(' ')[2] : 'text-gray-400'}
                     `}>
                       {day.fullName.slice(0,3)}
                     </span>
                     
                     {/* Selected indicator */}
                     {isSelected && (
-                      <span className={`absolute -top-1 -right-1 w-4 h-4 bg-${color}-500 rounded-full border-2 border-white shadow-sm flex items-center justify-center`}>
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white shadow-sm flex items-center justify-center">
                         <CheckCircleIcon className="w-3 h-3 text-white" />
                       </span>
                     )}
@@ -204,7 +238,7 @@ export function SetAvailability({ practitionerId, onSlotsAdded }: Props) {
                   return (
                     <span
                       key={dayId}
-                      className={`inline-flex items-center px-2 py-1 bg-${day?.color}-50 text-${day?.color}-700 rounded-lg text-xs font-medium`}
+                      className={`inline-flex items-center px-2 py-1 bg-${day?.style.selected.split(' ')[0].replace('bg-', '')} text-${day?.style.selected.split(' ')[2]} rounded-lg text-xs font-medium`}
                     >
                       {day?.fullName}
                     </span>
