@@ -14,9 +14,9 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: {
     default: 'AfyaConnect - Connect with Health Practitioners',
-    template: '%s | AfyaConnect'
+    template: '%s | AfyaConnect',
   },
-  description: 'Find and book consultations with Kenya\'s top health practitioners.',
+  description: "Find and book consultations with Kenya's top health practitioners.",
   manifest: '/manifest.json',
 }
 

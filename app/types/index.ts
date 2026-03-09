@@ -36,6 +36,10 @@ export interface AuthResponse {
   is_practitioner: boolean
   is_verified: boolean
   is_staff: boolean
+  // FIX: added practitioner and profile — the login/register endpoints
+  // return these fields at the top level, matching what AuthContext expects
+  practitioner?: { id: number }
+  profile?: UserProfile
   user?: {
     email: string
     first_name: string
@@ -44,6 +48,9 @@ export interface AuthResponse {
     is_practitioner: boolean
     is_verified: boolean
     is_staff: boolean
+    // FIX: nested user object also carries these fields
+    practitioner?: { id: number }
+    profile?: UserProfile
   }
 }
 
@@ -228,7 +235,7 @@ export interface TimeSlot {
   practitioner_name: string
   formatted_time?: string
   is_available?: boolean
-  id?:number
+  id?: number
 }
 
 // ==================== FILTER TYPES ====================

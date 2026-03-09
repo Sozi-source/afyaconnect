@@ -1,27 +1,21 @@
-// app/practitioner/dashboard/layout.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { LazyDashboardSidebar } from '@/app/components/dashboard/LazyDashboardSidebar'
 import { LazyDashboardHeader } from '@/app/components/dashboard/LazyDashboardHeader'
 import { DashboardMobileNav } from '@/app/components/dashboard/DashboardMobileNav'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
-import { AuthProvider, useAuth } from '@/app/contexts/AuthContext'
+import { useAuth } from '@/app/contexts/AuthContext'
 
-// Separate component that uses auth hooks
-function DashboardContent({ children, sidebarOpen, setSidebarOpen }: { 
+export default function PractitionerDashboardLayout({
+  children,
+}: {
   children: React.ReactNode
-  sidebarOpen: boolean
-  setSidebarOpen: (open: boolean) => void
 }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const { isLoading } = useAuth()
-  const [mounted, setMounted] = useState(false)
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted || isLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-3">
@@ -34,14 +28,14 @@ function DashboardContent({ children, sidebarOpen, setSidebarOpen }: {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <LazyDashboardSidebar 
-        isOpen={sidebarOpen} 
-        onClose={() => setSidebarOpen(false)} 
+      <LazyDashboardSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
-      
+
       <div className="lg:pl-72 flex flex-col min-h-screen transition-all duration-300">
         <LazyDashboardHeader onMenuClick={() => setSidebarOpen(true)} />
-        
+
         <main className="flex-1 pt-16 lg:pt-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
             <ProtectedRoute allowedRoles={['practitioner', 'admin']}>
@@ -51,30 +45,9 @@ function DashboardContent({ children, sidebarOpen, setSidebarOpen }: {
         </main>
       </div>
 
-      {/* Mobile Navigation - Only visible on mobile */}
       <div className="lg:hidden">
         <DashboardMobileNav />
       </div>
     </div>
-  )
-}
-
-// Main layout with provider
-export default function PractitionerDashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  return (
-    <AuthProvider>
-      <DashboardContent 
-        sidebarOpen={sidebarOpen} 
-        setSidebarOpen={setSidebarOpen}
-      >
-        {children}
-      </DashboardContent>
-    </AuthProvider>
   )
 }

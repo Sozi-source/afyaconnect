@@ -1,12 +1,11 @@
-// app/admin/layout.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useAuth } from '@/app/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { 
-  UsersIcon, 
+import {
+  UsersIcon,
   ClipboardDocumentListIcon,
   ShieldCheckIcon,
   ChartBarIcon,
@@ -15,34 +14,27 @@ import {
   UserCircleIcon
 } from '@heroicons/react/24/outline'
 
-interface ExtendedUser {
-  id: number
-  email: string
-  is_staff?: boolean
-}
+const navigation = [
+  { name: 'Dashboard', href: '/admin', icon: ChartBarIcon },
+  { name: 'Practitioners', href: '/admin/practitioners', icon: UsersIcon },
+  { name: 'Applications', href: '/admin/applications', icon: ClipboardDocumentListIcon },
+  { name: 'Verification', href: '/admin/verification', icon: ShieldCheckIcon },
+]
 
-// Inner component that uses useAuth
-function AdminLayoutContent({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false)
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
-  const extendedUser = user as ExtendedUser | null
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (!isLoading && mounted) {
-      if (!isAuthenticated) {
-        router.push('/login')
-      } else if (!extendedUser?.is_staff) {
-        router.push('/client/dashboard')
-      }
+    if (isLoading) return
+    if (!isAuthenticated) {
+      router.push('/login')
+    } else if (!user?.is_staff) {
+      router.push('/client/dashboard')
     }
-  }, [isLoading, isAuthenticated, extendedUser, router, mounted])
+  }, [isLoading, isAuthenticated, user, router])
 
-  if (!mounted || isLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
@@ -50,16 +42,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!extendedUser?.is_staff) {
+  if (!user?.is_staff) {
     return null
   }
-
-  const navigation = [
-    { name: 'Dashboard', href: '/admin', icon: ChartBarIcon },
-    { name: 'Practitioners', href: '/admin/practitioners', icon: UsersIcon },
-    { name: 'Applications', href: '/admin/applications', icon: ClipboardDocumentListIcon },
-    { name: 'Verification', href: '/admin/verification', icon: ShieldCheckIcon },
-  ]
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-950">
@@ -75,13 +60,16 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                 Admin
               </span>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
                 <BellIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
               </button>
-              
-              <Link href="/client/dashboard" className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+
+              <Link
+                href="/client/dashboard"
+                className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
                 <ArrowLeftIcon className="h-4 w-4 text-gray-600 dark:text-gray-300" />
                 <span className="text-sm hidden sm:block">Back to Dashboard</span>
               </Link>
@@ -89,7 +77,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               <div className="flex items-center space-x-2 p-2">
                 <UserCircleIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
                 <span className="text-sm hidden sm:block text-gray-600 dark:text-gray-300">
-                  {extendedUser.email}
+                  {user.email}
                 </span>
               </div>
             </div>
@@ -119,16 +107,4 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       </main>
     </div>
   )
-}
-
-// Main layout component
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return 
-  <AdminLayoutContent>{
-    children}
-  </AdminLayoutContent>
 }
