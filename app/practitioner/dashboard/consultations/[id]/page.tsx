@@ -20,15 +20,14 @@ import {
   PencilIcon,
   ShieldCheckIcon,
   ExclamationTriangleIcon,
-  ChatBubbleLeftRightIcon,
-  EnvelopeIcon
+  EnvelopeIcon,
+  CheckBadgeIcon
 } from '@heroicons/react/24/outline'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import VideoCall from '@/app/components/consultation/VideoCall'
 import { apiClient } from '@/app/lib/api'
-import { extractResults } from '@/app/lib/utils'
-import type { Consultation, Message } from '@/app/types'
+import type { Consultation } from '@/app/types'
 
 interface ExtendedUser {
   id: number
@@ -45,7 +44,6 @@ export default function PractitionerConsultationDetailPage() {
   const { user, isAuthenticated } = useAuth()
   const extendedUser = user as ExtendedUser | null
   const [consultation, setConsultation] = useState<Consultation | null>(null)
-  const [recentMessages, setRecentMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
@@ -55,6 +53,7 @@ export default function PractitionerConsultationDetailPage() {
   const [notes, setNotes] = useState('')
   const [savingNotes, setSavingNotes] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showSuccessMessage, setShowSuccessMessage] = useState<string | null>(null)
 
   const id = params.id as string
 
@@ -75,15 +74,6 @@ export default function PractitionerConsultationDetailPage() {
       setConsultation(data)
       setNotes(data.practitioner_notes || '')
       
-      try {
-        const messages = await apiClient.messages.getAll(parseInt(id))
-        const messagesList = extractResults<Message>(messages)
-        setRecentMessages(messagesList.slice(0, 2))
-      } catch (error) {
-        console.log('No messages available')
-        setRecentMessages([])
-      }
-      
     } catch (error: any) {
       console.error('Error fetching consultation:', error)
       setError(error.message || 'Failed to load consultation details')
@@ -98,6 +88,9 @@ export default function PractitionerConsultationDetailPage() {
       await apiClient.consultations.updateStatus(parseInt(id), 'cancelled')
       await fetchConsultation()
       setShowCancelModal(false)
+      setCancelReason('')
+      setShowSuccessMessage('Consultation cancelled successfully')
+      setTimeout(() => setShowSuccessMessage(null), 3000)
     } catch (error: any) {
       console.error('Error cancelling consultation:', error)
       setError(error.message || 'Failed to cancel consultation')
@@ -122,15 +115,15 @@ export default function PractitionerConsultationDetailPage() {
   const handleSaveNotes = async () => {
     setSavingNotes(true)
     try {
-      // Use updateStatus for notes? Or check if there's a dedicated method
-      // For now, we'll assume there's an update method or we'll need to use a different approach
-      console.log('Saving notes:', notes)
-      // You may need to use a different API endpoint for notes
-      // await apiClient.consultations.updateNotes(parseInt(id), notes)
+      // Note: You'll need to implement this endpoint or use a different approach
+      // For now, we'll just update local state
       setConsultation(prev => prev ? { ...prev, practitioner_notes: notes } : null)
       setShowNotes(false)
+      setShowSuccessMessage('Notes saved successfully')
+      setTimeout(() => setShowSuccessMessage(null), 3000)
     } catch (error) {
       console.error('Error saving notes:', error)
+      setError('Failed to save notes')
     } finally {
       setSavingNotes(false)
     }
@@ -183,9 +176,11 @@ export default function PractitionerConsultationDetailPage() {
     )
   }
 
+  // Status handling based on your Consultation type
   const isUpcoming = consultation.status === 'booked'
   const isCompleted = consultation.status === 'completed'
   const isCancelled = consultation.status === 'cancelled'
+  const isNoShow = consultation.status === 'no_show'
   const { formattedDate, formattedTime } = formatDateTime(consultation.date, consultation.time)
 
   const getStatusConfig = () => {
@@ -207,7 +202,7 @@ export default function PractitionerConsultationDetailPage() {
       text: 'text-green-800',
       subtext: 'text-green-600'
     }
-    return {
+    if (isCancelled) return {
       icon: XCircleIcon,
       title: 'Consultation Cancelled',
       message: 'This consultation has been cancelled',
@@ -215,6 +210,15 @@ export default function PractitionerConsultationDetailPage() {
       border: 'border-red-200',
       text: 'text-red-800',
       subtext: 'text-red-600'
+    }
+    return {
+      icon: XCircleIcon,
+      title: 'No Show',
+      message: 'Client did not attend this consultation',
+      bg: 'bg-gray-50',
+      border: 'border-gray-200',
+      text: 'text-gray-800',
+      subtext: 'text-gray-600'
     }
   }
 
@@ -227,8 +231,8 @@ export default function PractitionerConsultationDetailPage() {
       <div className="fixed inset-0 z-50 bg-white">
         <VideoCall
           roomId={`consultation-${id}`}
-          userId={`practitioner-${user?.id}`}
-          userName={`Dr. ${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Practitioner'}
+          userId={`practitioner-${extendedUser?.id || 'unknown'}`}
+          userName={`Dr. ${extendedUser?.first_name || ''} ${extendedUser?.last_name || ''}`.trim() || 'Practitioner'}
           userRole="practitioner"
           onLeave={handleLeaveCall}
         />
@@ -238,6 +242,21 @@ export default function PractitionerConsultationDetailPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-5 md:py-6 space-y-4 sm:space-y-5 md:space-y-6">
+      {/* Success Message */}
+      <AnimatePresence>
+        {showSuccessMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2"
+          >
+            <CheckBadgeIcon className="h-5 w-5 text-green-600" />
+            <p className="text-sm text-green-700">{showSuccessMessage}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Back Button */}
       <Link href="/practitioner/dashboard/consultations">
         <Button variant="outline" size="sm" className="!p-2 sm:!px-4">
@@ -286,6 +305,9 @@ export default function PractitionerConsultationDetailPage() {
                       {consultation.client_name || 'Client'}
                     </p>
                     <p className="text-xs sm:text-sm text-slate-500">Client</p>
+                    {consultation.client_email && (
+                      <p className="text-xs text-slate-400 mt-0.5">{consultation.client_email}</p>
+                    )}
                   </div>
                 </div>
 
@@ -368,55 +390,6 @@ export default function PractitionerConsultationDetailPage() {
               </div>
             </CardBody>
           </Card>
-
-          {/* Messages Preview */}
-          <Card>
-            <CardBody className="p-4 sm:p-5 md:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base sm:text-lg font-semibold text-slate-900">Messages</h2>
-                <Link href={`/practitioner/dashboard/messages?consultation=${id}`} 
-                      className="text-xs sm:text-sm text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1">
-                  View all
-                  <ArrowLeftIcon className="h-3 w-3 rotate-180" />
-                </Link>
-              </div>
-              
-              {recentMessages.length > 0 ? (
-                <div className="space-y-3">
-                  {recentMessages.map((message) => (
-                    <div key={message.id} className="flex items-start gap-2 sm:gap-3">
-                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-slate-200 rounded-full flex items-center justify-center text-xs font-bold text-slate-700 flex-shrink-0">
-                        {message.sender_name?.[0] || 'U'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs sm:text-sm font-medium text-slate-900">
-                            {message.sender_name || 'User'}
-                          </p>
-                          <span className="text-[10px] text-slate-400">
-                            {message.created_at ? new Date(message.created_at).toLocaleDateString() : ''}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-600 mt-1 line-clamp-2">
-                          {message.content}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <ChatBubbleLeftRightIcon className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                  <p className="text-xs text-slate-500">No messages yet</p>
-                  <Link href={`/practitioner/dashboard/messages/new?recipient=${consultation.client}&consultation=${id}`}>
-                    <Button variant="outline" size="sm" className="mt-3 text-xs">
-                      Send Message
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </CardBody>
-          </Card>
         </div>
 
         {/* Right Column - Actions */}
@@ -444,16 +417,6 @@ export default function PractitionerConsultationDetailPage() {
                     <PhoneIcon className="h-4 w-4 mr-2" />
                     Join Audio Call
                   </Button>
-                  <Link href={`/practitioner/dashboard/messages/new?recipient=${consultation.client}&consultation=${id}`}>
-                    <Button
-                      fullWidth
-                      variant="outline"
-                      className="text-xs sm:text-sm py-2.5"
-                    >
-                      <ChatBubbleLeftIcon className="h-4 w-4 mr-2" />
-                      Send Message
-                    </Button>
-                  </Link>
                 </div>
               </CardBody>
             </Card>
@@ -486,6 +449,18 @@ export default function PractitionerConsultationDetailPage() {
                       Cancel Consultation
                     </Button>
                   </>
+                )}
+                {isCompleted && (
+                  <Link href={`/practitioner/dashboard/consultations`}>
+                    <Button
+                      fullWidth
+                      variant="outline"
+                      className="text-xs sm:text-sm py-2.5"
+                    >
+                      <DocumentTextIcon className="h-4 w-4 mr-2" />
+                      View All Consultations
+                    </Button>
+                  </Link>
                 )}
               </div>
             </CardBody>

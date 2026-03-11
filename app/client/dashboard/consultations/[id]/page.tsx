@@ -18,7 +18,6 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ChevronRightIcon,
-  EnvelopeIcon,
   ShieldCheckIcon
 } from '@heroicons/react/24/outline'
 import { Card, CardBody, CardHeader } from '@/app/components/ui/Card'
@@ -72,11 +71,10 @@ export default function ClientConsultationDetailPage() {
   const handleCancel = async () => {
     setIsCancelling(true)
     try {
-      // Use updateStatus instead of update
       await apiClient.consultations.updateStatus(parseInt(id), 'cancelled')
-      // Refetch to get updated data
       await fetchConsultation()
       setShowCancelModal(false)
+      setCancelReason('')
     } catch (error) {
       console.error('Error cancelling consultation:', error)
     } finally {
@@ -94,12 +92,16 @@ export default function ClientConsultationDetailPage() {
 
   const handleLeaveCall = () => {
     setShowVideoCall(false)
-    // Refresh consultation data in case anything changed during the call
     fetchConsultation()
   }
 
   const handleWriteReview = () => {
     router.push(`/client/dashboard/reviews/create?consultation=${id}`)
+  }
+
+  const handleMessagePractitioner = () => {
+    // You can implement messaging later
+    console.log('Message practitioner')
   }
 
   if (loading) {
@@ -130,9 +132,11 @@ export default function ClientConsultationDetailPage() {
     )
   }
 
+  // Status handling based on your Consultation type
   const isUpcoming = consultation.status === 'booked'
   const isCompleted = consultation.status === 'completed'
   const isCancelled = consultation.status === 'cancelled'
+  const isNoShow = consultation.status === 'no_show'
 
   const getStatusStyles = () => {
     if (isUpcoming) return {
@@ -140,25 +144,50 @@ export default function ClientConsultationDetailPage() {
       border: 'border-blue-200',
       text: 'text-blue-800',
       icon: 'text-blue-600',
-      light: 'text-blue-600'
+      light: 'text-blue-600',
+      label: 'Upcoming Consultation'
     }
     if (isCompleted) return {
       bg: 'bg-green-50',
       border: 'border-green-200',
       text: 'text-green-800',
       icon: 'text-green-600',
-      light: 'text-green-600'
+      light: 'text-green-600',
+      label: 'Consultation Completed'
     }
-    return {
+    if (isCancelled) return {
       bg: 'bg-red-50',
       border: 'border-red-200',
       text: 'text-red-800',
       icon: 'text-red-600',
-      light: 'text-red-600'
+      light: 'text-red-600',
+      label: 'Consultation Cancelled'
+    }
+    return {
+      bg: 'bg-gray-50',
+      border: 'border-gray-200',
+      text: 'text-gray-800',
+      icon: 'text-gray-600',
+      light: 'text-gray-600',
+      label: 'No Show'
     }
   }
 
   const statusStyles = getStatusStyles()
+
+  // Format date and time
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  }
+
+  const formatTime = (timeString: string) => {
+    return timeString.slice(0, 5) // Format "HH:MM"
+  }
 
   // If video call is active, show full-screen video
   if (showVideoCall) {
@@ -166,8 +195,8 @@ export default function ClientConsultationDetailPage() {
       <div className="fixed inset-0 z-50 bg-white">
         <VideoCall
           roomId={`consultation-${id}`}
-          userId={`client-${user?.id}`}
-          userName={`${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Client'}
+          userId={`client-${extendedUser?.id || 'unknown'}`}
+          userName={`${extendedUser?.first_name || ''} ${extendedUser?.last_name || ''}`.trim() || 'Client'}
           userRole="client"
           onLeave={handleLeaveCall}
         />
@@ -197,16 +226,16 @@ export default function ClientConsultationDetailPage() {
           {isUpcoming && <ClockIcon className={`h-5 w-5 ${statusStyles.icon}`} />}
           {isCompleted && <CheckCircleIcon className={`h-5 w-5 ${statusStyles.icon}`} />}
           {isCancelled && <XCircleIcon className={`h-5 w-5 ${statusStyles.icon}`} />}
+          {isNoShow && <XCircleIcon className={`h-5 w-5 ${statusStyles.icon}`} />}
           <div>
             <p className={`font-medium ${statusStyles.text}`}>
-              {isUpcoming && 'Upcoming Consultation'}
-              {isCompleted && 'Consultation Completed'}
-              {isCancelled && 'Consultation Cancelled'}
+              {statusStyles.label}
             </p>
             <p className={`text-sm ${statusStyles.light}`}>
               {isUpcoming && 'Please be ready 5 minutes before the scheduled time'}
               {isCompleted && 'Thank you for your consultation'}
               {isCancelled && 'This consultation has been cancelled'}
+              {isNoShow && 'You missed this consultation'}
             </p>
           </div>
         </div>
@@ -230,7 +259,7 @@ export default function ClientConsultationDetailPage() {
                   </div>
                   <div>
                     <p className="font-semibold text-neutral-900">
-                      Dr. {consultation.practitioner_name || 'Unknown'}
+                      {consultation.practitioner_name || 'Practitioner'}
                     </p>
                     <p className="text-sm text-neutral-500">Practitioner</p>
                   </div>
@@ -241,31 +270,28 @@ export default function ClientConsultationDetailPage() {
                   <div className="bg-neutral-50 p-3 rounded-xl">
                     <p className="text-xs text-neutral-500 mb-1">Date</p>
                     <p className="text-sm font-medium text-neutral-900">
-                      {new Date(consultation.date).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        month: 'long',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
+                      {formatDate(consultation.date)}
                     </p>
                   </div>
                   <div className="bg-neutral-50 p-3 rounded-xl">
                     <p className="text-xs text-neutral-500 mb-1">Time</p>
                     <p className="text-sm font-medium text-neutral-900">
-                      {consultation.time?.slice(0,5)} • {consultation.duration_minutes} min
+                      {formatTime(consultation.time)} • {consultation.duration_minutes} min
                     </p>
                   </div>
                 </div>
 
-                {/* Notes */}
-                <div className="pt-4 border-t border-neutral-200">
-                  <p className="text-xs text-neutral-500 mb-2">Your Notes</p>
-                  <div className="bg-neutral-50 p-4 rounded-xl">
-                    <p className="text-sm text-neutral-700">
-                      {consultation.client_notes || 'No notes provided'}
-                    </p>
+                {/* Client Notes */}
+                {consultation.client_notes && (
+                  <div className="pt-4 border-t border-neutral-200">
+                    <p className="text-xs text-neutral-500 mb-2">Your Notes</p>
+                    <div className="bg-neutral-50 p-4 rounded-xl">
+                      <p className="text-sm text-neutral-700">
+                        {consultation.client_notes}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Price if available */}
                 {consultation.price && (
@@ -276,46 +302,6 @@ export default function ClientConsultationDetailPage() {
                     </p>
                   </div>
                 )}
-              </div>
-            </CardBody>
-          </Card>
-
-          {/* Messages Preview */}
-          <Card className="border-neutral-200">
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-neutral-900">Messages</h2>
-                <Link 
-                  href={`/client/dashboard/messages?consultation=${id}`} 
-                  className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
-                >
-                  View all
-                  <ChevronRightIcon className="h-4 w-4" />
-                </Link>
-              </div>
-            </CardHeader>
-            <CardBody className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-neutral-200 rounded-full flex items-center justify-center text-xs font-bold text-neutral-700 flex-shrink-0">
-                    {consultation.practitioner_name?.[0] || 'P'}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-neutral-900">
-                      Dr. {consultation.practitioner_name}
-                    </p>
-                    <p className="text-xs text-neutral-500 mt-1">
-                      Looking forward to our session!
-                    </p>
-                    <p className="text-xs text-neutral-400 mt-1">2 hours ago</p>
-                  </div>
-                </div>
-                <Link href={`/client/dashboard/messages/new?recipient=${consultation.practitioner}&consultation=${id}`}>
-                  <Button variant="outline" fullWidth className="border-neutral-200 text-neutral-700 hover:bg-neutral-50">
-                    <ChatBubbleLeftIcon className="h-4 w-4 mr-2" />
-                    Send a Message
-                  </Button>
-                </Link>
               </div>
             </CardBody>
           </Card>
@@ -379,7 +365,7 @@ export default function ClientConsultationDetailPage() {
                   </Button>
                 </>
               )}
-              {isCompleted && !consultation.has_review && (
+              {isCompleted && consultation.can_review && (
                 <Button
                   fullWidth
                   variant="outline"
@@ -403,6 +389,19 @@ export default function ClientConsultationDetailPage() {
               )}
             </CardBody>
           </Card>
+
+          {/* Message Button */}
+          {consultation.practitioner && (
+            <Button
+              fullWidth
+              variant="outline"
+              onClick={handleMessagePractitioner}
+              className="border-neutral-200 hover:bg-neutral-50"
+            >
+              <ChatBubbleLeftIcon className="h-4 w-4 mr-2" />
+              Message Practitioner
+            </Button>
+          )}
 
           {/* Meeting Info */}
           {isUpcoming && (

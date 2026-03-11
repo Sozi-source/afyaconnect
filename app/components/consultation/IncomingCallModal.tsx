@@ -4,7 +4,6 @@
 import { Fragment } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { PhoneIcon, XMarkIcon } from '@heroicons/react/24/outline'
-import { Button } from '@/app/components/ui/Buttons'
 
 interface IncomingCallModalProps {
   isOpen: boolean
@@ -26,7 +25,7 @@ export default function IncomingCallModal({ isOpen, callerName, onAccept, onDecl
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/25" />
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -44,32 +43,42 @@ export default function IncomingCallModal({ isOpen, callerName, onAccept, onDecl
                 <Dialog.Title as="h3" className="text-lg font-medium text-gray-900 text-center">
                   Incoming Call
                 </Dialog.Title>
+                
                 <div className="mt-4 text-center">
-                  <div className="w-16 h-16 mx-auto bg-primary-100 rounded-full flex items-center justify-center mb-4">
-                    <PhoneIcon className="h-8 w-8 text-primary-600 animate-pulse" />
+                  <div className="w-20 h-20 mx-auto bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center mb-4">
+                    <PhoneIcon className="h-10 w-10 text-white animate-pulse" />
                   </div>
+                  
                   <p className="text-sm text-gray-500 mb-1">Call from</p>
-                  <p className="text-lg font-semibold text-gray-900">{callerName}</p>
+                  <p className="text-xl font-semibold text-gray-900 mb-2">{callerName}</p>
+                  
+                  <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    <span>Incoming call...</span>
+                  </div>
                 </div>
 
                 <div className="mt-6 flex gap-3">
-                  <Button
-                    fullWidth
-                    variant="danger"
+                  <button
                     onClick={onDecline}
-                    className="bg-red-600 hover:bg-red-700 text-white"
+                    className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl 
+                             transition-all transform hover:scale-105 flex items-center justify-center gap-2
+                             focus:outline-none focus:ring-4 focus:ring-red-200"
                   >
-                    <XMarkIcon className="h-4 w-4 mr-2" />
+                    <XMarkIcon className="h-5 w-5" />
                     Decline
-                  </Button>
-                  <Button
-                    fullWidth
+                  </button>
+                  
+                  <button
                     onClick={onAccept}
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    className="flex-1 py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 
+                             hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl 
+                             transition-all transform hover:scale-105 flex items-center justify-center gap-2
+                             focus:outline-none focus:ring-4 focus:ring-emerald-200"
                   >
-                    <PhoneIcon className="h-4 w-4 mr-2" />
+                    <PhoneIcon className="h-5 w-5" />
                     Accept
-                  </Button>
+                  </button>
                 </div>
               </Dialog.Panel>
             </Transition.Child>
