@@ -13,14 +13,10 @@ import {
   LinkIcon,
   GlobeAltIcon,
   BuildingOfficeIcon,
-  UserCircleIcon,
   ShieldCheckIcon,
   CloudArrowUpIcon,
   XMarkIcon,
   DocumentTextIcon,
-  EnvelopeIcon,
-  PhoneIcon,
-  MapPinIcon
 } from '@heroicons/react/24/outline'
 import { apiClient } from '@/app/lib/api'
 import type { PractitionerApplicationData } from '@/app/types'
@@ -38,6 +34,8 @@ interface FileUploadProps {
   multiple?: boolean
   onFileChange: (file: File | null) => void
   currentFile?: string
+  icon: any
+  onRemove?: () => void
 }
 
 interface FilesState {
@@ -78,6 +76,8 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string>('')
   const [success, setSuccess] = useState<string>('')
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
+  
   const [formData, setFormData] = useState<PractitionerApplicationData>({
     professional_title: initialData?.professional_title || '',
     qualifications: initialData?.qualifications || '',
@@ -107,8 +107,14 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }))
+    // Mark field as touched
+    setTouchedFields(prev => ({ ...prev, [name]: true }))
     // Clear error for this field if any
     if (error) setError('')
+  }
+
+  const handleBlur = (field: string) => {
+    setTouchedFields(prev => ({ ...prev, [field]: true }))
   }
 
   const handleFileChange = (field: keyof FilesState, file: File | null) => {
@@ -135,29 +141,48 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
     }))
   }
 
+  const getFieldError = (field: string, value: string, minLength?: number): string | null => {
+    if (!touchedFields[field]) return null
+    
+    if (!value && field !== 'specialized_areas' && field !== 'linkedin_url' && field !== 'website_url') {
+      return 'This field is required'
+    }
+    
+    if (minLength && value.length < minLength && value.length > 0) {
+      return `Minimum ${minLength} characters required`
+    }
+    
+    return null
+  }
+
   const validateStep = (): boolean => {
     switch (currentStep) {
       case 0:
         if (!formData.professional_title) {
           setError('Professional title is required')
+          setTouchedFields(prev => ({ ...prev, professional_title: true }))
           return false
         }
         break
       case 1:
         if (!formData.qualifications) {
           setError('Qualifications are required')
+          setTouchedFields(prev => ({ ...prev, qualifications: true }))
           return false
         }
         if (!formData.experience_description) {
           setError('Experience description is required')
+          setTouchedFields(prev => ({ ...prev, experience_description: true }))
           return false
         }
         if (formData.qualifications.length < 20) {
           setError('Qualifications should be at least 20 characters')
+          setTouchedFields(prev => ({ ...prev, qualifications: true }))
           return false
         }
         if (formData.experience_description.length < 50) {
           setError('Experience description should be at least 50 characters')
+          setTouchedFields(prev => ({ ...prev, experience_description: true }))
           return false
         }
         break
@@ -179,6 +204,8 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
     } else {
       setCurrentStep(prev => prev + 1)
       setError('')
+      // Reset touched fields for new step
+      setTouchedFields({})
     }
   }
 
@@ -261,7 +288,7 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
                   <div className={`
                     w-10 h-10 rounded-xl flex items-center justify-center transition-all
                     ${isActive 
-                      ? 'bg-emerald-600 text-white shadow-lg scale-110' 
+                      ? 'bg-emerald-600 text-white shadow-lg scale-110 ring-4 ring-emerald-100' 
                       : isCompleted
                         ? 'bg-emerald-100 text-emerald-600'
                         : 'bg-gray-200 text-gray-400'
@@ -346,16 +373,32 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
                       Professional Title <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                      <AcademicCapIcon className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                      <AcademicCapIcon className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
                       <input
                         type="text"
                         name="professional_title"
                         value={formData.professional_title}
                         onChange={handleInputChange}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                        onBlur={() => handleBlur('professional_title')}
+                        className={`
+                          w-full pl-10 pr-4 py-3 bg-white border-2 rounded-xl
+                          focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+                          focus:bg-emerald-50/30 transition-all text-gray-900 placeholder-gray-400
+                          hover:border-gray-400 shadow-sm
+                          ${touchedFields.professional_title && !formData.professional_title
+                            ? 'border-red-300 bg-red-50/30'
+                            : 'border-gray-200'
+                          }
+                        `}
                         placeholder="e.g., Clinical Nutritionist"
                       />
                     </div>
+                    {touchedFields.professional_title && !formData.professional_title && (
+                      <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                        <XMarkIcon className="w-3 h-3" />
+                        Professional title is required
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -363,13 +406,16 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
                       Specialized Areas
                     </label>
                     <div className="relative">
-                      <BuildingOfficeIcon className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                      <BuildingOfficeIcon className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
                       <input
                         type="text"
                         name="specialized_areas"
                         value={formData.specialized_areas}
                         onChange={handleInputChange}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                        className="w-full pl-10 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl
+                                 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+                                 focus:bg-emerald-50/30 transition-all text-gray-900 placeholder-gray-400
+                                 hover:border-gray-400 shadow-sm"
                         placeholder="e.g., Weight Management, Sports Nutrition"
                       />
                     </div>
@@ -382,13 +428,16 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
                       LinkedIn URL
                     </label>
                     <div className="relative">
-                      <LinkIcon className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                      <LinkIcon className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
                       <input
                         type="url"
                         name="linkedin_url"
                         value={formData.linkedin_url}
                         onChange={handleInputChange}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                        className="w-full pl-10 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl
+                                 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+                                 focus:bg-emerald-50/30 transition-all text-gray-900 placeholder-gray-400
+                                 hover:border-gray-400 shadow-sm"
                         placeholder="https://linkedin.com/in/username"
                       />
                     </div>
@@ -399,13 +448,16 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
                       Website URL
                     </label>
                     <div className="relative">
-                      <GlobeAltIcon className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                      <GlobeAltIcon className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
                       <input
                         type="url"
                         name="website_url"
                         value={formData.website_url}
                         onChange={handleInputChange}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                        className="w-full pl-10 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl
+                                 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+                                 focus:bg-emerald-50/30 transition-all text-gray-900 placeholder-gray-400
+                                 hover:border-gray-400 shadow-sm"
                         placeholder="https://yourwebsite.com"
                       />
                     </div>
@@ -420,51 +472,95 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
                     Qualifications <span className="text-red-500">*</span>
-                    <span className="text-xs text-gray-500 ml-2">
-                      ({formData.qualifications.length}/20 min)
-                    </span>
                   </label>
                   <div className="relative">
-                    <DocumentTextIcon className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                    <DocumentTextIcon className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
                     <textarea
                       name="qualifications"
                       value={formData.qualifications}
                       onChange={handleInputChange}
+                      onBlur={() => handleBlur('qualifications')}
                       rows={4}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                      className={`
+                        w-full pl-10 pr-4 py-3 bg-white border-2 rounded-xl
+                        focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+                        focus:bg-emerald-50/30 transition-all text-gray-900 placeholder-gray-400
+                        hover:border-gray-400 shadow-sm resize-none
+                        ${touchedFields.qualifications && (!formData.qualifications || formData.qualifications.length < 20)
+                          ? 'border-red-300 bg-red-50/30'
+                          : 'border-gray-200'
+                        }
+                      `}
                       placeholder="List your degrees, certifications, and qualifications..."
                     />
                   </div>
-                  <div className="flex justify-end">
-                    <span className={`text-xs ${formData.qualifications.length < 20 ? 'text-red-500' : 'text-green-500'}`}>
-                      {formData.qualifications.length}/20 characters
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">
+                      Minimum 20 characters
+                    </span>
+                    <span className={`
+                      text-xs font-medium px-2 py-1 rounded-full
+                      ${formData.qualifications.length < 20 
+                        ? 'bg-red-100 text-red-700' 
+                        : 'bg-green-100 text-green-700'
+                      }
+                    `}>
+                      {formData.qualifications.length}/20
                     </span>
                   </div>
+                  {touchedFields.qualifications && formData.qualifications.length < 20 && (
+                    <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                      <XMarkIcon className="w-3 h-3" />
+                      Please provide at least 20 characters
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
                     Experience Description <span className="text-red-500">*</span>
-                    <span className="text-xs text-gray-500 ml-2">
-                      ({formData.experience_description.length}/50 min)
-                    </span>
                   </label>
                   <div className="relative">
-                    <BriefcaseIcon className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                    <BriefcaseIcon className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
                     <textarea
                       name="experience_description"
                       value={formData.experience_description}
                       onChange={handleInputChange}
+                      onBlur={() => handleBlur('experience_description')}
                       rows={4}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                      className={`
+                        w-full pl-10 pr-4 py-3 bg-white border-2 rounded-xl
+                        focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+                        focus:bg-emerald-50/30 transition-all text-gray-900 placeholder-gray-400
+                        hover:border-gray-400 shadow-sm resize-none
+                        ${touchedFields.experience_description && (!formData.experience_description || formData.experience_description.length < 50)
+                          ? 'border-red-300 bg-red-50/30'
+                          : 'border-gray-200'
+                        }
+                      `}
                       placeholder="Describe your relevant experience..."
                     />
                   </div>
-                  <div className="flex justify-end">
-                    <span className={`text-xs ${formData.experience_description.length < 50 ? 'text-red-500' : 'text-green-500'}`}>
-                      {formData.experience_description.length}/50 characters
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">
+                      Minimum 50 characters
+                    </span>
+                    <span className={`
+                      text-xs font-medium px-2 py-1 rounded-full
+                      ${formData.experience_description.length < 50 
+                        ? 'bg-red-100 text-red-700' 
+                        : 'bg-green-100 text-green-700'
+                      }
+                    `}>
+                      {formData.experience_description.length}/50
                     </span>
                   </div>
+                  {touchedFields.experience_description && formData.experience_description.length < 50 && (
+                    <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                      <XMarkIcon className="w-3 h-3" />
+                      Please provide at least 50 characters
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -472,10 +568,12 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
             {/* Step 3: Documents */}
             {currentStep === 2 && (
               <div className="space-y-5">
-                <p className="text-sm text-gray-500 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                  <ShieldCheckIcon className="w-4 h-4 inline-block mr-1 text-blue-500" />
-                  Your documents are secure and encrypted. They'll only be used for verification.
-                </p>
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
+                  <ShieldCheckIcon className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-blue-700">
+                    Your documents are secure and encrypted. They'll only be used for verification purposes.
+                  </p>
+                </div>
                 
                 <FileUpload
                   label="Profile Photo"
@@ -514,44 +612,46 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
               <div className="space-y-5">
                 <h3 className="text-lg font-semibold text-gray-900">Review Your Application</h3>
                 
-                <div className="bg-gray-50 rounded-xl p-5 space-y-4">
+                <div className="bg-gray-50 rounded-xl p-5 space-y-4 border-2 border-gray-100">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-gray-500">Professional Title</p>
+                    <div className="bg-white p-3 rounded-lg border border-gray-200">
+                      <p className="text-xs text-gray-500 mb-1">Professional Title</p>
                       <p className="font-medium text-gray-900">{formData.professional_title || 'Not provided'}</p>
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Specialized Areas</p>
+                    <div className="bg-white p-3 rounded-lg border border-gray-200">
+                      <p className="text-xs text-gray-500 mb-1">Specialized Areas</p>
                       <p className="font-medium text-gray-900">{formData.specialized_areas || 'Not provided'}</p>
                     </div>
                   </div>
 
-                  <div>
-                    <p className="text-xs text-gray-500">Qualifications</p>
-                    <p className="text-sm text-gray-900 mt-1">{formData.qualifications}</p>
+                  <div className="bg-white p-3 rounded-lg border border-gray-200">
+                    <p className="text-xs text-gray-500 mb-1">Qualifications</p>
+                    <p className="text-sm text-gray-900">{formData.qualifications || 'Not provided'}</p>
                   </div>
 
-                  <div>
-                    <p className="text-xs text-gray-500">Experience</p>
-                    <p className="text-sm text-gray-900 mt-1">{formData.experience_description}</p>
+                  <div className="bg-white p-3 rounded-lg border border-gray-200">
+                    <p className="text-xs text-gray-500 mb-1">Experience</p>
+                    <p className="text-sm text-gray-900">{formData.experience_description || 'Not provided'}</p>
                   </div>
 
                   {(formData.linkedin_url || formData.website_url) && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-gray-200">
                       {formData.linkedin_url && (
-                        <div>
-                          <p className="text-xs text-gray-500">LinkedIn</p>
+                        <div className="bg-white p-3 rounded-lg border border-gray-200">
+                          <p className="text-xs text-gray-500 mb-1">LinkedIn</p>
                           <a href={formData.linkedin_url} target="_blank" rel="noopener noreferrer" 
-                             className="text-sm text-emerald-600 hover:underline">
+                             className="text-sm text-emerald-600 hover:underline flex items-center gap-1">
+                            <LinkIcon className="w-4 h-4" />
                             View Profile
                           </a>
                         </div>
                       )}
                       {formData.website_url && (
-                        <div>
-                          <p className="text-xs text-gray-500">Website</p>
+                        <div className="bg-white p-3 rounded-lg border border-gray-200">
+                          <p className="text-xs text-gray-500 mb-1">Website</p>
                           <a href={formData.website_url} target="_blank" rel="noopener noreferrer"
-                             className="text-sm text-emerald-600 hover:underline">
+                             className="text-sm text-emerald-600 hover:underline flex items-center gap-1">
+                            <GlobeAltIcon className="w-4 h-4" />
                             Visit Website
                           </a>
                         </div>
@@ -559,9 +659,9 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
                     </div>
                   )}
 
-                  <div className="pt-2 border-t border-gray-200">
+                  <div className="bg-white p-3 rounded-lg border border-gray-200">
                     <p className="text-xs text-gray-500 mb-2">Uploaded Documents</p>
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       {uploadedFileNames.profile_photo && (
                         <p className="text-sm text-gray-600 flex items-center gap-2">
                           <PhotoIcon className="w-4 h-4 text-gray-400" />
@@ -587,30 +687,32 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
                   </div>
                 </div>
 
-                <div className="space-y-3 bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-                  <label className="flex items-start gap-3">
+                <div className="space-y-3 bg-emerald-50 p-4 rounded-xl border-2 border-emerald-100">
+                  <label className="flex items-start gap-3 cursor-pointer group">
                     <input
                       type="checkbox"
                       name="terms_accepted"
                       checked={formData.terms_accepted}
                       onChange={handleInputChange}
-                      className="mt-1 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                      className="mt-1 rounded border-gray-300 text-emerald-600 
+                               focus:ring-emerald-500 cursor-pointer w-4 h-4"
                     />
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm text-gray-700 group-hover:text-gray-900">
                       I confirm that all information provided is accurate and complete. 
                       I understand that providing false information may result in rejection or termination.
                     </span>
                   </label>
 
-                  <label className="flex items-start gap-3">
+                  <label className="flex items-start gap-3 cursor-pointer group">
                     <input
                       type="checkbox"
                       name="data_consent_given"
                       checked={formData.data_consent_given}
                       onChange={handleInputChange}
-                      className="mt-1 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                      className="mt-1 rounded border-gray-300 text-emerald-600 
+                               focus:ring-emerald-500 cursor-pointer w-4 h-4"
                     />
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm text-gray-700 group-hover:text-gray-900">
                       I give consent for my data to be processed for verification purposes. 
                       My information will be handled according to the privacy policy.
                     </span>
@@ -625,7 +727,9 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
         <div className="flex flex-col sm:flex-row gap-3 justify-between mt-8 pt-4 border-t border-gray-200">
           <button
             onClick={currentStep === 0 ? onCancel : handleBack}
-            className="flex-1 sm:flex-none px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+            className="flex-1 sm:flex-none px-6 py-3 border-2 border-gray-300 rounded-xl 
+                     text-gray-700 hover:bg-gray-50 transition-all flex items-center 
+                     justify-center gap-2 font-medium hover:border-gray-400"
           >
             <ArrowLeftIcon className="h-4 w-4" />
             {currentStep === 0 ? 'Cancel' : 'Back'}
@@ -634,7 +738,12 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
           <button
             onClick={handleNext}
             disabled={loading || (currentStep === 3 && (!formData.terms_accepted || !formData.data_consent_given))}
-            className="flex-1 sm:flex-none px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 transition-all transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
+            className="flex-1 sm:flex-none px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 
+                     text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 
+                     transition-all transform hover:scale-105 disabled:opacity-50 
+                     disabled:hover:scale-100 disabled:cursor-not-allowed 
+                     flex items-center justify-center gap-2 shadow-lg font-medium
+                     focus:ring-4 focus:ring-emerald-200"
           >
             {loading ? (
               <>
@@ -654,7 +763,7 @@ export function ApplicationForm({ initialData, onSubmit, onCancel }: Application
   )
 }
 
-function FileUpload({ label, field, accept, icon: Icon, onFileChange, currentFile, onRemove }: FileUploadProps & { icon: any; onRemove?: () => void }) {
+function FileUpload({ label, field, accept, icon: Icon, onFileChange, currentFile, onRemove }: FileUploadProps) {
   const [fileName, setFileName] = useState<string>(currentFile || '')
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -674,9 +783,11 @@ function FileUpload({ label, field, accept, icon: Icon, onFileChange, currentFil
   return (
     <div className="space-y-2">
       <label className="block text-sm font-medium text-gray-700">{label}</label>
-      <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 hover:border-emerald-500 transition-colors">
+      <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 
+                      hover:border-emerald-500 transition-colors bg-gray-50/30
+                      focus-within:border-emerald-500 focus-within:bg-emerald-50/30">
         {fileName ? (
-          <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+          <div className="flex items-center justify-between bg-white p-3 rounded-lg border-2 border-gray-200">
             <div className="flex items-center gap-3">
               <Icon className="h-5 w-5 text-gray-500" />
               <span className="text-sm text-gray-700 truncate max-w-[200px]">{fileName}</span>
@@ -684,6 +795,7 @@ function FileUpload({ label, field, accept, icon: Icon, onFileChange, currentFil
             <button
               onClick={handleRemove}
               className="p-1 hover:bg-red-100 rounded-lg transition-colors"
+              type="button"
             >
               <XMarkIcon className="h-4 w-4 text-red-500" />
             </button>
@@ -696,11 +808,13 @@ function FileUpload({ label, field, accept, icon: Icon, onFileChange, currentFil
               onChange={handleChange}
               className="hidden"
             />
-            <div className="flex flex-col items-center gap-2 py-3">
-              <CloudArrowUpIcon className="h-8 w-8 text-gray-400" />
+            <div className="flex flex-col items-center gap-2 py-4">
+              <CloudArrowUpIcon className="h-10 w-10 text-gray-400" />
               <span className="text-sm font-medium text-emerald-600">Click to upload</span>
               <span className="text-xs text-gray-500">or drag and drop</span>
-              <span className="text-xs text-gray-400 mt-1">{accept.replace(/,/g, ', ')}</span>
+              <span className="text-xs text-gray-400 mt-1 bg-gray-100 px-2 py-1 rounded-full">
+                {accept.replace(/,/g, ', ')}
+              </span>
             </div>
           </label>
         )}
