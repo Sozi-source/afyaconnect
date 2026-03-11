@@ -28,17 +28,36 @@ import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { Card, CardBody } from '@/app/components/ui/Card'
 import { Button } from '@/app/components/ui/Buttons'
 import { apiClient } from '@/app/lib/api'
-import type { Consultation } from '@/app/types'
+import type { Consultation, Notification, Practitioner, Review, PractitionerFilters } from '@/app/types'
 
 // =============================================
 // TYPES
 // =============================================
+interface DashboardData {
+  consultations: Consultation[]
+  notifications: Notification[]
+  unreadCount: number
+  recentPractitioners?: Practitioner[]
+  pendingReviews?: Review[]
+  metrics: {
+    totalConsultations: number
+    upcomingConsultations: number
+    completedConsultations: number
+    cancelledConsultations: number
+    completionRate: number
+    totalSpent?: number
+    averageRating?: number
+    pendingReviewsCount: number
+  }
+}
+
 interface StatCardProps {
   title: string
   value: string | number
   icon: React.ComponentType<{ className?: string }>
   gradient: string
   delay: number
+  isLoading?: boolean
 }
 
 interface UpcomingConsultationCardProps {
@@ -64,6 +83,7 @@ interface InsightCardProps {
   value: string
   trend: 'positive' | 'increasing' | 'steady' | 'neutral'
   description: string
+  isLoading?: boolean
 }
 
 interface EmptyStateProps {
@@ -81,11 +101,10 @@ export default function ClientDashboardPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const [isMounted, setIsMounted] = useState(false)
-  const [consultations, setConsultations] = useState<Consultation[]>([])
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [greeting, setGreeting] = useState('')
-  const [notifications, setNotifications] = useState(3)
 
   // Memoized fetch function
   const fetchDashboardData = useCallback(async () => {
@@ -93,11 +112,86 @@ export default function ClientDashboardPage() {
     
     try {
       setLoading(true)
-      const response = await apiClient.consultations.getMyClientConsultations()
-      const consultationsArray = Array.isArray(response) ? response : 
-        (response && 'results' in response ? (response as any).results : [])
-      setConsultations(consultationsArray)
       setError(null)
+
+      // Fetch consultations
+      const consultationsResponse = await apiClient.consultations.getMyClientConsultations()
+      const consultations = Array.isArray(consultationsResponse) ? consultationsResponse : 
+        (consultationsResponse && 'results' in consultationsResponse ? (consultationsResponse as any).results : [])
+
+      // Fetch notifications
+      let notifications: Notification[] = []
+      let unreadCount = 0
+      try {
+        const notificationsResponse = await apiClient.notifications.getAll()
+        notifications = Array.isArray(notificationsResponse) ? notificationsResponse : []
+        
+        const unreadResponse = await apiClient.notifications.getUnreadCount()
+        unreadCount = unreadResponse.unread_count || 0
+      } catch (notifError) {
+        console.log('Notifications not available')
+      }
+
+      // Fetch pending reviews
+      let pendingReviews: Review[] = []
+      try {
+        const completedConsultations = consultations.filter((c: Consultation) => 
+          c.status === 'completed' && c.can_review
+        )
+        // You might have a separate endpoint for pending reviews
+        pendingReviews = completedConsultations.slice(0, 3)
+      } catch (reviewError) {
+        console.log('Reviews not available')
+      }
+
+      // Fetch recommended practitioners - using valid PractitionerFilters
+      let recentPractitioners: Practitioner[] = []
+      try {
+        // Use valid filter parameters only
+        const filters: PractitionerFilters = {
+          verified: true
+          // Add other filters if needed, but no page_size
+        }
+        
+        const practitionersResponse = await apiClient.practitioners.getAll(filters)
+        
+        // Handle paginated response
+        if (Array.isArray(practitionersResponse)) {
+          recentPractitioners = practitionersResponse.slice(0, 3)
+        } else if (practitionersResponse && 'results' in practitionersResponse) {
+          recentPractitioners = practitionersResponse.results.slice(0, 3)
+        }
+      } catch (practitionerError) {
+        console.log('Practitioners not available')
+      }
+
+      // Calculate metrics
+      const totalConsultations = consultations.length
+      const upcomingConsultations = consultations.filter((c: Consultation) => c.status === 'booked').length
+      const completedConsultations = consultations.filter((c: Consultation) => c.status === 'completed').length
+      const cancelledConsultations = consultations.filter((c: Consultation) => 
+        c.status === 'cancelled' || c.status === 'no_show'
+      ).length
+      const completionRate = totalConsultations > 0 
+        ? Math.round((completedConsultations / totalConsultations) * 100)
+        : 0
+
+      setDashboardData({
+        consultations,
+        notifications,
+        unreadCount,
+        recentPractitioners,
+        pendingReviews,
+        metrics: {
+          totalConsultations,
+          upcomingConsultations,
+          completedConsultations,
+          cancelledConsultations,
+          completionRate,
+          pendingReviewsCount: pendingReviews.length
+        }
+      })
+
     } catch (error: any) {
       console.error('Error fetching dashboard data:', error)
       setError(error.message || 'Failed to load dashboard data')
@@ -130,7 +224,7 @@ export default function ClientDashboardPage() {
   }, [isMounted, authLoading, isAuthenticated, router])
 
   // 2. EARLY RETURNS (after all hooks)
-  if (authLoading || !isMounted) {
+  if (authLoading || !isMounted || loading) {
     return <DashboardSkeleton />
   }
 
@@ -138,37 +232,31 @@ export default function ClientDashboardPage() {
     return null
   }
 
-  if (loading) {
-    return <DashboardSkeleton />
+  if (error) {
+    return <ErrorState error={error} onRetry={fetchDashboardData} />
+  }
+
+  if (!dashboardData) {
+    return null
   }
 
   // 3. DERIVED DATA
   const firstName = user?.first_name || user?.email?.split('@')[0] || 'User'
-  const safeConsultations = Array.isArray(consultations) ? consultations : []
+  const { consultations, notifications, unreadCount, recentPractitioners, metrics } = dashboardData
   
-  const stats = {
-    total: safeConsultations.length,
-    upcoming: safeConsultations.filter(c => c.status === 'booked').length,
-    completed: safeConsultations.filter(c => c.status === 'completed').length,
-    cancelled: safeConsultations.filter(c => c.status === 'cancelled' || c.status === 'no_show').length,
-    completionRate: safeConsultations.length > 0 
-      ? Math.round((safeConsultations.filter(c => c.status === 'completed').length / safeConsultations.length) * 100)
-      : 0
-  }
-
-  const upcomingConsultations = safeConsultations
+  const upcomingConsultations = consultations
     .filter(c => c.status === 'booked')
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 3)
 
-  const recentActivity = safeConsultations
+  const recentActivity = consultations
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5)
 
   // 4. RENDER
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      {/* Header - Responsive */}
+      {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/60 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -191,28 +279,30 @@ export default function ClientDashboardPage() {
               </p>
             </div>
 
-            {/* Action Buttons - Responsive */}
+            {/* Action Buttons */}
             <div className="flex items-center justify-end gap-2 sm:gap-3">
-              {/* Messages - Hidden on smallest screens, shown on sm+ */}
               <Link href="/client/dashboard/messages" className="hidden xs:block">
                 <button className="relative p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-all">
                   <ChatBubbleLeftRightIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                  {notifications > 0 && (
+                  {unreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 h-3.5 w-3.5 sm:h-4 sm:w-4 bg-emerald-500 text-white text-[10px] sm:text-xs rounded-full flex items-center justify-center">
-                      {notifications}
+                      {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
                 </button>
               </Link>
 
-              {/* Settings - Always visible */}
-              <Link href="/client/dashboard/settings">
-                <button className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-all">
+              <Link href="/client/dashboard/notifications">
+                <button className="relative p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-all">
                   <BellIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                  {notifications.filter(n => !n.is_read).length > 0 && (
+                    <span className="absolute -top-1 -right-1 h-3.5 w-3.5 sm:h-4 sm:w-4 bg-emerald-500 text-white text-[10px] sm:text-xs rounded-full flex items-center justify-center">
+                      {notifications.filter(n => !n.is_read).length > 9 ? '9+' : notifications.filter(n => !n.is_read).length}
+                    </span>
+                  )}
                 </button>
               </Link>
 
-              {/* Book Button - Responsive text */}
               <Link href="/client/dashboard/practitioners">
                 <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg shadow-emerald-200/50 transition-all hover:scale-105 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm">
                   <CalendarIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
@@ -226,59 +316,41 @@ export default function ClientDashboardPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
-        {/* Error Banner */}
-        {error && (
-          <div className="mb-4 sm:mb-6 lg:mb-8 bg-rose-50 border border-rose-200 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <p className="text-xs sm:text-sm text-rose-600 flex items-center">
-                <XCircleIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" />
-                <span className="truncate">{error}</span>
-              </p>
-              <button 
-                onClick={fetchDashboardData}
-                className="text-xs sm:text-sm text-rose-600 hover:text-rose-700 font-medium self-end sm:self-auto"
-              >
-                Try again
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Stats Grid - Responsive: 2 cols on mobile, 5 on desktop */}
+        {/* Stats Grid */}
         <section className="mb-6 sm:mb-8">
           <h2 className="sr-only">Statistics Overview</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             <StatCard
               title="Total"
-              value={stats.total}
+              value={metrics.totalConsultations}
               icon={DocumentTextIcon}
               gradient="from-blue-600 to-blue-400"
               delay={0}
             />
             <StatCard
               title="Upcoming"
-              value={stats.upcoming}
+              value={metrics.upcomingConsultations}
               icon={ClockIcon}
               gradient="from-emerald-600 to-teal-400"
               delay={100}
             />
             <StatCard
               title="Completed"
-              value={stats.completed}
+              value={metrics.completedConsultations}
               icon={CheckCircleIcon}
               gradient="from-purple-600 to-pink-400"
               delay={200}
             />
             <StatCard
               title="Rate"
-              value={`${stats.completionRate}%`}
+              value={`${metrics.completionRate}%`}
               icon={ChartBarIcon}
               gradient="from-amber-500 to-orange-400"
               delay={300}
             />
             <StatCard
               title="Cancelled"
-              value={stats.cancelled}
+              value={metrics.cancelledConsultations}
               icon={XCircleIcon}
               gradient="from-rose-600 to-red-400"
               delay={400}
@@ -286,7 +358,7 @@ export default function ClientDashboardPage() {
           </div>
         </section>
 
-        {/* Main Content Grid - Responsive */}
+        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-6 sm:space-y-8">
@@ -296,11 +368,11 @@ export default function ClientDashboardPage() {
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-white flex items-center">
                     <VideoCameraIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-1.5 sm:mr-2" />
-                    <span className="truncate">Upcoming</span>
+                    <span className="truncate">Upcoming Consultations</span>
                   </h2>
-                  {upcomingConsultations.length > 0 && (
+                  {metrics.upcomingConsultations > 0 && (
                     <Link 
-                      href="/client/dashboard/consultations" 
+                      href="/client/dashboard/consultations?status=booked" 
                       className="text-white/90 hover:text-white text-xs sm:text-sm flex items-center gap-1"
                     >
                       <span className="hidden xs:inline">View all</span>
@@ -382,7 +454,7 @@ export default function ClientDashboardPage() {
                     icon={ChatBubbleLeftRightIcon}
                     color="from-purple-500 to-purple-600"
                     title="Messages"
-                    description="Chat with practitioners"
+                    description={unreadCount > 0 ? `${unreadCount} unread` : "Chat with practitioners"}
                   />
                 </div>
               </CardBody>
@@ -398,61 +470,72 @@ export default function ClientDashboardPage() {
                 <div className="space-y-3 sm:space-y-4">
                   <InsightCard
                     title="Consultation Frequency"
-                    value={`${stats.total} total`}
-                    trend={stats.total > 5 ? 'increasing' : 'steady'}
-                    description="On track with goals"
+                    value={`${metrics.totalConsultations} total`}
+                    trend={metrics.totalConsultations > 5 ? 'increasing' : 'steady'}
+                    description={metrics.totalConsultations > 5 ? "Regular attendee" : "Getting started"}
                   />
                   <InsightCard
                     title="Completion Rate"
-                    value={`${stats.completionRate}%`}
-                    trend={stats.completionRate > 70 ? 'positive' : 'neutral'}
-                    description={stats.completionRate > 70 ? "Excellent!" : "Keep it up"}
+                    value={`${metrics.completionRate}%`}
+                    trend={metrics.completionRate > 70 ? 'positive' : 'neutral'}
+                    description={metrics.completionRate > 70 ? "Excellent!" : "Keep it up"}
                   />
+                  {metrics.pendingReviewsCount > 0 && (
+                    <InsightCard
+                      title="Pending Reviews"
+                      value={`${metrics.pendingReviewsCount}`}
+                      trend="neutral"
+                      description="Share your experience"
+                    />
+                  )}
                 </div>
               </CardBody>
             </Card>
 
-            {/* Recommended Card */}
-            <Card className="border-none shadow-lg sm:shadow-xl bg-gradient-to-br from-amber-50 to-orange-50">
-              <CardBody className="p-4 sm:p-6">
-                <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-slate-800 mb-2">
-                  Recommended
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-600 mb-3 sm:mb-4">
-                  Based on your history
-                </p>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-white/60 rounded-lg sm:rounded-xl">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm">
-                      DR
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-slate-800 truncate">Dr. Sarah Johnson</p>
-                      <p className="text-[10px] sm:text-xs text-slate-500 truncate">Cardiologist • 4.9 ⭐</p>
-                    </div>
-                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2 sm:px-3 py-1">
-                      Book
-                    </Button>
+            {/* Recommended Practitioners Card */}
+            {recentPractitioners && recentPractitioners.length > 0 && (
+              <Card className="border-none shadow-lg sm:shadow-xl bg-gradient-to-br from-amber-50 to-orange-50">
+                <CardBody className="p-4 sm:p-6">
+                  <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-slate-800 mb-2">
+                    Recommended
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-600 mb-3 sm:mb-4">
+                    Based on your history
+                  </p>
+                  <div className="space-y-3">
+                    {recentPractitioners.slice(0, 2).map((practitioner) => (
+                      <div key={practitioner.id} className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-white/60 rounded-lg sm:rounded-xl">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm">
+                          {practitioner.first_name?.[0]}{practitioner.last_name?.[0]}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs sm:text-sm font-medium text-slate-800 truncate">
+                            Dr. {practitioner.first_name} {practitioner.last_name}
+                          </p>
+                          <p className="text-[10px] sm:text-xs text-slate-500 truncate">
+                            {practitioner.specialties?.slice(0, 2).map(s => s.name).join(', ') || 'Specialist'} • ⭐ {practitioner.average_rating?.toFixed(1) || 'New'}
+                          </p>
+                        </div>
+                        <Link href={`/client/dashboard/practitioners/${practitioner.id}`}>
+                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2 sm:px-3 py-1">
+                            Book
+                          </Button>
+                        </Link>
+                      </div>
+                    ))}
+                    <Link href="/client/dashboard/practitioners">
+                      <Button 
+                        variant="outline" 
+                        fullWidth 
+                        className="border-amber-200 text-amber-700 hover:bg-amber-50 text-xs sm:text-sm py-2"
+                      >
+                        View All Practitioners
+                      </Button>
+                    </Link>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    fullWidth 
-                    className="border-amber-200 text-amber-700 hover:bg-amber-50 text-xs sm:text-sm py-2"
-                  >
-                    View All
-                  </Button>
-                </div>
-              </CardBody>
-            </Card>
-          </div>
-        </div>
-
-        {/* Mobile Scroll Hint */}
-        <div className="flex justify-center mt-4 sm:hidden">
-          <div className="bg-slate-100 px-3 py-1.5 rounded-full text-[10px] text-slate-500 flex items-center gap-1.5">
-            <span className="inline-block w-1 h-1 rounded-full bg-slate-400"></span>
-            Scroll for more
-            <span className="inline-block w-1 h-1 rounded-full bg-slate-400"></span>
+                </CardBody>
+              </Card>
+            )}
           </div>
         </div>
       </main>
@@ -461,7 +544,7 @@ export default function ClientDashboardPage() {
 }
 
 // =============================================
-// HELPER COMPONENTS - Responsive versions
+// HELPER COMPONENTS
 // =============================================
 
 function StatCard({ title, value, icon: Icon, gradient, delay }: StatCardProps) {
@@ -515,7 +598,7 @@ function UpcomingConsultationCard({ consultation, index }: UpcomingConsultationC
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs sm:text-sm font-semibold text-slate-800 group-hover:text-emerald-600 truncate">
-              Dr. {consultation.practitioner_name || 'Practitioner'}
+              {consultation.practitioner_name || 'Practitioner'}
             </p>
             <p className="text-[10px] sm:text-xs text-slate-500 mt-1 flex items-center gap-1">
               <ClockIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
@@ -526,7 +609,7 @@ function UpcomingConsultationCard({ consultation, index }: UpcomingConsultationC
                 <VideoCameraIcon className="h-2 w-2 sm:h-3 sm:w-3 mr-0.5" />
                 <span className="hidden xs:inline">Video</span>
               </span>
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[8px] sm:text-xs font-medium border bg-slate-50 text-slate-700">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[8px] sm:text-xs font-medium border bg-slate-50 text-slate-700 capitalize">
                 {consultation.status.replace('_', ' ')}
               </span>
             </div>
@@ -558,7 +641,7 @@ function ActivityItem({ activity, index }: ActivityItemProps) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-xs sm:text-sm font-medium text-slate-800 truncate">
-          Dr. {activity.practitioner_name || 'Practitioner'}
+          {activity.practitioner_name || 'Practitioner'}
         </p>
         <p className="text-[10px] sm:text-xs text-slate-500">
           {new Date(activity.date).toLocaleDateString('en-US', { 
@@ -567,7 +650,7 @@ function ActivityItem({ activity, index }: ActivityItemProps) {
           })}
         </p>
       </div>
-      <span className={`text-[8px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full font-medium ${statusColor}`}>
+      <span className={`text-[8px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full font-medium capitalize ${statusColor}`}>
         {activity.status.replace('_', ' ')}
       </span>
     </div>
@@ -629,6 +712,25 @@ function EmptyState({ title, description, icon: Icon, action }: EmptyStateProps)
   )
 }
 
+function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <Card className="max-w-md w-full">
+        <CardBody className="p-6 text-center">
+          <div className="w-14 h-14 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <XCircleIcon className="w-7 h-7 text-rose-600" />
+          </div>
+          <h2 className="text-lg font-semibold text-slate-900 mb-2">Failed to load dashboard</h2>
+          <p className="text-sm text-slate-500 mb-4">{error}</p>
+          <Button onClick={onRetry} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            Try Again
+          </Button>
+        </CardBody>
+      </Card>
+    </div>
+  )
+}
+
 function DashboardSkeleton() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
@@ -677,35 +779,3 @@ function DashboardSkeleton() {
     </div>
   )
 }
-
-// Add these styles to your global CSS file
-const styles = `
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.5s ease-out forwards;
-  opacity: 0;
-}
-
-.animate-slideUp {
-  animation: slideUp 0.5s ease-out forwards;
-  opacity: 0;
-}
-
-.animate-slideDown {
-  animation: slideDown 0.3s ease-out forwards;
-}
-`
